@@ -36,6 +36,19 @@ const ExistingEvent = ({ event }: ExistingEventProps) => {
     </Card>
   );
 };
+
+interface NewEventData {
+  name: string
+  description: string
+  location: string
+  startDate: Date | undefined
+  endDate: Date | undefined
+  startTime: string
+  endTime: string
+  link: string
+  organiser?: string
+  organiserEmail?: string
+}
 interface ExistingEventProps {
   event: {
     name: string;
@@ -51,6 +64,39 @@ const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [description, setDescription] = useState<string>("");
   const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [eventName, setEventName] = useState<string>("");
+  const [location, setLocation] = useState<string>("");
+  const [link, setLink] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+
+  const handleCreateEvent = () => {
+    const eventData: NewEventData = {
+      name: eventName,
+      description,
+      location,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      link,
+    };
+    
+    // To Do: Call supabase to create a new event
+    console.log("Creating new event with the following details:", eventData);
+    
+    // Reset form and close modal
+    setEventName("");
+    setDescription("");
+    setLocation("");
+    setLink("");
+    setStartTime("");
+    setEndTime("");
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setShowPreview(false);
+    onClose();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -68,6 +114,8 @@ const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
               id="event-name"
               placeholder="e.g., Monthly AMA Session" 
               className="w-full"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
             />
           </div>
 
@@ -111,7 +159,12 @@ const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
                   <ClockIcon className="w-3 h-3" />
                   Start Time *
                 </Label>
-                <Input id="start-time" type="time" />
+                <Input 
+                  id="start-time" 
+                  type="time" 
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
               </div>
               
               <div data-testid="end-time" className="space-y-2">
@@ -119,7 +172,12 @@ const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
                   <ClockIcon className="w-3 h-3" />
                   End Time
                 </Label>
-                <Input id="end-time" type="time" />
+                <Input 
+                  id="end-time" 
+                  type="time" 
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -184,7 +242,9 @@ const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
               </Label>
               <Input 
                 id="location"
-                placeholder="e.g., NYC, Online, Room 101" 
+                placeholder="e.g., Dublin, Online, Room 101" 
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
               />
             </div>
             
@@ -197,6 +257,8 @@ const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
                 id="link"
                 type="url"
                 placeholder="https://..." 
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
               />
             </div>
           </div>
@@ -207,7 +269,7 @@ const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="bg-primary text-primary-foreground">
+          <Button className="bg-primary text-primary-foreground" onClick={handleCreateEvent}>
             Create Event
           </Button>
         </div>
