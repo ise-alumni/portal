@@ -66,7 +66,8 @@ const Directory = () => {
           .from("profiles")
           .select("id, created_at, updated_at, user_id, full_name, email, city, country, graduation_year, job_title, company, bio, github_url, linkedin_url, twitter_url, website_url, avatar_url, email_visible, msc, admin, is_public, user_type")
           .eq("is_public", true)
-          .limit(50);
+          .limit(50)
+          .abortSignal(signal);
 
         if (debouncedName.trim()) {
           queryBuilder = queryBuilder.ilike("full_name", `%${debouncedName}%`);
