@@ -122,7 +122,6 @@ const Auth = () => {
              <img src="/logo.png" alt="ISE Alumni Logo" className="h-12 w-auto" />
            </div>
            <h1 className="text-3xl font-bold text-primary">ALUMNI</h1>
-          <p className="text-muted-foreground">Alumni</p>
         </div>
 
         {/* Auth Card */}
