@@ -10,7 +10,7 @@ const mockEvents = [
 const Events = () => {
   return (
     <div>
-      <h1 className="text-2xl tracking-tight mb-6">EVENTS</h1>
+      <h1 className="text-2xl tracking-tight mb-6 text-[#0C314C]">EVENTS</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {mockEvents.map((e) => (

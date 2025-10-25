@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, GraduationCap } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
@@ -118,13 +118,10 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 bg-primary rounded-full">
-              <GraduationCap className="h-8 w-8 text-primary-foreground" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-primary">[ISE]</h1>
-          <p className="text-muted-foreground">Alumni</p>
+           <div className="flex justify-center mb-4">
+             <img src="/logo.png" alt="ISE Alumni Logo" className="h-12 w-auto" />
+           </div>
+           <h1 className="text-3xl font-bold text-primary">ALUMNI</h1>
         </div>
 
         {/* Auth Card */}

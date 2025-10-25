@@ -8,34 +8,34 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* ISE Color Scheme - Navy, Emerald, Orange */
-    --background: 0 0% 100%;
-    --foreground: 220 39% 11%;
+     /* Brutalist Monospace Theme - Custom Colors */
+     --background: 0 0% 100%;
+     --foreground: 205 73% 17%; /* #0C314C */
+ 
+     --card: 0 0% 100%;
+     --card-foreground: 205 73% 17%;
+ 
+     --popover: 0 0% 100%;
+     --popover-foreground: 205 73% 17%;
+ 
+     --primary: 155 71% 37%; /* #1BA165 - Green */
+     --primary-foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 39% 11%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 39% 11%;
-
-    --primary: 220 39% 11%; /* Navy blue */
-    --primary-foreground: 0 0% 98%;
-
-    --secondary: 158 64% 52%; /* Emerald green */
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 220 13% 96%;
-    --muted-foreground: 220 9% 46%;
-
-    --accent: 25 95% 53%; /* Orange accent */
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 158 64% 52%;
+     --secondary: 205 73% 17%; /* #0C314C - Dark Blue */
+     --secondary-foreground: 0 0% 98%;
+ 
+     --muted: 220 13% 96%;
+     --muted-foreground: 205 73% 17%;
+ 
+     --accent: 165 72% 25%; /* #126E56 - Dark Green */
+     --accent-foreground: 0 0% 98%;
+ 
+     --destructive: 0 84% 60%;
+     --destructive-foreground: 0 0% 98%;
+ 
+     --border: 205 73% 17%; /* #0C314C */
+     --input: 220 13% 91%;
+     --ring: 155 71% 37%; /* #1BA165 */
 
     /* Brutalist look: square corners, high contrast */
     --radius: 0rem;
@@ -57,43 +57,43 @@ All colors MUST be HSL.
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
-  .dark {
-    --background: 220 39% 11%;
-    --foreground: 0 0% 98%;
-
-    --card: 220 26% 14%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 220 26% 14%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 158 64% 52%;
-    --primary-foreground: 220 39% 11%;
-
-    --secondary: 220 26% 18%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 220 26% 18%;
-    --muted-foreground: 220 9% 65%;
-
-    --accent: 25 95% 53%;
-    --accent-foreground: 220 39% 11%;
-
-    --destructive: 0 62% 31%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 220 26% 18%;
-    --input: 220 26% 18%;
-    --ring: 158 64% 52%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+   .dark {
+     --background: 205 73% 17%; /* #0C314C */
+     --foreground: 0 0% 98%;
+ 
+     --card: 205 73% 17%;
+     --card-foreground: 0 0% 98%;
+ 
+     --popover: 205 73% 17%;
+     --popover-foreground: 0 0% 98%;
+ 
+     --primary: 155 71% 37%; /* #1BA165 */
+     --primary-foreground: 0 0% 98%;
+ 
+     --secondary: 165 72% 25%; /* #126E56 */
+     --secondary-foreground: 0 0% 98%;
+ 
+     --muted: 205 73% 17%;
+     --muted-foreground: 0 0% 65%;
+ 
+     --accent: 155 71% 37%; /* #1BA165 */
+     --accent-foreground: 205 73% 17%;
+ 
+     --destructive: 0 62% 31%;
+     --destructive-foreground: 0 0% 98%;
+ 
+     --border: 155 71% 37%; /* #1BA165 */
+     --input: 205 73% 17%;
+     --ring: 155 71% 37%; /* #1BA165 */
+     --sidebar-background: 205 73% 17%;
+     --sidebar-foreground: 0 0% 98%;
+     --sidebar-primary: 155 71% 37%;
+     --sidebar-primary-foreground: 205 73% 17%;
+     --sidebar-accent: 165 72% 25%;
+     --sidebar-accent-foreground: 0 0% 98%;
+     --sidebar-border: 155 71% 37%;
+     --sidebar-ring: 155 71% 37%;
+   }
 }
 
 @layer base {
