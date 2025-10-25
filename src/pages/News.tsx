@@ -10,7 +10,7 @@ const mockNews = [
 const News = () => {
   return (
     <div>
-      <h1 className="text-2xl tracking-tight mb-6">NEWS</h1>
+      <h1 className="text-2xl tracking-tight mb-6 text-[#126E56]">NEWS</h1>
 
       <Card className="border-2 border-foreground shadow-none">
         <CardHeader className="pb-2">

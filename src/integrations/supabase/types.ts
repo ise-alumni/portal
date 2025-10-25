@@ -15,54 +15,81 @@ export type Database = {
   public: {
     Tables: {
       profiles: {
-        Row: {
-          avatar_url: string | null
-          bio: string | null
-          city: string | null
-          company: string | null
-          country: string | null
-          created_at: string
-          email: string | null
-          full_name: string | null
-          graduation_year: number | null
-          id: string
-          is_public: boolean | null
-          job_title: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          city?: string | null
-          company?: string | null
-          country?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          graduation_year?: number | null
-          id?: string
-          is_public?: boolean | null
-          job_title?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          city?: string | null
-          company?: string | null
-          country?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          graduation_year?: number | null
-          id?: string
-          is_public?: boolean | null
-          job_title?: string | null
-          updated_at?: string
-          user_id?: string
-        }
+          Row: {
+            admin: boolean | null
+            avatar_url: string | null
+            bio: string | null
+            city: string | null
+            cohort: string | null
+            company: string | null
+            country: string | null
+            created_at: string
+            email: string | null
+            email_visible: boolean | null
+            full_name: string | null
+            github_url: string | null
+            graduation_year: number | null
+            id: string
+            is_public: boolean | null
+            job_title: string | null
+            linkedin_url: string | null
+            msc: boolean | null
+            twitter_url: string | null
+            updated_at: string
+            user_id: string
+            user_type: string
+            website_url: string | null
+          }
+          Insert: {
+            admin?: boolean | null
+            avatar_url?: string | null
+            bio?: string | null
+            city?: string | null
+            cohort?: string | null
+            company?: string | null
+            country?: string | null
+            created_at?: string
+            email?: string | null
+            email_visible?: boolean | null
+            full_name?: string | null
+            github_url?: string | null
+            graduation_year?: number | null
+            id?: string
+            is_public?: boolean | null
+            job_title?: string | null
+            linkedin_url?: string | null
+            msc?: boolean | null
+            twitter_url?: string | null
+            updated_at?: string
+            user_id: string
+            user_type?: string
+            website_url?: string | null
+          }
+          Update: {
+            admin?: boolean | null
+            avatar_url?: string | null
+            bio?: string | null
+            city?: string | null
+            cohort?: string | null
+            company?: string | null
+            country?: string | null
+            created_at?: string
+            email?: string | null
+            email_visible?: boolean | null
+            full_name?: string | null
+            github_url?: string | null
+            graduation_year?: number | null
+            id?: string
+            is_public?: boolean | null
+            job_title?: string | null
+            linkedin_url?: string | null
+            msc?: boolean | null
+            twitter_url?: string | null
+            updated_at?: string
+            user_id?: string
+            user_type?: string
+            website_url?: string | null
+          }
         Relationships: []
       }
     }

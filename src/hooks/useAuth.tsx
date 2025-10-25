@@ -121,6 +121,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       await supabase.auth.signOut();
+      // Clear local storage and cookies
+      localStorage.clear();
+      // Clear all cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
     } finally {
       // Ensure UI updates immediately regardless of event timing
       setSession(null);
