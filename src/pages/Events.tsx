@@ -1,19 +1,34 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState, useEffect } from "react";
+import { CalendarIcon, MapPinIcon, Loader2Icon, ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import NewEventModal from "@/components/NewEventModal";
 
-// NewEventModal sub-component
-interface NewEventModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+// Event data interface
+interface EventData {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  location: string | null;
+  location_url: string | null;
+  registration_url: string | null;
+  start_at: string;
+  end_at: string | null;
+  organiser_profile_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  tags: string[] | null;
+  organiser?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  };
 }
 
 
@@ -24,288 +39,202 @@ const ExistingEvent = ({ event }: ExistingEventProps) => {
     navigate(`/events/${event.id}`);
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   return (
     <Card key={event.id} className="border-2 border-foreground shadow-none">
       <CardHeader className="pb-2">
-        <CardTitle className="tracking-tight">{event.name}</CardTitle>
+        <CardTitle className="tracking-tight">{event.title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-sm mb-3">{event.date} — {event.location}</div>
+        <div className="text-sm mb-3">{formatDate(event.start_at)} — {event.location || 'TBD'}</div>
         <Button className="w-full" onClick={handleViewDetails}>Details</Button>
       </CardContent>
     </Card>
   );
 };
 
-interface NewEventData {
-  name: string
-  description: string
-  location: string
-  startDate: Date | undefined
-  endDate: Date | undefined
-  startTime: string
-  endTime: string
-  link: string
-  organiser?: string
-  organiserEmail?: string
-}
 interface ExistingEventProps {
-  event: {
-    name: string;
-    date: string;
-    location: string;
-    id: number;
-  };
+  event: EventData;
 }
 
 
-const NewEventModal = ({ isOpen, onClose }: NewEventModalProps) => {
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [description, setDescription] = useState<string>("");
-  const [showPreview, setShowPreview] = useState<boolean>(false);
-  const [eventName, setEventName] = useState<string>("");
-  const [location, setLocation] = useState<string>("");
-  const [link, setLink] = useState<string>("");
-  const [startTime, setStartTime] = useState<string>("");
-  const [endTime, setEndTime] = useState<string>("");
-
-  const handleCreateEvent = () => {
-    const eventData: NewEventData = {
-      name: eventName,
-      description,
-      location,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
-      link,
-    };
-    
-    // To Do: Call supabase to create a new event
-    console.log("Creating new event with the following details:", eventData);
-    
-    // Reset form and close modal
-    setEventName("");
-    setDescription("");
-    setLocation("");
-    setLink("");
-    setStartTime("");
-    setEndTime("");
-    setStartDate(undefined);
-    setEndDate(undefined);
-    setShowPreview(false);
-    onClose();
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">Create New Event</DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">Fill in the details below to add a new event</p>
-        </DialogHeader>
-        
-        <div className="space-y-6 py-4">
-          {/* Event Name - Full Width */}
-          <div className="space-y-2">
-            <Label htmlFor="event-name" className="text-sm font-medium">Event Name *</Label>
-            <Input 
-              id="event-name"
-              placeholder="e.g., Monthly AMA Session" 
-              className="w-full"
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
-            />
-          </div>
-
-          {/* To Do: Add Organizer Selection, default to current user */}
-
-          <div data-testid="date-time-section" className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <CalendarIcon className="w-4 h-4" />
-              <span>Date & Time</span>
-            </div>
-            
-            <div data-testid="date-time-grid" className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
-              <div data-testid="start-date" className="space-y-2">
-                <Label className="text-sm">Start Date *</Label>
-                <div className="border rounded-md p-2">
-                  <Calendar 
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-              
-              <div data-testid="end-date" className="space-y-2">
-                <Label className="text-sm">End Date</Label>
-                <div className="border rounded-md p-2">
-                  <Calendar 
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div data-testid="time-grid" className="grid grid-cols-2 gap-4 pl-6">
-              <div data-testid="start-time" className="space-y-2">
-                <Label htmlFor="start-time" className="text-sm flex items-center gap-2">
-                  <ClockIcon className="w-3 h-3" />
-                  Start Time *
-                </Label>
-                <Input 
-                  id="start-time" 
-                  type="time" 
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </div>
-              
-              <div data-testid="end-time" className="space-y-2">
-                <Label htmlFor="end-time" className="text-sm flex items-center gap-2">
-                  <ClockIcon className="w-3 h-3" />
-                  End Time
-                </Label>
-                <Input 
-                  id="end-time" 
-                  type="time" 
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div data-testid="description-section" className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="description" className="text-sm font-medium flex items-center gap-2">
-                <FileTextIcon className="w-4 h-4" />
-                Description (Markdown supported)
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPreview(!showPreview)}
-                className="flex items-center gap-2"
-              >
-                {showPreview ? (
-                  <>
-                    <EditIcon className="w-3 h-3" />
-                    Edit
-                  </>
-                ) : (
-                  <>
-                    <EyeIcon className="w-3 h-3" />
-                    Preview
-                  </>
-                )}
-              </Button>
-            </div>
-            
-            {showPreview ? (
-              <div className="min-h-[100px] p-3 border rounded-md bg-muted/50">
-                {description ? (
-                  <div className="text-sm leading-relaxed prose prose-sm max-w-none">
-                    <ReactMarkdown>{description}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    No description entered yet. Click "Edit" to add content.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <Textarea
-                id="description"
-                placeholder="Add event details, agenda, or any additional information... You can use Markdown formatting like **bold**, *italic*, [links](https://example.com), etc."
-                className="min-h-[100px] resize-none"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            )}
-          </div>
-
-          {/* Location & Link */}
-          <div data-testid="location-link-grid" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium flex items-center gap-2">
-                <MapPinIcon className="w-4 h-4" />
-                Location
-              </Label>
-              <Input 
-                id="location"
-                placeholder="e.g., Dublin, Online, Room 101" 
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-            
-            <div data-testid="link-section" className="space-y-2">
-              <Label htmlFor="link" className="text-sm font-medium flex items-center gap-2">
-                <LinkIcon className="w-4 h-4" />
-                Event Link
-              </Label>
-              <Input 
-                id="link"
-                type="url"
-                placeholder="https://..." 
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button className="bg-primary text-primary-foreground" onClick={handleCreateEvent}>
-            Create Event
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// To Do : Move this to a dynamic API call to supabase
-// This should be filtered to only show events that are in the future
-const mockEvents = [
-  { id: 1, name: "Monthly AMA", date: "2025-09-30", location: "Online" },
-  { id: 2, name: "Hack Night", date: "2025-10-12", location: "NYC" },
-  { id: 3, name: "Career Roundtable", date: "2025-11-05", location: "Remote" },
-];
 
 const Events = () => {
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const { user } = useAuth();
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
+        .from('events')
+        .select('*')
+        .order('start_at', { ascending: true });
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setEvents(data || []);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch events');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_type')
+        .eq('user_id', user.id)
+        .single();
+    
+      if (error) {
+        throw error;
+      }
+
+      setUserProfile(data);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  const handleEventCreated = () => {
+    fetchEvents(); // Refresh the events list
+  };
+
+  // Check if user can create events (admin or staff)
+  const canCreateEvents = user && userProfile && (userProfile.user_type === 'Admin' || userProfile.user_type === 'Staff');
+
+  
+  console.log('User:', user);
+  console.log('UserProfile:', userProfile);
+  console.log('Can create events:', canCreateEvents);
+
+  // Separate events into upcoming and past
+  const now = new Date();
+  const upcomingEvents = events.filter(event => new Date(event.start_at) >= now);
+  const pastEvents = events.filter(event => new Date(event.start_at) < now);
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <Loader2Icon className="w-8 h-8 animate-spin mx-auto mb-4" />
+        <p className="text-muted-foreground">Loading events...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <h1 className="text-2xl font-semibold mb-4">Error Loading Events</h1>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <Button onClick={fetchEvents}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex justify-between items-center">
         <h1 className="text-2xl tracking-tight mb-6">EVENTS</h1>
-        {/* To Do: Restrict this UI to admin and Staff only */}
-        <Button className="text-white px-4 py-2 rounded-md mb-6" variant="secondary" onClick={() => setIsAddEventModalOpen(true)}>Add Event</Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {mockEvents.map((e) => (
-          <ExistingEvent key={e.id} event={e} />
-        ))}
+      {/* Upcoming Events Section */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">UPCOMING EVENTS</h2>
+          {canCreateEvents && (
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={() => setIsAddEventModalOpen(true)}
+            >
+              + New Event
+            </Button>
+          )}
+        </div>
+        {upcomingEvents.length === 0 ? (
+          <div className="text-center py-8 bg-muted/30 rounded-lg">
+            <p className="text-muted-foreground">No upcoming events scheduled.</p>
+            {canCreateEvents && (
+              <Button 
+                className="mt-4" 
+                onClick={() => setIsAddEventModalOpen(true)}
+              >
+                Create First Event
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {upcomingEvents.map((event) => (
+              <ExistingEvent key={event.id} event={event} />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Past Events Section */}
+      {pastEvents.length > 0 && (
+        <div className="mb-8">
+          <Collapsible open={showPastEvents} onOpenChange={setShowPastEvents}>
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="flex items-center gap-2 p-0 h-auto font-semibold text-lg mb-4"
+              >
+                {showPastEvents ? (
+                  <ChevronDownIcon className="w-5 h-5" />
+                ) : (
+                  <ChevronRightIcon className="w-5 h-5" />
+                )}
+                PAST RECENT EVENTS ({pastEvents.length})
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {pastEvents.map((event) => (
+                  <ExistingEvent key={event.id} event={event} />
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      )}
 
       <NewEventModal 
         isOpen={isAddEventModalOpen} 
-        onClose={() => setIsAddEventModalOpen(false)} 
+        onClose={() => setIsAddEventModalOpen(false)}
+        onEventCreated={handleEventCreated}
       />
     </div>
   );

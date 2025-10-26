@@ -7,89 +7,192 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      events: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          end_at: string | null
+          id: string
+          location: string | null
+          location_url: string | null
+          organiser_profile_id: string | null
+          registration_url: string | null
+          slug: string | null
+          start_at: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_at?: string | null
+          id?: string
+          location?: string | null
+          location_url?: string | null
+          organiser_profile_id?: string | null
+          registration_url?: string | null
+          slug?: string | null
+          start_at: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_at?: string | null
+          id?: string
+          location?: string | null
+          location_url?: string | null
+          organiser_profile_id?: string | null
+          registration_url?: string | null
+          slug?: string | null
+          start_at?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
-          Row: {
-            admin: boolean | null
-            avatar_url: string | null
-            bio: string | null
-            city: string | null
-            cohort: string | null
-            company: string | null
-            country: string | null
-            created_at: string
-            email: string | null
-            email_visible: boolean | null
-            full_name: string | null
-            github_url: string | null
-            graduation_year: number | null
-            id: string
-            is_public: boolean | null
-            job_title: string | null
-            linkedin_url: string | null
-            msc: boolean | null
-            twitter_url: string | null
-            updated_at: string
-            user_id: string
-            user_type: string
-            website_url: string | null
-          }
-          Insert: {
-            admin?: boolean | null
-            avatar_url?: string | null
-            bio?: string | null
-            city?: string | null
-            cohort?: string | null
-            company?: string | null
-            country?: string | null
-            created_at?: string
-            email?: string | null
-            email_visible?: boolean | null
-            full_name?: string | null
-            github_url?: string | null
-            graduation_year?: number | null
-            id?: string
-            is_public?: boolean | null
-            job_title?: string | null
-            linkedin_url?: string | null
-            msc?: boolean | null
-            twitter_url?: string | null
-            updated_at?: string
-            user_id: string
-            user_type?: string
-            website_url?: string | null
-          }
-          Update: {
-            admin?: boolean | null
-            avatar_url?: string | null
-            bio?: string | null
-            city?: string | null
-            cohort?: string | null
-            company?: string | null
-            country?: string | null
-            created_at?: string
-            email?: string | null
-            email_visible?: boolean | null
-            full_name?: string | null
-            github_url?: string | null
-            graduation_year?: number | null
-            id?: string
-            is_public?: boolean | null
-            job_title?: string | null
-            linkedin_url?: string | null
-            msc?: boolean | null
-            twitter_url?: string | null
-            updated_at?: string
-            user_id?: string
-            user_type?: string
-            website_url?: string | null
-          }
+        Row: {
+          admin: boolean | null
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          cohort: string | null
+          company: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          email_visible: boolean | null
+          full_name: string | null
+          github_url: string | null
+          graduation_year: number | null
+          id: string
+          is_public: boolean | null
+          job_title: string | null
+          linkedin_url: string | null
+          msc: boolean | null
+          twitter_url: string | null
+          updated_at: string
+          user_id: string
+          user_type: string
+          website_url: string | null
+        }
+        Insert: {
+          admin?: boolean | null
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          cohort?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          email_visible?: boolean | null
+          full_name?: string | null
+          github_url?: string | null
+          graduation_year?: number | null
+          id?: string
+          is_public?: boolean | null
+          job_title?: string | null
+          linkedin_url?: string | null
+          msc?: boolean | null
+          twitter_url?: string | null
+          updated_at?: string
+          user_id: string
+          user_type?: string
+          website_url?: string | null
+        }
+        Update: {
+          admin?: boolean | null
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          cohort?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          email_visible?: boolean | null
+          full_name?: string | null
+          github_url?: string | null
+          graduation_year?: number | null
+          id?: string
+          is_public?: boolean | null
+          job_title?: string | null
+          linkedin_url?: string | null
+          msc?: boolean | null
+          twitter_url?: string | null
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
         Relationships: []
       }
     }
@@ -97,7 +200,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
@@ -226,7 +330,11 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
 } as const
+

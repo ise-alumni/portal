@@ -30,12 +30,9 @@ const App = () => (
             <Route path="/map" element={<Layout><Map /></Layout>} />
             <Route path="/events" element={<Layout><Events /></Layout>} />
             <Route path="/events/:id" element={<Layout><EventDetail /></Layout>} />
+            <Route path="/directory" element={<Layout><Directory /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
-             <Route path="/events" element={<Layout><Events /></Layout>} />
-             <Route path="/directory" element={<Layout><Directory /></Layout>} />
-             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
