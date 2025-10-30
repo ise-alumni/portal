@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!activeSession) return;
       const u = activeSession.user;
       if (!u) return;
-      const fullName = (u.user_metadata as any)?.full_name ?? null;
+      const fullName = (u.user_metadata as Record<string, unknown>)?.full_name as string | null ?? null;
       await supabase
         .from('profiles')
         .upsert(
@@ -43,8 +43,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             user_id: u.id,
             email: u.email ?? null,
             full_name: fullName,
-          } as any,
-          { onConflict: 'user_id' } as any
+          },
+          { onConflict: 'user_id' }
         );
     } catch (_) {
       // no-op: avoid blocking auth flow
@@ -52,25 +52,62 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
+    // Initialize auth state by checking for existing session FIRST
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (error) {
+          console.warn('Error getting session:', error);
+          // Clear any stale session data that might be causing issues
+          await supabase.auth.signOut({ scope: 'local' });
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+          await ensureProfileForSession(session);
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Call initialization first
+    initializeAuth();
+
+    // THEN set up auth state listener for future changes only
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setLoading(false);
-        await ensureProfileForSession(newSession);
+      async (event, newSession) => {
+        if (!mounted) return;
+
+        console.log('Auth state change:', event, !!newSession);
+
+        // Only update state for actual auth changes, not initial load
+        if (event !== 'INITIAL_SESSION') {
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+          await ensureProfileForSession(newSession);
+        }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      await ensureProfileForSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
