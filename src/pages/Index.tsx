@@ -180,14 +180,10 @@ const Index = () => {
 
   return (
     <div>
-      <div className="mb-6 border-2 border-dashed border-foreground p-6 text-center">
-        <h2 className="text-xl mb-2 tracking-tight">Welcome to the ISE Alumni Community</h2>
-        <p className="text-sm">Connect. Share. Build.</p>
-      </div>
 
       <Card className="mb-6 border-2 border-foreground shadow-none">
         <CardHeader className="pb-2">
-          <CardTitle className="tracking-tight">You</CardTitle>
+          <CardTitle className="tracking-tight">Profile</CardTitle>
           <CardDescription className="mt-1"></CardDescription>
         </CardHeader>
         <CardContent>
