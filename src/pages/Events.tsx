@@ -105,7 +105,7 @@ const Events = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_type')
+        .select('admin')
         .eq('user_id', user.id)
         .single();
     
@@ -130,13 +130,10 @@ const Events = () => {
     fetchEvents(); // Refresh the events list
   };
 
-  // Check if user can create events (admin or staff)
-  const canCreateEvents = user && userProfile && (userProfile.user_type === 'Admin' || userProfile.user_type === 'Staff');
+  // Check if user can create events (admin)
+  const canCreateEvents = user && userProfile && userProfile.admin === true;
 
-  
-  console.log('User:', user);
-  console.log('UserProfile:', userProfile);
-  console.log('Can create events:', canCreateEvents);
+
 
   // Separate events into upcoming and past
   const now = new Date();
