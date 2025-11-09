@@ -161,7 +161,7 @@ const EventDetail = () => {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="mb-4">
         <Button 
           variant="outline" 
           size="sm" 
@@ -171,6 +171,8 @@ const EventDetail = () => {
           <ArrowLeftIcon className="w-4 h-4" />
           Back to Events
         </Button>
+        </div>
+      <div className="flex items-center gap-4 mb-6">
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">{event.title}</h1>
           <p className="text-muted-foreground mt-1">Event Details</p>
