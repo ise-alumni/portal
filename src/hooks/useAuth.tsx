@@ -52,126 +52,46 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
-    let mounted = true;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false); // Always set loading to false after first check
 
-    // Initialize auth state by checking for existing session FIRST
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        if (error) {
-          console.warn('Error getting session:', error);
-          // Clear any stale session data that might be causing issues
-          await supabase.auth.signOut({ scope: 'local' });
-          setSession(null);
-          setUser(null);
-        } else {
-          setSession(session);
-          setUser(session?.user ?? null);
-          await ensureProfileForSession(session);
-        }
-      } catch (error) {
-        console.error('Failed to initialize auth:', error);
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        ensureProfileForSession(session);
       }
-    };
-
-    // Call initialization first
-    initializeAuth();
-
-    // THEN set up auth state listener for future changes only
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!mounted) return;
-
-        console.log('Auth state change:', event, !!newSession);
-
-        // Only update state for actual auth changes, not initial load
-        if (event !== 'INITIAL_SESSION') {
-          setSession(newSession);
-          setUser(newSession?.user ?? null);
-          await ensureProfileForSession(newSession);
-        }
-      }
-    );
+    });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
-
-      return {};
-    } catch (error) {
-      return { error: 'An unexpected error occurred' };
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error: error?.message };
   };
 
   const signUp = async (email: string, password: string, fullName?: string): Promise<{ error?: string }> => {
-    try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName || email.split('@')[0],
-          }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: {
+          full_name: fullName || email.split('@')[0],
         }
-      });
-
-      if (error) {
-        return { error: error.message };
       }
-      // If a session is created immediately, ensure profile is present.
-      const { data: sessionData } = await supabase.auth.getSession();
-      await ensureProfileForSession(sessionData.session ?? null);
-      return {};
-    } catch (error) {
-      return { error: 'An unexpected error occurred' };
-    }
+    });
+    return { error: error?.message };
   };
 
   const signOut = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      await supabase.auth.signOut();
-      // Clear local storage and cookies
-      localStorage.clear();
-      // Clear all cookies
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-    } finally {
-      // Ensure UI updates immediately regardless of event timing
-      setSession(null);
-      setUser(null);
-      setLoading(false);
-    }
+    // Let onAuthStateChange handle the state updates
+    await supabase.auth.signOut();
   };
 
   const value = {
