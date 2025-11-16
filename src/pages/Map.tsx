@@ -3,10 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState, useCallback, useEffect } from "react";
 import { Map, Marker, Popup, Source, Layer } from 'react-map-gl';
-import { MapPinIcon, UsersIcon, BuildingIcon, Loader2Icon } from "lucide-react";
+import { MapPinIcon, UsersIcon, UserIcon, Loader2Icon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-<<<<<<< karl/user-map
 // Alumni data interface
 interface AlumniData {
   id: string;
@@ -24,8 +23,8 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const MapPage = () => {
   const [viewState, setViewState] = useState({
-    longitude: -122.4194,
-    latitude: 37.7749,
+    longitude: -8.577792029248203,
+    latitude: 52.673730281926886,
     zoom: 2,
     pitch: 0,
     bearing: 0
@@ -152,20 +151,6 @@ const MapPage = () => {
           <div className="text-center">
             <p className="text-red-600 mb-4">Error loading alumni data</p>
             <p className="text-muted-foreground">{error}</p>
-=======
-const Map = () => {
-  return (
-    <div>
-      <h1 className="text-2xl tracking-tight mb-6 ">MAP</h1>
-
-      <Card className="border-2 border-foreground shadow-none">
-        <CardHeader className="pb-2">
-          <CardTitle className="tracking-tight">Alumni Locations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="aspect-[16/9] w-full border-2 border-dashed border-foreground grid place-items-center">
-            <span className="text-xs">Map placeholder</span>
->>>>>>> main
           </div>
         </div>
       </div>
@@ -248,7 +233,7 @@ const Map = () => {
                       onClick={() => handleMarkerClick(alumni)}
                     >
                       <div className="w-6 h-6 bg-primary rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-transform">
-                        <BuildingIcon className="w-3 h-3 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                        <UserIcon className="w-3 h-3 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                       </div>
                     </Marker>
                   ))}
@@ -267,7 +252,7 @@ const Map = () => {
                         <h3 className="font-semibold text-sm">{selectedAlumni.name}</h3>
                         <p className="text-xs text-muted-foreground">{selectedAlumni.jobTitle || 'Job title not specified'}</p>
                         <div className="flex items-center gap-1 mt-1">
-                          <BuildingIcon className="w-3 h-3" />
+                          <UserIcon className="w-3 h-3" />
                           <span className="text-xs font-medium">{selectedAlumni.company}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">{selectedAlumni.city}, {selectedAlumni.country}</p>

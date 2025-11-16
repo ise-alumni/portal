@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,23 +36,6 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
   const [externalUrl, setExternalUrl] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string>("");
   const { user } = useAuth();
-
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setEventName("");
-      setDescription("");
-      setLocation("");
-      setLink("");
-      setStartTime("");
-      setEndTime("");
-      setTags("");
-      setStartDate(undefined);
-      setEndDate(undefined);
-      setShowPreview(false);
-      setError(null);
-    }
-  }, [isOpen]);
 
   const generateSlug = (title: string) => {
     return title
@@ -241,8 +224,8 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
             <Label htmlFor="event-name" className="text-sm font-medium">Event Name *</Label>
             <Input
               id="event-name"
-              placeholder="e.g., Monthly AMA Session" 
-              className={`w-full ${!eventName?.trim() ? 'border-red-300' : ''}`}
+              placeholder="e.g., Monthly AMA Session"
+              className="w-full"
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               disabled={isCreating}
@@ -384,16 +367,6 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
                   />
-                  <div className="border rounded-md p-2">
-                    <Calendar 
-                      mode="single"
-                      selected={endDate}
-                      onSelect={(date) => setEndDate(date)}
-                      className="w-full"
-                      disabled={(date) => date < new Date() || (startDate && date < startDate)}
-                      initialFocus
-                    />
-                  </div>
                 </div>
 
               </div>
@@ -450,39 +423,6 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
                 onChange={(e) => setDescription(e.target.value)}
               />
             )}
-          </div>
-
-          {/* Location & Link */}
-          <div data-testid="location-link-grid" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium flex items-center gap-2">
-                <MapPinIcon className="w-4 h-4" />
-                Location URL
-              </Label>
-              <Input 
-                id="location"
-                placeholder="e.g., Dublin, Online, Room 101" 
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-            
-            <div data-testid="link-section" className="space-y-2">
-              <Label htmlFor="link" className="text-sm font-medium flex items-center gap-2">
-                <LinkIcon className="w-4 h-4" />
-                Event Link
-              </Label>
-              <Input 
-                id="link"
-                type="url"
-                placeholder="https://example.com or www.example.com" 
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter a full URL (https://example.com) or domain (www.example.com)
-              </p>
-            </div>
           </div>
 
           {/* Tags Section */}

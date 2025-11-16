@@ -171,21 +171,6 @@ const EventDetail = () => {
     });
   };
 
-  const normalizeUrl = (url: string | null) => {
-    if (!url) return null;
-    
-    // If URL already has a protocol, return as is
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    
-    // If URL starts with www., add https://
-    if (url.startsWith('www.')) {
-      return `https://${url}`;
-    }
-    
-    // For other cases, add https://
-    return `https://${url}`;
   // Generate random Behance image for fallback
   const getRandomImage = () => {
     const randomId = Math.floor(Math.random() * 1000);
@@ -371,7 +356,7 @@ const EventDetail = () => {
             <CardContent className="space-y-3">
               {event.registration_url && (
                 <Button className="w-full" size="lg" asChild>
-                  <a href={normalizeUrl(event.registration_url) || '#'} target="_blank" rel="noopener noreferrer">
+                  <a href={event.registration_url} target="_blank" rel="noopener noreferrer">
                     Register for Event
                   </a>
                 </Button>
@@ -379,7 +364,7 @@ const EventDetail = () => {
               
               {event.location_url && (
                 <Button variant="outline" className="w-full" asChild>
-                  <a href={normalizeUrl(event.location_url) || '#'} target="_blank" rel="noopener noreferrer">
+                  <a href={event.location_url} target="_blank" rel="noopener noreferrer">
                     <ExternalLinkIcon className="w-4 h-4 mr-2" />
                     View Location
                   </a>
