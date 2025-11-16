@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   CalendarIcon, 
   ClockIcon, 
@@ -13,15 +13,18 @@ import {
   ExternalLinkIcon,
   FileTextIcon,
   Loader2Icon,
-  MegaphoneIcon
+  MegaphoneIcon,
+  EditIcon,
+  Trash2Icon
 } from "lucide-react";
+import EditAnnouncementModal from "@/components/EditAnnouncementModal";
 
 // Announcement data interface
 interface AnnouncementData {
   id: string;
   title: string;
   content: string | null;
-  type: string;
+  type: 'opportunity' | 'news' | 'lecture' | 'program';
   external_url: string | null;
   deadline: string | null;
   image_url: string | null;
@@ -38,9 +41,12 @@ interface AnnouncementData {
 const AnnouncementDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchAnnouncement = async () => {
@@ -54,17 +60,10 @@ const AnnouncementDetail = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch announcement with creator profile data
+        // Fetch announcement data
         const { data, error: fetchError } = await supabase
           .from('announcements')
-          .select(`
-            *,
-            creator:created_by (
-              id,
-              full_name,
-              email
-            )
-          `)
+          .select('*')
           .eq('id', id)
           .single();
 
@@ -72,7 +71,15 @@ const AnnouncementDetail = () => {
           throw fetchError;
         }
 
-        setAnnouncement(data);
+        // Transform the data to match our interface
+        const transformedData = {
+          ...data,
+          image_url: (data as { image_url?: string | null }).image_url || null,
+          type: data.type as 'opportunity' | 'news' | 'lecture' | 'program',
+          creator: null, // We'll fetch this separately if needed
+        };
+
+        setAnnouncement(transformedData);
       } catch (err) {
         console.error('Error fetching announcement:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
@@ -177,6 +184,37 @@ const AnnouncementDetail = () => {
 
   const imageUrl = announcement.image_url || getRandomImage();
 
+  // Check if current user can edit this announcement
+  const canEdit = user && (announcement.created_by === user.id);
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this announcement? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const { error: deleteError } = await supabase
+        .from('announcements')
+        .delete()
+        .eq('id', announcement.id);
+
+      if (deleteError) throw deleteError;
+
+      navigate('/announcements');
+    } catch (err) {
+      console.error('Error deleting announcement:', err);
+      alert('Failed to delete announcement. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleAnnouncementUpdated = () => {
+    // Refetch the announcement data
+    window.location.reload();
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -204,6 +242,18 @@ const AnnouncementDetail = () => {
           <Badge variant={getStatus(announcement.deadline) === 'active' ? 'default' : 'secondary'}>
             {getStatus(announcement.deadline)}
           </Badge>
+          {canEdit && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+                <EditIcon className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDelete} disabled={isDeleting}>
+                <Trash2Icon className="w-4 h-4 mr-1" />
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -312,6 +362,17 @@ const AnnouncementDetail = () => {
 
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {isEditModalOpen && (
+        <EditAnnouncementModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={handleAnnouncementUpdated}
+          onDelete={handleDelete}
+          announcement={announcement}
+        />
+      )}
     </div>
   );
 };
