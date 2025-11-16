@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { CalendarDays, ExternalLink, Clock } from 'lucide-react';
+import { CalendarDays, ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
 import NewEventModal from '@/components/NewEventModal';
 
 type Announcement = {
@@ -37,13 +37,10 @@ export const Announcements = () => {
   const [announcementView, setAnnouncementView] = useState<'current' | 'past'>('current');
   const [userProfile, setUserProfile] = useState<any>(null);
   
-  // Pagination state for current announcements
-  const [currentAnnouncementsPage, setCurrentAnnouncementsPage] = useState(1);
-  const [currentAnnouncementsPerPage, setCurrentAnnouncementsPerPage] = useState(6);
-  
-  // Pagination state for past announcements
-  const [pastAnnouncementsPage, setPastAnnouncementsPage] = useState(1);
-  const [pastAnnouncementsPerPage, setPastAnnouncementsPerPage] = useState(6);
+   // Pagination state
+   const [upcomingPage, setUpcomingPage] = useState(1);
+   const [pastPage, setPastPage] = useState(1);
+   const [itemsPerPage, setItemsPerPage] = useState(6);
 
   useEffect(() => {
     fetchAnnouncements();
@@ -99,30 +96,32 @@ export const Announcements = () => {
     return false;
   });
 
-  // Pagination calculations for current announcements
-  const currentAnnouncementsTotalPages = Math.ceil(currentAnnouncements.length / currentAnnouncementsPerPage);
-  const currentAnnouncementsStartIndex = (currentAnnouncementsPage - 1) * currentAnnouncementsPerPage;
-  const currentAnnouncementsEndIndex = currentAnnouncementsStartIndex + currentAnnouncementsPerPage;
-  const paginatedCurrentAnnouncements = currentAnnouncements.slice(currentAnnouncementsStartIndex, currentAnnouncementsEndIndex);
+   // Pagination calculations
+   const upcomingTotalPages = Math.ceil(currentAnnouncements.length / itemsPerPage);
+   const pastTotalPages = Math.ceil(pastAnnouncements.length / itemsPerPage);
+   
+   const paginatedCurrentAnnouncements = currentAnnouncements.slice(
+     (upcomingPage - 1) * itemsPerPage,
+     upcomingPage * itemsPerPage
+   );
+   
+   const paginatedPastAnnouncements = pastAnnouncements.slice(
+     (pastPage - 1) * itemsPerPage,
+     pastPage * itemsPerPage
+   );
 
-  // Pagination calculations for past announcements
-  const pastAnnouncementsTotalPages = Math.ceil(pastAnnouncements.length / pastAnnouncementsPerPage);
-  const pastAnnouncementsStartIndex = (pastAnnouncementsPage - 1) * pastAnnouncementsPerPage;
-  const pastAnnouncementsEndIndex = pastAnnouncementsStartIndex + pastAnnouncementsPerPage;
-  const paginatedPastAnnouncements = pastAnnouncements.slice(pastAnnouncementsStartIndex, pastAnnouncementsEndIndex);
+   // Debug logging
+   console.log('Total announcements:', announcements.length);
+   console.log('Current announcements:', currentAnnouncements.length);
+   console.log('Past announcements:', pastAnnouncements.length);
+   console.log('Current page:', upcomingPage, 'Total pages:', upcomingTotalPages);
+   console.log('Past page:', pastPage, 'Total pages:', pastTotalPages);
 
-  // Debug logging
-  console.log('Total announcements:', announcements.length);
-  console.log('Current announcements:', currentAnnouncements.length);
-  console.log('Past announcements:', pastAnnouncements.length);
-  console.log('Current page:', currentAnnouncementsPage, 'Total pages:', currentAnnouncementsTotalPages);
-  console.log('Past page:', pastAnnouncementsPage, 'Total pages:', pastAnnouncementsTotalPages);
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setCurrentAnnouncementsPage(1);
-    setPastAnnouncementsPage(1);
-  }, [selectedType, sortBy]);
+   // Reset pagination when filters change
+   useEffect(() => {
+     setUpcomingPage(1);
+     setPastPage(1);
+   }, [selectedType, sortBy]);
 
   const fetchUserProfile = async () => {
     if (!user) return;
@@ -218,33 +217,47 @@ export const Announcements = () => {
     <div className="container mx-auto py-8 px-4 sm:px-0">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold">Announcements</h1>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'created_at' | 'deadline' | 'title')}
-            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
-          >
-            <option value="created_at">Sort by Date</option>
-            <option value="deadline">Sort by Deadline</option>
-            <option value="title">Sort by Title</option>
-          </select>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
-          >
-            <option value="">All Types</option>
-            <option value="opportunity">Opportunity</option>
-            <option value="news">News</option>
-            <option value="lecture">Guest Lecture</option>
-            <option value="program">Program</option>
-          </select>
-          {canCreateAnnouncement && (
-            <Button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto">
-              Create Announcement
-            </Button>
-          )}
-        </div>
+         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+           <select
+             value={sortBy}
+             onChange={(e) => setSortBy(e.target.value as 'created_at' | 'deadline' | 'title')}
+             className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+           >
+             <option value="created_at">Sort by Date</option>
+             <option value="deadline">Sort by Deadline</option>
+             <option value="title">Sort by Title</option>
+           </select>
+           <select
+             value={selectedType}
+             onChange={(e) => setSelectedType(e.target.value)}
+             className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+           >
+             <option value="">All Types</option>
+             <option value="opportunity">Opportunity</option>
+             <option value="news">News</option>
+             <option value="lecture">Guest Lecture</option>
+             <option value="program">Program</option>
+           </select>
+           <select
+             value={itemsPerPage}
+             onChange={(e) => {
+               setItemsPerPage(Number(e.target.value));
+               setUpcomingPage(1);
+               setPastPage(1);
+             }}
+             className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+           >
+             <option value={6}>6 per page</option>
+             <option value={12}>12 per page</option>
+             <option value={24}>24 per page</option>
+             <option value={48}>48 per page</option>
+           </select>
+           {canCreateAnnouncement && (
+             <Button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto">
+               Create Announcement
+             </Button>
+           )}
+         </div>
       </div>
 
       {/* Past Announcements Toggle */}
@@ -256,9 +269,9 @@ export const Announcements = () => {
               setAnnouncementView(announcementView === 'current' ? 'past' : 'current');
               // Reset pagination when switching views
               if (announcementView === 'current') {
-                setPastAnnouncementsPage(1);
+                setPastPage(1);
               } else {
-                setCurrentAnnouncementsPage(1);
+                setUpcomingPage(1);
               }
             }}
             className="w-full sm:w-auto"
@@ -272,11 +285,21 @@ export const Announcements = () => {
         <div className="mb-8">
           {currentAnnouncements.length === 0 ? (
             <div className="text-center py-8 bg-muted/30 rounded-lg">
-              <p className="text-muted-foreground">No current announcements.</p>
+              <MegaphoneIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground mb-4">No current announcements.</p>
+              {canCreateAnnouncement && (
+                <Button 
+                  variant="outline" 
+                  className="mt-4" 
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  Create First Announcement
+                </Button>
+              )}
             </div>
           ) : (
             <>
-              <div className="grid gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {paginatedCurrentAnnouncements.map((announcement) => (
                   <Card key={announcement.id} className="w-full">
                     <CardHeader className="pb-3">
@@ -321,45 +344,27 @@ export const Announcements = () => {
               </div>
               
               {/* Pagination for Current Announcements */}
-              {currentAnnouncementsTotalPages > 1 && (
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Items per page:</span>
-                    <select
-                      value={currentAnnouncementsPerPage}
-                      onChange={(e) => {
-                        setCurrentAnnouncementsPerPage(Number(e.target.value));
-                        setCurrentAnnouncementsPage(1);
-                      }}
-                      className="px-2 py-1 border rounded text-sm"
-                    >
-                      <option value={10}>10</option>
-                      <option value={15}>15</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentAnnouncementsPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentAnnouncementsPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm">
-                      Page {currentAnnouncementsPage} of {currentAnnouncementsTotalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentAnnouncementsPage(prev => Math.min(currentAnnouncementsTotalPages, prev + 1))}
-                      disabled={currentAnnouncementsPage === currentAnnouncementsTotalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
+              {upcomingTotalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUpcomingPage(prev => Math.max(1, prev - 1))}
+                    disabled={upcomingPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {upcomingPage} of {upcomingTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUpcomingPage(prev => Math.min(upcomingTotalPages, prev + 1))}
+                    disabled={upcomingPage === upcomingTotalPages}
+                  >
+                    Next
+                  </Button>
                 </div>
               )}
             </>
@@ -371,7 +376,7 @@ export const Announcements = () => {
       {/* Past Announcements */}
       {announcementView === 'past' && pastAnnouncements.length > 0 && (
         <div className="mb-8">
-          <div className="grid gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {paginatedPastAnnouncements.map((announcement) => (
               <Card key={announcement.id} className="w-full opacity-75">
                 <CardHeader className="pb-3">
@@ -416,45 +421,27 @@ export const Announcements = () => {
           </div>
               
           {/* Pagination for Past Announcements */}
-          {pastAnnouncementsTotalPages > 1 && (
-             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t">
-               <div className="flex items-center gap-2">
-                 <span className="text-sm text-muted-foreground">Items per page:</span>
-                 <select
-                   value={pastAnnouncementsPerPage}
-                   onChange={(e) => {
-                     setPastAnnouncementsPerPage(Number(e.target.value));
-                     setPastAnnouncementsPage(1);
-                   }}
-                   className="px-2 py-1 border rounded text-sm"
-                 >
-                   <option value={10}>10</option>
-                   <option value={15}>15</option>
-                   <option value={25}>25</option>
-                   <option value={50}>50</option>
-                 </select>
-               </div>
-               <div className="flex items-center gap-2">
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setPastAnnouncementsPage(prev => Math.max(1, prev - 1))}
-                   disabled={pastAnnouncementsPage === 1}
-                 >
-                   Previous
-                 </Button>
-                 <span className="text-sm">
-                   Page {pastAnnouncementsPage} of {pastAnnouncementsTotalPages}
-                 </span>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setPastAnnouncementsPage(prev => Math.min(pastAnnouncementsTotalPages, prev + 1))}
-                   disabled={pastAnnouncementsPage === pastAnnouncementsTotalPages}
-                 >
-                   Next
-                 </Button>
-               </div>
+          {pastTotalPages > 1 && (
+             <div className="flex justify-center items-center gap-2 mt-6">
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => setPastPage(prev => Math.max(1, prev - 1))}
+                 disabled={pastPage === 1}
+               >
+                 Previous
+               </Button>
+               <span className="text-sm text-muted-foreground">
+                 Page {pastPage} of {pastTotalPages}
+               </span>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => setPastPage(prev => Math.min(pastTotalPages, prev + 1))}
+                 disabled={pastPage === pastTotalPages}
+               >
+                 Next
+               </Button>
              </div>
            )}
         </div>
