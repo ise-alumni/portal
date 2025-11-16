@@ -21,9 +21,12 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-foreground">
-         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-           <Link to="/" className="text-2xl tracking-tight flex items-center gap-2"><img src="/logo.png" alt="ISE Alumni Logo" className="h-8 w-auto" /> ALUMNI</Link>
-           <Drawer>
+         <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+           <div className="flex justify-center sm:justify-start">
+             <Link to="/" className="text-2xl tracking-tight flex items-center gap-2"><img src="/logo.png" alt="ISE Alumni Logo" className="h-8 w-auto" /> ALUMNI</Link>
+           </div>
+           <div className="flex justify-center sm:justify-end">
+             <Drawer>
              <DrawerTrigger asChild>
                <Button variant="outline" size="sm" className="w-60">
                  [menu]
@@ -42,11 +45,11 @@ const Layout = ({ children }: LayoutProps) => {
                        <Link to="/map">Map</Link>
                      </Button>
                    </DrawerClose>
-                   <DrawerClose asChild>
-                     <Button asChild variant="outline" className="w-full max-w-xs bg-[#126E56] text-white hover:bg-[#126E56]/80">
-                       <Link to="/news">News</Link>
-                     </Button>
-                   </DrawerClose>
+                    <DrawerClose asChild>
+                      <Button asChild variant="outline" className="w-full max-w-xs bg-[#126E56] text-white hover:bg-[#126E56]/80">
+                        <Link to="/announcements">Announcements</Link>
+                      </Button>
+                    </DrawerClose>
                    <DrawerClose asChild>
                      <Button asChild variant="outline" className="w-full max-w-xs bg-[#0C314C] text-white hover:bg-[#0C314C]/80">
                        <Link to="/directory">Directory</Link>
@@ -66,7 +69,8 @@ const Layout = ({ children }: LayoutProps) => {
                  </div>
                </div>
              </DrawerContent>
-           </Drawer>
+            </Drawer>
+           </div>
          </div>
       </header>
 

@@ -9,16 +9,18 @@ import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, E
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { format } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 interface NewEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEventCreated: () => void;
+  onSubmit: (data: any) => void;
+  mode: 'event' | 'announcement';
 }
 
-const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) => {
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) => {
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
   const [description, setDescription] = useState<string>("");
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [eventName, setEventName] = useState<string>("");
@@ -29,6 +31,9 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
   const [tags, setTags] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [type, setType] = useState<'opportunity' | 'news' | 'lecture' | 'program'>('opportunity');
+  const [deadline, setDeadline] = useState<string>("");
+  const [externalUrl, setExternalUrl] = useState<string>("");
   const { user } = useAuth();
 
   const generateSlug = (title: string) => {
@@ -38,14 +43,21 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
       .replace(/(^-|-$)/g, '');
   };
 
-  const handleCreateEvent = async () => {
-    if (!eventName || !startDate || !startTime) {
-      setError("Please fill in all required fields (Event Name, Start Date, Start Time)");
-      return;
+  const handleCreate = async () => {
+    if (mode === 'event') {
+      if (!eventName || !date?.from || !startTime) {
+        setError("Please fill in all required fields (Event Name, Start Date, Start Time)");
+        return;
+      }
+    } else {
+      if (!eventName) {
+        setError("Please fill in announcement title");
+        return;
+      }
     }
 
     if (!user) {
-      setError("You must be logged in to create events");
+      setError("You must be logged in to create content");
       return;
     }
 
@@ -53,57 +65,110 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
       setIsCreating(true);
       setError(null);
 
-      // Combine date and time for start_at
-      const startDateTime = new Date(startDate);
-      const [startHour, startMinute] = startTime.split(':');
-      startDateTime.setHours(parseInt(startHour), parseInt(startMinute));
+      let data: any;
 
-      // Combine date and time for end_at (if provided)
-      let endDateTime = null;
-      if (endDate && endTime) {
-        endDateTime = new Date(endDate);
-        const [endHour, endMinute] = endTime.split(':');
-          endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
-      } else if (endTime) {
-        // If only end time is provided, use the same date as start
-        endDateTime = new Date(startDate);
-        const [endHour, endMinute] = endTime.split(':');
-        endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
-      }
+      if (mode === 'event') {
+        // Combine date and time for start_at
+        const startDateTime = new Date(date.from);
+        const [startHour, startMinute] = startTime.split(':');
+        startDateTime.setHours(parseInt(startHour), parseInt(startMinute));
 
-      // Get current user's profile to set as organiser
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+        // Combine date and time for end_at (if provided)
+        let endDateTime = null;
+        const endDate = date.to || date.from;
+        if (endDate && endTime) {
+          endDateTime = new Date(endDate);
+          const [endHour, endMinute] = endTime.split(':');
+            endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
+        } else if (endTime) {
+          // If only end time is provided, use same date as start
+          endDateTime = new Date(date.from);
+          const [endHour, endMinute] = endTime.split(':');
+            endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
+        }
 
-      // Parse tags from comma-separated string
-      const tagsArray = tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0);
+        // Get current user's profile to set as organiser
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
 
-      const { data, error: insertError } = await supabase
-        .from('events')
-        .insert({
+        // Parse tags from comma-separated string and convert to UUIDs
+        const tagNames = tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+
+        let tagIds: string[] = [];
+        
+        // For each tag name, find existing tag or create new one
+        for (const tagName of tagNames) {
+          // First try to find existing tag
+          const { data: existingTag } = await supabase
+            .from('tags')
+            .select('id')
+            .eq('name', tagName)
+            .single();
+
+          if (existingTag) {
+            tagIds.push(existingTag.id);
+          } else {
+            // Create new tag if it doesn't exist
+            const { data: newTag } = await supabase
+              .from('tags')
+              .insert({ name: tagName })
+              .select('id')
+              .single();
+            
+            if (newTag) {
+              tagIds.push(newTag.id);
+            }
+          }
+        }
+
+        data = {
           title: eventName,
           slug: generateSlug(eventName),
           description: description || null,
           location: location || null,
           location_url: link || null,
-          registration_url: null, // You can add this field to the form if needed
           start_at: startDateTime.toISOString(),
           end_at: endDateTime?.toISOString() || null,
           organiser_profile_id: profile?.id || null,
           created_by: user.id,
-          tags: tagsArray,
-        })
-        .select()
-        .single();
+          tags: tagIds,
+        };
 
-      if (insertError) {
-        throw insertError;
+        const { error: insertError } = await supabase
+          .from('events')
+          .insert(data)
+          .select()
+          .single();
+
+        if (insertError) {
+          throw insertError;
+        }
+      } else {
+        // Announcement mode
+        data = {
+          title: eventName,
+          content: description || null,
+          type: type,
+          external_url: externalUrl || null,
+          deadline: deadline || null,
+          created_by: user.id,
+        };
+
+        const { error: insertError } = await supabase
+          .from('announcements')
+          .insert(data)
+          .select()
+          .single();
+
+        if (insertError) {
+          throw insertError;
+        }
       }
 
       // Reset form and close modal
@@ -114,14 +179,17 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
       setStartTime("");
       setEndTime("");
       setTags("");
-      setStartDate(undefined);
-      setEndDate(undefined);
+      setDate(undefined);
       setShowPreview(false);
-      onEventCreated();
+      setType('opportunity');
+      setDeadline("");
+      setExternalUrl("");
+      
+      onSubmit(data);
       onClose();
     } catch (err) {
-      console.error('Error creating event:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create event');
+      console.error(`Error creating ${mode}:`, err);
+      setError(err instanceof Error ? err.message : `Failed to create ${mode}`);
     } finally {
       setIsCreating(false);
     }
@@ -131,10 +199,14 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">Create New Event</DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">Fill in the details below to add a new event</p>
+          <DialogTitle className="text-2xl font-semibold">
+            Create New {mode === 'event' ? 'Event' : 'Announcement'}
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Fill in the details below to add a new {mode === 'event' ? 'event' : 'announcement'}
+          </p>
         </DialogHeader>
-        
+
         <div className="space-y-6 py-4">
           {/* Error Display */}
           {error && (
@@ -146,9 +218,9 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
           {/* Event Name - Full Width */}
           <div className="space-y-2">
             <Label htmlFor="event-name" className="text-sm font-medium">Event Name *</Label>
-            <Input 
+            <Input
               id="event-name"
-              placeholder="e.g., Monthly AMA Session" 
+              placeholder="e.g., Monthly AMA Session"
               className="w-full"
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
@@ -156,68 +228,128 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
             />
           </div>
 
-          {/* To Do: Add Organizer Selection, default to current user */}
-
-          <div data-testid="date-time-section" className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <CalendarIcon className="w-4 h-4" />
-              <span>Date & Time</span>
+          {/* Announcement Type Selection - Only show for announcements */}
+          {mode === 'announcement' && (
+            <div className="space-y-2">
+              <Label htmlFor="type" className="text-sm font-medium">Type</Label>
+              <select
+                id="type"
+                value={type}
+                onChange={(e) => setType(e.target.value as any)}
+                className="w-full p-2 border rounded-md"
+                disabled={isCreating}
+              >
+                <option value="opportunity">Opportunity</option>
+                <option value="news">News</option>
+                <option value="lecture">Guest Lecture</option>
+                <option value="program">Program</option>
+              </select>
             </div>
-            
-            <div data-testid="date-time-grid" className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
-              <div data-testid="start-date" className="space-y-2">
-                <Label className="text-sm">Start Date *</Label>
-                <div className="border rounded-md p-2">
-                  <Calendar 
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    className="w-full"
-                  />
+          )}
+
+          {/* Deadline - Only show for announcements */}
+          {mode === 'announcement' && (
+            <div className="space-y-2">
+              <Label htmlFor="deadline" className="text-sm font-medium">Deadline (Optional)</Label>
+              <Input
+                id="deadline"
+                type="datetime-local"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                disabled={isCreating}
+              />
+            </div>
+          )}
+
+          {/* External URL - Only show for announcements */}
+          {mode === 'announcement' && (
+            <div className="space-y-2">
+              <Label htmlFor="external-url" className="text-sm font-medium">External URL (Optional)</Label>
+              <Input
+                id="external-url"
+                type="url"
+                placeholder="https://example.com/more-info"
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                disabled={isCreating}
+              />
+            </div>
+          )}
+
+          {/* Date, Time & Location - Only show for events */}
+          {mode === 'event' && (
+            <div data-testid="date-time-section" className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CalendarIcon className="w-4 h-4" />
+                <span>Date, Time & Location</span>
+              </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border rounded-md p-2">
+                <Calendar
+                  mode="range"
+                  selected={date}
+                  onSelect={setDate}
+                  className="w-full"
+                />
+                <div className="text-sm text-muted-foreground pt-2 pl-1">
+                  Selected: {date?.from ? format(date.from, 'PPP') : 'No start date'}
+                  {date?.to ? ` - ${format(date.to, 'PPP')}` : ''}
                 </div>
               </div>
-              
-              <div data-testid="end-date" className="space-y-2">
-                <Label className="text-sm">End Date</Label>
-                <div className="border rounded-md p-2">
-                  <Calendar 
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    className="w-full"
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start-time">Start Time *</Label>
+                  <Input
+                    id="start-time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
                   />
                 </div>
-              </div>
-            </div>
 
-            <div data-testid="time-grid" className="grid grid-cols-2 gap-4 pl-6">
-              <div data-testid="start-time" className="space-y-2">
-                <Label htmlFor="start-time" className="text-sm flex items-center gap-2">
-                  <ClockIcon className="w-3 h-3" />
-                  Start Time *
-                </Label>
-                <Input 
-                  id="start-time" 
-                  type="time" 
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </div>
-              
-              <div data-testid="end-time" className="space-y-2">
-                <Label htmlFor="end-time" className="text-sm flex items-center gap-2">
-                  <ClockIcon className="w-3 h-3" />
-                  End Time
-                </Label>
-                <Input 
-                  id="end-time" 
-                  type="time" 
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="end-time">End Time</Label>
+                  <Input
+                    id="end-time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-sm font-medium flex items-center gap-2">
+                    <MapPinIcon className="w-4 h-4" />
+                    Location
+                  </Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g., Dublin, Online, Room 101"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
+                </div>
+
+                <div data-testid="link-section" className="space-y-2">
+                  <Label htmlFor="link" className="text-sm font-medium flex items-center gap-2">
+                    <LinkIcon className="w-4 h-4" />
+                    Event Link
+                  </Label>
+                  <Input
+                    id="link"
+                    type="url"
+                    placeholder="https://..."
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                  />
+                </div>
+
               </div>
             </div>
           </div>
+          )}
 
           {/* Description */}
           <div data-testid="description-section" className="space-y-2">
@@ -246,7 +378,7 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
                 )}
               </Button>
             </div>
-            
+
             {showPreview ? (
               <div className="min-h-[100px] p-3 border rounded-md bg-muted/50">
                 {description ? (
@@ -270,45 +402,15 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
             )}
           </div>
 
-          {/* Location & Link */}
-          <div data-testid="location-link-grid" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium flex items-center gap-2">
-                <MapPinIcon className="w-4 h-4" />
-                Location
-              </Label>
-              <Input 
-                id="location"
-                placeholder="e.g., Dublin, Online, Room 101" 
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-            
-            <div data-testid="link-section" className="space-y-2">
-              <Label htmlFor="link" className="text-sm font-medium flex items-center gap-2">
-                <LinkIcon className="w-4 h-4" />
-                Event Link
-              </Label>
-              <Input 
-                id="link"
-                type="url"
-                placeholder="https://..." 
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-              />
-            </div>
-          </div>
-
           {/* Tags Section */}
           <div className="space-y-2">
             <Label htmlFor="tags" className="text-sm font-medium flex items-center gap-2">
               <FileTextIcon className="w-4 h-4" />
               Tags
             </Label>
-            <Input 
+            <Input
               id="tags"
-              placeholder="e.g., Networking, Online, Career (comma-separated)" 
+              placeholder="e.g., Networking, Online, Career (comma-separated)"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               disabled={isCreating}
@@ -321,9 +423,9 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
           <Button variant="outline" onClick={onClose} disabled={isCreating}>
             Cancel
           </Button>
-          <Button 
-            className="bg-primary text-primary-foreground" 
-            onClick={handleCreateEvent}
+          <Button
+            className="bg-primary text-primary-foreground"
+            onClick={handleCreate}
             disabled={isCreating}
           >
             {isCreating ? (
@@ -332,7 +434,7 @@ const NewEventModal = ({ isOpen, onClose, onEventCreated }: NewEventModalProps) 
                 Creating...
               </>
             ) : (
-              'Create Event'
+              `Create ${mode === 'event' ? 'Event' : 'Announcement'}`
             )}
           </Button>
         </div>

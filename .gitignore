@@ -1,4 +1,5 @@
 .env
+sample_data.csv
 
 # Logs
 logs

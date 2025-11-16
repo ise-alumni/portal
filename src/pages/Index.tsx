@@ -73,7 +73,7 @@ const Index = () => {
         try {
           const { data } = await supabase
             .from('profiles')
-            .select('id, created_at, updated_at, user_id, full_name, email, city, country, graduation_year, job_title, company, bio, github_url, linkedin_url, twitter_url, website_url, avatar_url, email_visible, msc, admin, is_public')
+            .select('id, created_at, updated_at, user_id, full_name, email, city, country, graduation_year, job_title, company, bio, github_url, linkedin_url, twitter_url, website_url, avatar_url, email_visible, cohort, user_type, is_public')
             .eq('user_id', user.id)
             .maybeSingle();
            setProfile(data as any ?? null);
@@ -224,11 +224,22 @@ const Index = () => {
                const anyData = profile as any;
                return (
                  <div className="space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-sm">
-                     <div><span className="opacity-70">Name:</span> {displayFullName}</div>
-                      <div><span className="opacity-70">Email:</span> {formData.emailVisible ? displayEmail : 'Hidden'}</div>
-                     <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
-                   </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-sm">
+                      <div><span className="opacity-70">Name:</span> {displayFullName}</div>
+                       <div className="flex items-center gap-2">
+                         <span className="opacity-70">Email:</span> 
+                         <span>{formData.emailVisible ? displayEmail : 'Hidden'}</span>
+                         <Button 
+                           onClick={() => setFormData(prev => ({ ...prev, emailVisible: !prev.emailVisible }))} 
+                           size="sm"
+                           variant="outline"
+                           className="text-xs h-6 px-2"
+                         >
+                           {formData.emailVisible ? 'Hide' : 'Make Public'}
+                         </Button>
+                       </div>
+                      <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                       <div>
                         <label className="text-xs opacity-70">Full Name</label>
@@ -257,11 +268,7 @@ const Index = () => {
                          <label className="text-xs opacity-70">Graduation Year</label>
                          <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
                        </div>
-                       <div className="md:col-span-2">
-                         <Button onClick={() => setFormData(prev => ({ ...prev, emailVisible: !prev.emailVisible }))} className="w-full md:w-auto border-2 border-foreground shadow-none">
-                           {formData.emailVisible ? 'Hide Email' : 'Make Email Public'}
-                         </Button>
-                       </div>
+
                        <div>
                          <label className="text-xs opacity-70">City</label>
                          <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />

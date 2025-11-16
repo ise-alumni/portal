@@ -1,5 +1,8 @@
--- Add tags column to events table
-alter table public.events add column tags text[] default '{}';
+-- Add tags column to events table as array of tag references
+alter table public.events add column tags uuid[] default '{}';
+
+-- Create foreign key constraint for tags array (PostgreSQL doesn't support array FK directly)
+-- We'll enforce this through triggers and application logic
 
 -- Create tags table
 create table public.tags (

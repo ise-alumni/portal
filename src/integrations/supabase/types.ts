@@ -47,7 +47,6 @@ export type Database = {
           registration_url: string | null
           slug: string | null
           start_at: string
-          tags: string[] | null
           title: string
           updated_at: string
         }
@@ -63,7 +62,6 @@ export type Database = {
           registration_url?: string | null
           slug?: string | null
           start_at: string
-          tags?: string[] | null
           title: string
           updated_at?: string
         }
@@ -79,8 +77,7 @@ export type Database = {
           registration_url?: string | null
           slug?: string | null
           start_at?: string
-          tags?: string[] | null
-          title?: string
+          title: string
           updated_at?: string
         }
         Relationships: [
@@ -95,11 +92,10 @@ export type Database = {
       }
       profiles: {
         Row: {
-          admin: boolean | null
           avatar_url: string | null
           bio: string | null
           city: string | null
-          cohort: string | null
+          cohort: number | null
           company: string | null
           country: string | null
           created_at: string
@@ -116,15 +112,14 @@ export type Database = {
           twitter_url: string | null
           updated_at: string
           user_id: string
-          user_type: string
+          user_type: 'Alum' | 'Staff' | 'Admin'
           website_url: string | null
         }
         Insert: {
-          admin?: boolean | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
-          cohort?: string | null
+          cohort?: number | null
           company?: string | null
           country?: string | null
           created_at?: string
@@ -141,15 +136,14 @@ export type Database = {
           twitter_url?: string | null
           updated_at?: string
           user_id: string
-          user_type?: string
+          user_type?: 'Alum' | 'Staff' | 'Admin'
           website_url?: string | null
         }
         Update: {
-          admin?: boolean | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
-          cohort?: string | null
+          cohort?: number | null
           company?: string | null
           country?: string | null
           created_at?: string
@@ -166,7 +160,7 @@ export type Database = {
           twitter_url?: string | null
           updated_at?: string
           user_id?: string
-          user_type?: string
+          user_type?: 'Alum' | 'Staff' | 'Admin'
           website_url?: string | null
         }
         Relationships: []
@@ -195,6 +189,75 @@ export type Database = {
         }
         Relationships: []
       }
+      event_tags: {
+        Row: {
+          event_id: string
+          tag_id: string
+        }
+        Insert: {
+          event_id: string
+          tag_id: string
+        }
+        Update: {
+          event_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_tags_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      announcements: {
+        Row: {
+          content: string | null
+          created_at: string
+          created_by: string
+          deadline: string | null
+          external_url: string | null
+          id: string
+          slug: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          created_by: string
+          deadline?: string | null
+          external_url?: string | null
+          id?: string
+          slug?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          deadline?: string | null
+          external_url?: string | null
+          id?: string
+          slug?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -204,7 +267,7 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
-      [_ in never]: never
+      user_role: 'Alum' | 'Staff' | 'Admin'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -237,8 +300,7 @@ export type Tables<
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
         DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -324,9 +386,17 @@ export type CompositeTypes<
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
 
 export const Constants = {
@@ -334,7 +404,8 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      user_role: 'Alum' | 'Staff' | 'Admin'
+    },
   },
 } as const
-

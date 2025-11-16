@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const Map = () => {
   return (
     <div>
-      <h1 className="text-2xl tracking-tight mb-6 text-[#1BA165]">MAP</h1>
+      <h1 className="text-2xl tracking-tight mb-6 ">MAP</h1>
 
       <Card className="border-2 border-foreground shadow-none">
         <CardHeader className="pb-2">

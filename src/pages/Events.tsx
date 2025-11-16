@@ -1,12 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
-import { CalendarIcon, MapPinIcon, Loader2Icon, ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { CalendarIcon, MapPinIcon, Loader2Icon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import NewEventModal from "@/components/NewEventModal";
+
+// Tag interface
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 // Event data interface
 interface EventData {
@@ -23,7 +30,10 @@ interface EventData {
   created_by: string;
   created_at: string;
   updated_at: string;
-  tags: string[] | null;
+  event_tags?: Array<{
+    tag_id: string;
+    tags: Tag;
+  }>;
   organiser?: {
     id: string;
     full_name: string | null;
@@ -31,8 +41,7 @@ interface EventData {
   };
 }
 
-
-const ExistingEvent = ({ event }: ExistingEventProps) => {
+const ExistingEvent = ({ event }: { event: EventData }) => {
   const navigate = useNavigate();
 
   const handleViewDetails = () => {
@@ -42,38 +51,50 @@ const ExistingEvent = ({ event }: ExistingEventProps) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
   return (
-    <Card key={event.id} className="border-2 border-foreground shadow-none">
-      <CardHeader className="pb-2">
-        <CardTitle className="tracking-tight">{event.title}</CardTitle>
+    <Card className="w-full hover:shadow-lg transition-shadow duration-200">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
+        <div className="flex items-center text-sm text-muted-foreground mb-2">
+          <CalendarIcon className="w-4 h-4 mr-1" />
+          {formatDate(event.start_at)}
+        </div>
+        {event.location && (
+          <div className="flex items-center text-sm text-muted-foreground">
+            <MapPinIcon className="w-4 h-4 mr-1" />
+            {event.location}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
-        <div className="text-sm mb-3">{formatDate(event.start_at)} — {event.location || 'TBD'}</div>
         <Button className="w-full" onClick={handleViewDetails}>Details</Button>
       </CardContent>
     </Card>
   );
 };
 
-interface ExistingEventProps {
-  event: EventData;
-}
-
-
-
 const Events = () => {
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'title'>('date');
+  const [selectedTag, setSelectedTag] = useState<string>('');
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [pastPage, setPastPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [eventView, setEventView] = useState<'upcoming' | 'past'>('upcoming');
   const { user } = useAuth();
 
   const fetchEvents = async () => {
@@ -81,16 +102,32 @@ const Events = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      const { data: eventsData, error: fetchError } = await supabase
         .from('events')
+        .select(`
+          *,
+          event_tags (
+            tag_id,
+            tags (
+              id,
+              name,
+              color
+            )
+          )
+        `);
+
+      const { data: tagsData, error: tagsError } = await supabase
+        .from('tags')
         .select('*')
-        .order('start_at', { ascending: true });
+        .order('name');
 
-      if (fetchError) {
-        throw fetchError;
-      }
+      if (fetchError) throw fetchError;
+      if (tagsError) throw tagsError;
 
-      setEvents(data || []);
+      console.log('Fetched events:', eventsData?.length, eventsData);
+      console.log('Fetched tags:', tagsData?.length, tagsData);
+      setEvents(eventsData || []);
+      setAvailableTags(tagsData || []);
     } catch (err) {
       console.error('Error fetching events:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch events');
@@ -105,7 +142,7 @@ const Events = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('admin')
+        .select('user_type')
         .eq('user_id', user.id)
         .single();
     
@@ -127,116 +164,259 @@ const Events = () => {
   }, [user]);
 
   const handleEventCreated = () => {
-    fetchEvents(); // Refresh the events list
+    fetchEvents(); // Refresh events list
   };
 
-  // Check if user can create events (admin)
-  const canCreateEvents = user && userProfile && userProfile.admin === true;
+  // Check if user can create events (admin or staff)
+  const canCreateEvents = user && userProfile && (userProfile.user_type === 'Admin' || userProfile.user_type === 'Staff');
 
-
-
-  // Separate events into upcoming and past
+  // Filter and sort events
   const now = new Date();
-  const upcomingEvents = events.filter(event => new Date(event.start_at) >= now);
-  const pastEvents = events.filter(event => new Date(event.start_at) < now);
+  
+  // Separate into upcoming and past from original events array
+  const allUpcomingEvents = events.filter(event => new Date(event.start_at) >= now);
+  const allPastEvents = events.filter(event => new Date(event.start_at) < now);
+  
+  // Apply tag filtering to each group
+  const upcomingEvents = allUpcomingEvents.filter(event => 
+    !selectedTag || event.event_tags?.some(et => et.tags.name === selectedTag)
+  ).sort((a, b) => {
+    if (sortBy === 'date') {
+      return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+    } else {
+      return a.title.localeCompare(b.title);
+    }
+  });
+  
+  const pastEvents = allPastEvents.filter(event => 
+    !selectedTag || event.event_tags?.some(et => et.tags.name === selectedTag)
+  ).sort((a, b) => {
+    if (sortBy === 'date') {
+      return new Date(b.start_at).getTime() - new Date(a.start_at).getTime(); // Past events sorted descending
+    } else {
+      return a.title.localeCompare(b.title);
+    }
+  });
+
+  // Debug logging
+  console.log('Total events:', events.length);
+  console.log('Current time:', now);
+  console.log('Upcoming events:', upcomingEvents.length, upcomingEvents.map(e => ({ title: e.title, date: e.start_at })));
+  console.log('Past events:', pastEvents.length, pastEvents.map(e => ({ title: e.title, date: e.start_at })));
+
+  // Pagination logic
+  const totalUpcomingEvents = upcomingEvents.length;
+  const totalPastEvents = pastEvents.length;
+  
+  const upcomingEventsPaginated = upcomingEvents.slice(
+    (upcomingPage - 1) * itemsPerPage,
+    upcomingPage * itemsPerPage
+  );
+  
+  const pastEventsPaginated = pastEvents.slice(
+    (pastPage - 1) * itemsPerPage,
+    pastPage * itemsPerPage
+  );
+
+  const upcomingTotalPages = Math.ceil(totalUpcomingEvents / itemsPerPage);
+  const pastTotalPages = Math.ceil(totalPastEvents / itemsPerPage);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setUpcomingPage(1);
+    setPastPage(1);
+  }, [selectedTag, sortBy]);
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <Loader2Icon className="w-8 h-8 animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading events...</p>
+      <div className="container mx-auto py-8">
+        <div className="flex justify-center items-center py-12">
+          <Loader2Icon className="animate-spin h-8 w-8 text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading events...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-semibold mb-4">Error Loading Events</h1>
-        <p className="text-muted-foreground mb-6">{error}</p>
-        <Button onClick={fetchEvents}>Try Again</Button>
+      <div className="container mx-auto py-8">
+        <div className="text-center py-12">
+          <p className="text-red-500 mb-4">Error: {error}</p>
+          <Button onClick={fetchEvents}>Try Again</Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl tracking-tight mb-6">EVENTS</h1>
-      </div>
-
-      {/* Upcoming Events Section */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">UPCOMING EVENTS</h2>
+    <div className="container mx-auto py-8 px-4 sm:px-0">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Events</h1>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'date' | 'title')}
+            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+          >
+            <option value="date">Sort by Date</option>
+            <option value="title">Sort by Title</option>
+          </select>
+          <select
+            value={selectedTag}
+            onChange={(e) => setSelectedTag(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+          >
+            <option value="">All Tags</option>
+            {availableTags.map(tag => (
+              <option key={tag.id} value={tag.name}>{tag.name}</option>
+            ))}
+          </select>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setUpcomingPage(1);
+              setPastPage(1);
+            }}
+            className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+          >
+            <option value={6}>6 per page</option>
+            <option value={12}>12 per page</option>
+            <option value={24}>24 per page</option>
+            <option value={48}>48 per page</option>
+          </select>
           {canCreateEvents && (
-            <Button 
-              variant="secondary" 
-              size="sm"
-              onClick={() => setIsAddEventModalOpen(true)}
-            >
-              + New Event
+            <Button onClick={() => setIsAddEventModalOpen(true)} className="w-full sm:w-auto">
+              Create Event
             </Button>
           )}
         </div>
-        {upcomingEvents.length === 0 ? (
-          <div className="text-center py-8 bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">No upcoming events scheduled.</p>
-            {canCreateEvents && (
-              <Button 
-                className="mt-4" 
-                onClick={() => setIsAddEventModalOpen(true)}
-              >
-                Create First Event
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {upcomingEvents.map((event) => (
-              <ExistingEvent key={event.id} event={event} />
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Past Events Section */}
+      {/* Past Events Toggle */}
       {pastEvents.length > 0 && (
+        <div className="mb-6">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setEventView(eventView === 'upcoming' ? 'past' : 'upcoming');
+              // Reset pagination when switching views
+              if (eventView === 'upcoming') {
+                setPastPage(1);
+              } else {
+                setUpcomingPage(1);
+              }
+            }}
+            className="w-full sm:w-auto"
+          >
+            {eventView === 'upcoming' ? (
+              <>Show Past Events ({pastEvents.length})</>
+            ) : (
+              <>Show Upcoming Events ({upcomingEvents.length})</>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Upcoming Events Section */}
+      {eventView === 'upcoming' && (
         <div className="mb-8">
-          <Collapsible open={showPastEvents} onOpenChange={setShowPastEvents}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="flex items-center gap-2 p-0 h-auto font-semibold text-lg mb-4"
-              >
-                {showPastEvents ? (
-                  <ChevronDownIcon className="w-5 h-5" />
-                ) : (
-                  <ChevronRightIcon className="w-5 h-5" />
-                )}
-                PAST RECENT EVENTS ({pastEvents.length})
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {pastEvents.map((event) => (
+          {upcomingEvents.length === 0 ? (
+            <div className="text-center py-8 bg-muted/30 rounded-lg">
+              <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground mb-4">No upcoming events scheduled.</p>
+              {canCreateEvents && (
+                <Button 
+                  variant="outline" 
+                  className="mt-4" 
+                  onClick={() => setIsAddEventModalOpen(true)}
+                >
+                  Create First Event
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                {upcomingEventsPaginated.map((event) => (
                   <ExistingEvent key={event.id} event={event} />
                 ))}
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+              
+              {/* Pagination Controls */}
+              {upcomingTotalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUpcomingPage(Math.max(1, upcomingPage - 1))}
+                    disabled={upcomingPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {upcomingPage} of {upcomingTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUpcomingPage(Math.min(upcomingTotalPages, upcomingPage + 1))}
+                    disabled={upcomingPage === upcomingTotalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Past Events Section */}
+      {eventView === 'past' && pastEvents.length > 0 && (
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {pastEventsPaginated.map((event) => (
+              <ExistingEvent key={event.id} event={event} />
+            ))}
+          </div>
+              
+          {/* Pagination for Past Events */}
+          {pastTotalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPastPage(Math.max(1, pastPage - 1))}
+                disabled={pastPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {pastPage} of {pastTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPastPage(Math.min(pastTotalPages, pastPage + 1))}
+                disabled={pastPage === pastTotalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       <NewEventModal 
         isOpen={isAddEventModalOpen} 
         onClose={() => setIsAddEventModalOpen(false)}
-        onEventCreated={handleEventCreated}
+        onSubmit={handleEventCreated}
+        mode="event"
       />
     </div>
   );
 };
 
 export default Events;
-
-
