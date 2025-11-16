@@ -8,57 +8,44 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   CalendarIcon, 
-  MapPinIcon, 
   ClockIcon, 
   ArrowLeftIcon,
   ExternalLinkIcon,
   FileTextIcon,
-  Loader2Icon
+  Loader2Icon,
+  MegaphoneIcon
 } from "lucide-react";
 
-// Event data interface
-interface EventData {
+// Announcement data interface
+interface AnnouncementData {
   id: string;
   title: string;
-  slug: string;
-  description: string | null;
-  location: string | null;
-  location_url: string | null;
-  registration_url: string | null;
-  start_at: string;
-  end_at: string | null;
-  organiser_profile_id: string | null;
+  content: string | null;
+  type: string;
+  external_url: string | null;
+  deadline: string | null;
+  image_url: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
-  image_url: string | null;
-  tags: string[] | null;
-  organiser?: {
+  creator?: {
     id: string;
     full_name: string | null;
     email: string | null;
   };
 }
 
-// Possible Future Features:
-// - Attendees
-// - Tags
-// - Agenda
-// - RSVPs
-// - Cancellation
-// - Add to Calendar
-
-const EventDetail = () => {
+const AnnouncementDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [event, setEvent] = useState<EventData | null>(null);
+  const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchEvent = async () => {
+    const fetchAnnouncement = async () => {
       if (!id) {
-        setError("No event ID provided");
+        setError("No announcement ID provided");
         setLoading(false);
         return;
       }
@@ -67,12 +54,12 @@ const EventDetail = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch event with organiser profile data
+        // Fetch announcement with creator profile data
         const { data, error: fetchError } = await supabase
-          .from('events')
+          .from('announcements')
           .select(`
             *,
-            organiser:organiser_profile_id (
+            creator:created_by (
               id,
               full_name,
               email
@@ -85,16 +72,16 @@ const EventDetail = () => {
           throw fetchError;
         }
 
-        setEvent(data);
+        setAnnouncement(data);
       } catch (err) {
-        console.error('Error fetching event:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch event');
+        console.error('Error fetching announcement:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEvent();
+    fetchAnnouncement();
   }, [id]);
 
   // Loading state
@@ -102,7 +89,7 @@ const EventDetail = () => {
     return (
       <div className="text-center py-12">
         <Loader2Icon className="w-8 h-8 animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading event details...</p>
+        <p className="text-muted-foreground">Loading announcement details...</p>
       </div>
     );
   }
@@ -111,33 +98,35 @@ const EventDetail = () => {
   if (error) {
     return (
       <div className="text-center py-12">
-        <h1 className="text-2xl font-semibold mb-4">Error Loading Event</h1>
+        <h1 className="text-2xl font-semibold mb-4">Error Loading Announcement</h1>
         <p className="text-muted-foreground mb-6">{error}</p>
-        <Button onClick={() => navigate('/events')}>
+        <Button onClick={() => navigate('/announcements')}>
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
-          Back to Events
+          Back to Announcements
         </Button>
       </div>
     );
   }
 
-  // Event not found
-  if (!event) {
+  // Announcement not found
+  if (!announcement) {
     return (
       <div className="text-center py-12">
-        <h1 className="text-2xl font-semibold mb-4">Event Not Found</h1>
-        <p className="text-muted-foreground mb-6">The event you're looking for doesn't exist.</p>
-        <Button onClick={() => navigate('/events')}>
+        <h1 className="text-2xl font-semibold mb-4">Announcement Not Found</h1>
+        <p className="text-muted-foreground mb-6">The announcement you're looking for doesn't exist.</p>
+        <Button onClick={() => navigate('/announcements')}>
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
-          Back to Events
+          Back to Announcements
         </Button>
       </div>
     );
   }
-  const getStatus = (dateString: string) => {
-    const date = new Date(dateString);
+
+  const getStatus = (deadline: string | null) => {
+    if (!deadline) return 'ongoing';
+    const date = new Date(deadline);
     const today = new Date();
-    return date > today ? 'upcoming' : 'past';
+    return date > today ? 'active' : 'expired';
   };
 
   const formatDate = (dateString: string) => {
@@ -150,22 +139,43 @@ const EventDetail = () => {
     });
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'opportunity':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'news':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'lecture':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'program':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'opportunity':
+        return 'Opportunity';
+      case 'news':
+        return 'News';
+      case 'lecture':
+        return 'Guest Lecture';
+      case 'program':
+        return 'Program';
+      default:
+        return type;
+    }
   };
 
   // Generate random Behance image for fallback
   const getRandomImage = () => {
     const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/event${randomId}/800/400.jpg`;
+    return `https://picsum.photos/seed/announcement${randomId}/800/400.jpg`;
   };
 
-  const imageUrl = event.image_url || getRandomImage();
+  const imageUrl = announcement.image_url || getRandomImage();
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -174,32 +184,38 @@ const EventDetail = () => {
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={() => navigate('/events')}
+          onClick={() => navigate('/announcements')}
           className="flex items-center gap-2"
         >
           <ArrowLeftIcon className="w-4 h-4" />
-          Back to Events
+          Back to Announcements
         </Button>
-        </div>
+      </div>
+      
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{event.title}</h1>
-          <p className="text-muted-foreground mt-1">Event Details</p>
+          <h1 className="text-3xl font-bold tracking-tight">{announcement.title}</h1>
+          <p className="text-muted-foreground mt-1">Announcement Details</p>
         </div>
-        <Badge variant={getStatus(event.start_at) === 'upcoming' ? 'default' : 'secondary'}>
-          {getStatus(event.start_at)}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className={getTypeColor(announcement.type)}>
+            {getTypeLabel(announcement.type)}
+          </Badge>
+          <Badge variant={getStatus(announcement.deadline) === 'active' ? 'default' : 'secondary'}>
+            {getStatus(announcement.deadline)}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Event Image */}
+          {/* Announcement Image */}
           <Card className="border-2 border-foreground shadow-none overflow-hidden">
             <div className="aspect-video w-full overflow-hidden">
               <img 
                 src={imageUrl} 
-                alt={event.title}
+                alt={announcement.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   // Fallback to another random image if the first one fails
@@ -210,12 +226,12 @@ const EventDetail = () => {
             </div>
           </Card>
 
-          {/* Event Info Card */}
+          {/* Announcement Info Card */}
           <Card className="border-2 border-foreground shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5" />
-                Event Information
+                <MegaphoneIcon className="w-5 h-5" />
+                Announcement Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -223,69 +239,38 @@ const EventDetail = () => {
                 <div className="flex items-center gap-3">
                   <CalendarIcon className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Date</p>
-                    <p className="text-sm text-muted-foreground">{formatDate(event.start_at)}</p>
+                    <p className="text-sm font-medium">Posted Date</p>
+                    <p className="text-sm text-muted-foreground">{formatDate(announcement.created_at)}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <ClockIcon className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Time</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatTime(event.start_at)}
-                      {event.end_at && ` - ${formatTime(event.end_at)}`}
-                    </p>
+                {announcement.deadline && (
+                  <div className="flex items-center gap-3">
+                    <ClockIcon className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Deadline</p>
+                      <p className="text-sm text-muted-foreground">{formatDate(announcement.deadline)}</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <MapPinIcon className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Location</p>
-                    <p className="text-sm text-muted-foreground">{event.location || 'TBD'}</p>
-                  </div>
-                </div>
-                
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Description */}
+          {/* Content */}
           <Card className="border-2 border-foreground shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileTextIcon className="w-5 h-5" />
-                About This Event
+                About This Announcement
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-sm leading-relaxed prose prose-sm max-w-none">
-                <ReactMarkdown>{event.description || 'No description available.'}</ReactMarkdown>
+                <ReactMarkdown>{announcement.content || 'No content available.'}</ReactMarkdown>
               </div>
             </CardContent>
           </Card>
-
-          {/* Tags Section */}
-          {event.tags && event.tags.length > 0 && (
-            <Card className="border-2 border-foreground shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileTextIcon className="w-5 h-5" />
-                  Tags
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {event.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
         </div>
 
@@ -294,41 +279,32 @@ const EventDetail = () => {
           {/* Action Card */}
           <Card className="border-2 border-foreground shadow-none">
             <CardHeader>
-              <CardTitle>Event Actions</CardTitle>
+              <CardTitle>Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {event.registration_url && (
+              {announcement.external_url && (
                 <Button className="w-full" size="lg" asChild>
-                  <a href={event.registration_url} target="_blank" rel="noopener noreferrer">
-                    Register for Event
-                  </a>
-                </Button>
-              )}
-              
-              {event.location_url && (
-                <Button variant="outline" className="w-full" asChild>
-                  <a href={event.location_url} target="_blank" rel="noopener noreferrer">
+                  <a href={announcement.external_url} target="_blank" rel="noopener noreferrer">
                     <ExternalLinkIcon className="w-4 h-4 mr-2" />
-                    View Location
+                    Learn More
                   </a>
                 </Button>
               )}
-              
             </CardContent>
           </Card>
 
-          {/* Organiser Info */}
+          {/* Creator Info */}
           <Card className="border-2 border-foreground shadow-none">
             <CardHeader>
-              <CardTitle>Organiser</CardTitle>
+              <CardTitle>Posted By</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <p className="font-medium">
-                  {event.organiser?.full_name || 'Unknown Organiser'}
+                  {announcement.creator?.full_name || 'Unknown'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {event.organiser?.email || 'No email available'}
+                  {announcement.creator?.email || 'No email available'}
                 </p>
               </div>
             </CardContent>
@@ -340,4 +316,4 @@ const EventDetail = () => {
   );
 };
 
-export default EventDetail;
+export default AnnouncementDetail;

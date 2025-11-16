@@ -30,6 +30,7 @@ interface EventData {
   created_by: string;
   created_at: string;
   updated_at: string;
+  image_url: string | null;
   event_tags?: Array<{
     tag_id: string;
     tags: Tag;
@@ -60,8 +61,28 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
     });
   };
 
+  // Generate random Behance image for fallback
+  const getRandomImage = () => {
+    const randomId = Math.floor(Math.random() * 1000);
+    return `https://picsum.photos/seed/event${randomId}/400/200.jpg`;
+  };
+
+  const imageUrl = event.image_url || getRandomImage();
+
   return (
-    <Card className="w-full hover:shadow-lg transition-shadow duration-200">
+    <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden">
+      <div className="aspect-video w-full overflow-hidden">
+        <img 
+          src={imageUrl} 
+          alt={event.title}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            // Fallback to another random image if the first one fails
+            const target = e.target as HTMLImageElement;
+            target.src = getRandomImage();
+          }}
+        />
+      </div>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
         <div className="flex items-center text-sm text-muted-foreground mb-2">

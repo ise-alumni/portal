@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { CalendarDays, ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import NewEventModal from '@/components/NewEventModal';
 
 type Announcement = {
@@ -14,6 +15,7 @@ type Announcement = {
   type: string;
   external_url: string | null;
   deadline: string | null;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -24,6 +26,108 @@ type NewAnnouncement = {
   type: 'opportunity' | 'news' | 'lecture' | 'program';
   external_url: string | null;
   deadline: string | null;
+  image_url: string | null;
+};
+
+// Announcement Card Component
+const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
+  const navigate = useNavigate();
+
+  const handleViewDetails = () => {
+    navigate(`/announcements/${announcement.id}`);
+  };
+
+  // Generate random Behance image for fallback
+  const getRandomImage = () => {
+    const randomId = Math.floor(Math.random() * 1000);
+    return `https://picsum.photos/seed/announcement${randomId}/400/200.jpg`;
+  };
+
+  const imageUrl = announcement.image_url || getRandomImage();
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'opportunity':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'news':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'lecture':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'program':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'opportunity':
+        return 'Opportunity';
+      case 'news':
+        return 'News';
+      case 'lecture':
+        return 'Guest Lecture';
+      case 'program':
+        return 'Program';
+      default:
+        return type;
+    }
+  };
+
+  return (
+    <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden cursor-pointer" onClick={handleViewDetails}>
+      <div className="aspect-video w-full overflow-hidden">
+        <img 
+          src={imageUrl} 
+          alt={announcement.title}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            // Fallback to another random image if the first one fails
+            const target = e.target as HTMLImageElement;
+            target.src = getRandomImage();
+          }}
+        />
+      </div>
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+          <div className="flex-1">
+            <CardTitle className="text-lg sm:text-xl leading-tight">{announcement.title}</CardTitle>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <Badge className={getTypeColor(announcement.type)}>
+                {getTypeLabel(announcement.type)}
+              </Badge>
+              {announcement.deadline && (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Deadline: </span>
+                  {new Date(announcement.deadline).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="text-sm text-muted-foreground whitespace-nowrap">
+            {new Date(announcement.created_at).toLocaleDateString()}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <CardDescription className="text-base">
+          {announcement.content}
+        </CardDescription>
+        {announcement.external_url && (
+          <div className="mt-4">
+            <Button variant="outline" asChild onClick={(e) => e.stopPropagation()}>
+              <a href={announcement.external_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Learn More
+              </a>
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 };
 
 export const Announcements = () => {
@@ -301,45 +405,7 @@ export const Announcements = () => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {paginatedCurrentAnnouncements.map((announcement) => (
-                  <Card key={announcement.id} className="w-full">
-                    <CardHeader className="pb-3">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg sm:text-xl leading-tight">{announcement.title}</CardTitle>
-                          <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <Badge className={getTypeColor(announcement.type)}>
-                              {getTypeLabel(announcement.type)}
-                            </Badge>
-                            {announcement.deadline && (
-                              <div className="flex items-center text-sm text-muted-foreground">
-                                <Clock className="w-4 h-4 mr-1" />
-                                <span className="hidden sm:inline">Deadline: </span>
-                                {new Date(announcement.deadline).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground whitespace-nowrap">
-                          {new Date(announcement.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-base">
-                        {announcement.content}
-                      </CardDescription>
-                      {announcement.external_url && (
-                        <div className="mt-4">
-                          <Button variant="outline" asChild>
-                            <a href={announcement.external_url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Learn More
-                            </a>
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <AnnouncementCard key={announcement.id} announcement={announcement} />
                 ))}
               </div>
               
@@ -378,45 +444,9 @@ export const Announcements = () => {
         <div className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {paginatedPastAnnouncements.map((announcement) => (
-              <Card key={announcement.id} className="w-full opacity-75">
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg sm:text-xl leading-tight">{announcement.title}</CardTitle>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <Badge className={getTypeColor(announcement.type)}>
-                          {getTypeLabel(announcement.type)}
-                        </Badge>
-                        {announcement.deadline && (
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Clock className="w-4 h-4 mr-1" />
-                            <span className="hidden sm:inline">Deadline: </span>
-                            {new Date(announcement.deadline).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground whitespace-nowrap">
-                      {new Date(announcement.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-base">
-                    {announcement.content}
-                  </CardDescription>
-                  {announcement.external_url && (
-                    <div className="mt-4">
-                      <Button variant="outline" asChild>
-                        <a href={announcement.external_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Learn More
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <div key={announcement.id} className="opacity-75">
+                <AnnouncementCard announcement={announcement} />
+              </div>
             ))}
           </div>
               

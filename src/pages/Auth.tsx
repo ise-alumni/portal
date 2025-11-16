@@ -164,7 +164,7 @@ const Auth = () => {
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
                 </TabsList>
               ) : (
-                <TabsList className="grid w-full grid-cols-1 mb-4">
+                <TabsList className="grid w-full grid-cols-1 mb-4 hidden">
                   <TabsTrigger value="login">Sign In</TabsTrigger>
                 </TabsList>
               )}

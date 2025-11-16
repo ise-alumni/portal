@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon } from "lucide-react";
+import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +34,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
   const [type, setType] = useState<'opportunity' | 'news' | 'lecture' | 'program'>('opportunity');
   const [deadline, setDeadline] = useState<string>("");
   const [externalUrl, setExternalUrl] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState<string>("");
   const { user } = useAuth();
 
   const generateSlug = (title: string) => {
@@ -137,6 +138,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           end_at: endDateTime?.toISOString() || null,
           organiser_profile_id: profile?.id || null,
           created_by: user.id,
+          image_url: imageUrl || null,
           tags: tagIds,
         };
 
@@ -157,6 +159,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           type: type,
           external_url: externalUrl || null,
           deadline: deadline || null,
+          image_url: imageUrl || null,
           created_by: user.id,
         };
 
@@ -184,8 +187,9 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
       setType('opportunity');
       setDeadline("");
       setExternalUrl("");
+      setImageUrl("");
       
-      onSubmit(data);
+       onSubmit(data);
       onClose();
     } catch (err) {
       console.error(`Error creating ${mode}:`, err);
@@ -263,18 +267,37 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
 
           {/* External URL - Only show for announcements */}
           {mode === 'announcement' && (
-            <div className="space-y-2">
-              <Label htmlFor="external-url" className="text-sm font-medium">External URL (Optional)</Label>
-              <Input
-                id="external-url"
-                type="url"
-                placeholder="https://example.com/more-info"
-                value={externalUrl}
-                onChange={(e) => setExternalUrl(e.target.value)}
-                disabled={isCreating}
-              />
-            </div>
+          <div className="space-y-2">
+          <Label htmlFor="external-url" className="text-sm font-medium">External URL (Optional)</Label>
+          <Input
+          id="external-url"
+          type="url"
+          placeholder="https://example.com/more-info"
+          value={externalUrl}
+          onChange={(e) => setExternalUrl(e.target.value)}
+          disabled={isCreating}
+          />
+          </div>
           )}
+
+           {/* Image URL - Show for both events and announcements */}
+           <div className="space-y-2">
+             <Label htmlFor="image-url" className="text-sm font-medium flex items-center gap-2">
+               <ImageIcon className="w-4 h-4" />
+               Image URL (Optional)
+             </Label>
+             <Input
+               id="image-url"
+               type="url"
+               placeholder="https://example.com/image.jpg"
+               value={imageUrl}
+               onChange={(e) => setImageUrl(e.target.value)}
+               disabled={isCreating}
+             />
+             <p className="text-xs text-muted-foreground">
+               Leave empty to use a random placeholder image
+             </p>
+           </div>
 
           {/* Date, Time & Location - Only show for events */}
           {mode === 'event' && (
