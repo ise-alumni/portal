@@ -18,6 +18,9 @@ cp .env.example .env
 
 pnpm i # install deps 
 pnpm dev # run dev server
+
+pnpm test # run tests
+pnpm test:coverage # run tests with coverage report
 ```
 
 ### Migrations
