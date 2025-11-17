@@ -125,7 +125,7 @@ export function paginateData<T>(
 
 // Profile-specific utilities
 export function filterProfiles(profiles: Profile[], filters: FilterOptions): Profile[] {
-  return filterData(profiles, filters, ['full_name', 'headline', 'bio', 'company']);
+  return filterData(profiles, filters, ['full_name', 'bio', 'company']);
 }
 
 export function sortProfiles(profiles: Profile[], sortOption: SortOption): Profile[] {

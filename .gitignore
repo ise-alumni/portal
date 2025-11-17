@@ -2,6 +2,9 @@
 AGENTS.md
 sample_data.csv
 
+*.ts.html
+coverage
+
 # Logs
 logs
 *.log

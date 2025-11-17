@@ -77,7 +77,7 @@ export async function searchProfiles(query: string): Promise<Profile[]> {
     .from('profiles')
     .select('*')
     .eq('is_public', true)
-    .or(`full_name.ilike.%${query}%,headline.ilike.%${query}%,bio.ilike.%${query}%,company.ilike.%${query}%`)
+    .or(`full_name.ilike.%${query}%,bio.ilike.%${query}%,company.ilike.%${query}%`)
     .order('full_name', { ascending: true });
 
   if (error) {

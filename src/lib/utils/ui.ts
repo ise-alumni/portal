@@ -59,6 +59,6 @@ export const getEventTagColorClass = (tagName: string): string => {
 };
 
 export const getCohortLabel = (cohort: number | null): string | null => {
-  if (!cohort) return null;
+  if (cohort === null || cohort === undefined) return null;
   return `Cohort ${cohort}`;
 };

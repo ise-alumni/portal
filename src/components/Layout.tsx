@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
@@ -17,6 +17,13 @@ const Layout = ({ children }: LayoutProps) => {
     await signOut();
     navigate("/auth");
   };
+
+  // Redirect to auth page if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
+    }
+  }, [loading, user, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -58,10 +65,9 @@ const Layout = ({ children }: LayoutProps) => {
                    </DrawerClose>
                  </nav>
                  <div className="flex flex-col gap-4 mt-4 items-center">
-                   {!loading && user && <span className="text-xs uppercase">Signed in</span>}
                    {!loading && user && (
                      <DrawerClose asChild>
-                       <Button variant="outline" size="sm" className="border-foreground hover:bg-foreground hover:text-background w-60" onClick={handleSignOut}>
+                       <Button variant="outline" size="sm" className="border-foreground hover:bg-foreground hover:text-background w-full max-w-xs" onClick={handleSignOut}>
                          <LogOut className="h-4 w-4 mr-2" />
                          Exit
                        </Button>
@@ -76,7 +82,7 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       <main className="container mx-auto px-4 py-10 flex-1">
-        {children}
+        {!loading && user && children}
       </main>
 
       <footer className="border-t border-foreground">

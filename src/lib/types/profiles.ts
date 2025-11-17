@@ -15,7 +15,6 @@ export interface Profile {
   graduation_year: number | null;
   company: string | null;
   job_title: string | null;
-  headline?: string | null; // Optional for compatibility
   github_url: string | null;
   linkedin_url: string | null;
   twitter_url: string | null;

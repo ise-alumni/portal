@@ -18,9 +18,9 @@ export const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>):
   const randomId = Math.floor(Math.random() * 1000);
   const currentSrc = target.src;
   
-  if (currentSrc.includes('event')) {
+  if (currentSrc.toLowerCase().includes('event')) {
     target.src = `https://picsum.photos/seed/event${randomId}/400/200.jpg`;
-  } else if (currentSrc.includes('announcement')) {
+  } else if (currentSrc.toLowerCase().includes('announcement')) {
     target.src = `https://picsum.photos/seed/announcement${randomId}/400/200.jpg`;
   } else {
     // Fallback for any other image type
