@@ -1,33 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { CalendarDays, ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
+import { ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NewEventModal from '@/components/NewEventModal';
-
-type Announcement = {
-  id: string;
-  title: string;
-  content: string | null;
-  type: string;
-  external_url: string | null;
-  deadline: string | null;
-  image_url: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type NewAnnouncement = {
-  title: string;
-  content: string | null;
-  type: 'opportunity' | 'news' | 'lecture' | 'program';
-  external_url: string | null;
-  deadline: string | null;
-  image_url: string | null;
-};
+import { Announcement, NewAnnouncement } from '@/lib/types';
+import { getAnnouncements, createAnnouncement } from '@/lib/domain/announcements';
+import { formatDateShort, isDateInPast, isDateWithinLastDays } from '@/lib/utils/date';
+import { getRandomAnnouncementImage } from '@/lib/utils/images';
+import { getAnnouncementTypeColor, getAnnouncementTypeLabel } from '@/lib/utils/ui';
+import { filterAnnouncements, sortAnnouncements, type SortOption } from '@/lib/utils/data';
 
 // Announcement Card Component
 const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
@@ -37,43 +22,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
     navigate(`/announcements/${announcement.id}`);
   };
 
-  // Generate random Behance image for fallback
-  const getRandomImage = () => {
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/announcement${randomId}/400/200.jpg`;
-  };
-
-  const imageUrl = announcement.image_url || getRandomImage();
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'news':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'lecture':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'program':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'Opportunity';
-      case 'news':
-        return 'News';
-      case 'lecture':
-        return 'Guest Lecture';
-      case 'program':
-        return 'Program';
-      default:
-        return type;
-    }
-  };
+  const imageUrl = announcement.image_url || getRandomAnnouncementImage();
 
   return (
     <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden cursor-pointer" onClick={handleViewDetails}>
@@ -85,7 +34,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           onError={(e) => {
             // Fallback to another random image if the first one fails
             const target = e.target as HTMLImageElement;
-            target.src = getRandomImage();
+            target.src = getRandomAnnouncementImage();
           }}
         />
       </div>
@@ -94,20 +43,20 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           <div className="flex-1">
             <CardTitle className="text-lg sm:text-xl leading-tight">{announcement.title}</CardTitle>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <Badge className={getTypeColor(announcement.type)}>
-                {getTypeLabel(announcement.type)}
+              <Badge className={getAnnouncementTypeColor(announcement.type)}>
+                {getAnnouncementTypeLabel(announcement.type)}
               </Badge>
               {announcement.deadline && (
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Clock className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">Deadline: </span>
-                  {new Date(announcement.deadline).toLocaleDateString()}
+                  {formatDateShort(announcement.deadline)}
                 </div>
               )}
             </div>
           </div>
           <div className="text-sm text-muted-foreground whitespace-nowrap">
-            {new Date(announcement.created_at).toLocaleDateString()}
+            {formatDateShort(announcement.created_at)}
           </div>
         </div>
       </CardHeader>
@@ -139,66 +88,72 @@ export const Announcements = () => {
   const [sortBy, setSortBy] = useState<'created_at' | 'deadline' | 'title'>('created_at');
   const [selectedType, setSelectedType] = useState<string>('');
   const [announcementView, setAnnouncementView] = useState<'current' | 'past'>('current');
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<{ user_type: string } | null>(null);
   
    // Pagination state
    const [upcomingPage, setUpcomingPage] = useState(1);
    const [pastPage, setPastPage] = useState(1);
    const [itemsPerPage, setItemsPerPage] = useState(6);
 
+  const fetchUserProfile = useCallback(async () => {
+    if (!user) return;
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('user_id', user.id)
+      .single();
+    
+    setUserProfile(profile);
+  }, [user]);
+
   useEffect(() => {
     fetchAnnouncements();
     fetchUserProfile();
-  }, []);
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     // Apply filtering and sorting when dependencies change
-    const processedAnnouncements = announcements.filter(announcement => {
-      return !selectedType || announcement.type === selectedType;
-    });
+    const filters = {
+      // Add type filter when selectedType is not empty
+      ...(selectedType && { tags: [selectedType] })
+    };
 
-    const sortedAnnouncements = [...processedAnnouncements].sort((a, b) => {
-      if (sortBy === 'deadline') {
-        // Handle null deadlines - put them last
-        if (!a.deadline && !b.deadline) return 0;
-        if (!a.deadline) return 1;
-        if (!b.deadline) return -1;
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-      } else if (sortBy === 'title') {
-        return a.title.localeCompare(b.title);
-      } else {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-    });
+    const sortOption: SortOption = {
+      field: sortBy,
+      direction: sortBy === 'created_at' ? 'desc' : 'asc'
+    };
 
-    setFilteredAnnouncements(sortedAnnouncements);
+    const filtered = filterAnnouncements(announcements, filters);
+    const sorted = sortAnnouncements(filtered, sortOption);
+
+    setFilteredAnnouncements(sorted);
   }, [announcements, selectedType, sortBy]);
 
-  // Separate current/upcoming from past announcements
-  const now = new Date();
-  const currentAnnouncements = filteredAnnouncements.filter(announcement => {
-    // Consider announcements with deadlines in the future as current
-    if (announcement.deadline && new Date(announcement.deadline) >= now) {
-      return true;
-    }
-    // Consider announcements without deadlines as current if created within last 30 days
-    if (!announcement.deadline && new Date(announcement.created_at) >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)) {
-      return true;
-    }
-    return false;
-  });
-  
-  const pastAnnouncements = filteredAnnouncements.filter(announcement => {
-    // Consider announcements with past deadlines as past
-    if (announcement.deadline && new Date(announcement.deadline) < now) {
-      return true;
-    }
-    // Consider announcements without deadlines as past if created more than 30 days ago
-    if (!announcement.deadline && new Date(announcement.created_at) < new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)) {
-      return true;
-    }
-    return false;
-  });
+   // Separate current/upcoming from past announcements
+   const currentAnnouncements = filteredAnnouncements.filter(announcement => {
+     // Consider announcements with deadlines in the future as current
+     if (announcement.deadline && !isDateInPast(announcement.deadline)) {
+       return true;
+     }
+     // Consider announcements without deadlines as current if created within last 30 days
+     if (!announcement.deadline && isDateWithinLastDays(announcement.created_at, 30)) {
+       return true;
+     }
+     return false;
+   });
+   
+   const pastAnnouncements = filteredAnnouncements.filter(announcement => {
+     // Consider announcements with past deadlines as past
+     if (announcement.deadline && isDateInPast(announcement.deadline)) {
+       return true;
+     }
+     // Consider announcements without deadlines as past if created more than 30 days ago
+     if (!announcement.deadline && !isDateWithinLastDays(announcement.created_at, 30)) {
+       return true;
+     }
+     return false;
+   });
 
    // Pagination calculations
    const upcomingTotalPages = Math.ceil(currentAnnouncements.length / itemsPerPage);
@@ -227,84 +182,28 @@ export const Announcements = () => {
      setPastPage(1);
    }, [selectedType, sortBy]);
 
-  const fetchUserProfile = async () => {
-    if (!user) return;
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_type')
-      .eq('user_id', user.id)
-      .single();
-    
-    setUserProfile(profile);
-  };
-
-  const fetchAnnouncements = async () => {
-    const { data, error } = await supabase
-      .from('announcements')
-      .select('*'); 
-
-    if (error) {
-      console.error('Error fetching announcements:', error);
-    } else {
-      console.log('Fetched announcements:', data?.length, data);
-      setAnnouncements(data || []);
-    }
+   const fetchAnnouncements = async () => {
+    const data = await getAnnouncements();
+    console.log('Fetched announcements:', data.length, data);
+    setAnnouncements(data);
     setLoading(false);
   };
 
   const handleCreateAnnouncement = async (announcement: NewAnnouncement) => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('announcements')
-      .insert({
-        ...announcement,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating announcement:', error);
-    } else {
+    const data = await createAnnouncement(announcement, user.id);
+    
+    if (data) {
       console.log('Announcement created:', data);
       setIsModalOpen(false);
       fetchAnnouncements(); // Refresh announcements list
+    } else {
+      console.error('Error creating announcement');
     }
   };
 
   const canCreateAnnouncement = userProfile?.user_type === 'Admin' || userProfile?.user_type === 'Staff';
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'news':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'lecture':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'program':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'Opportunity';
-      case 'news':
-        return 'News';
-      case 'lecture':
-        return 'Guest Lecture';
-      case 'program':
-        return 'Program';
-      default:
-        return type;
-    }
-  };
 
   if (loading) {
     return (
