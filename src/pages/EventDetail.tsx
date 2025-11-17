@@ -18,6 +18,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditEventModal from "@/components/EditEventModal";
+import { log } from '@/lib/utils/logger';
 
 // Event data interface
 interface EventData {
@@ -97,7 +98,7 @@ const EventDetail = () => {
 
       setEvent(transformedData);
     } catch (err) {
-      console.error('Error fetching event:', err);
+      log.error('Error fetching event:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch event');
     } finally {
       setLoading(false);
@@ -198,7 +199,7 @@ const EventDetail = () => {
 
       navigate('/events');
     } catch (err) {
-      console.error('Error deleting event:', err);
+      log.error('Error deleting event:', err);
       alert('Failed to delete event. Please try again.');
     } finally {
       setIsDeleting(false);

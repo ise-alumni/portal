@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
-import { Drawer, DrawerTrigger, DrawerContent, DrawerClose } from "@/components/ui/drawer";
+import { Drawer, DrawerTrigger, DrawerContent, DrawerClose, DrawerTitle } from "@/components/ui/drawer";
 
 interface LayoutProps {
   children: ReactNode;
@@ -32,8 +32,9 @@ const Layout = ({ children }: LayoutProps) => {
                  [menu]
                </Button>
              </DrawerTrigger>
-             <DrawerContent className="bg-card border-border">
-               <div className="p-4">
+              <DrawerContent className="bg-card border-border">
+                <DrawerTitle className="sr-only">Navigation Menu</DrawerTitle>
+                <div className="p-4">
                  <nav className="flex flex-col gap-4 text-sm justify-center items-center">
                    <DrawerClose asChild>
                      <Button asChild variant="outline" className="w-full max-w-xs bg-[#0C314C] text-white hover:bg-[#0C314C]/80">

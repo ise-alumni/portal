@@ -14,6 +14,8 @@ import { Profile } from "@/lib/types";
 import { getProfiles, searchProfiles } from '@/lib/domain/profiles';
 import { filterProfiles, sortProfiles, paginateData, type FilterOptions, type SortOption } from '@/lib/utils/data';
 import { getCohortLabel } from '@/lib/utils/ui';
+import { log } from '@/lib/utils/logger';
+import { getUserTypesSync } from '@/lib/constants';
 
 const Directory = () => {
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
@@ -37,7 +39,7 @@ const Directory = () => {
         setAllProfiles(data);
         setFilteredProfiles(data);
       } catch (err) {
-        console.error("Error loading profiles:", err);
+        log.error("Error loading profiles:", err);
         setError("Failed to load alumni profiles. Please try again.");
       } finally {
         setLoading(false);

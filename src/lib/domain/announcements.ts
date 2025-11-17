@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { type Announcement, type NewAnnouncement } from '@/lib/types';
 import { getRandomAnnouncementImage } from '@/lib/utils/images';
+import { log } from '@/lib/utils/logger';
 
 export async function getAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase
@@ -9,7 +10,7 @@ export async function getAnnouncements(): Promise<Announcement[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching announcements:', error);
+    log.error('Error fetching announcements:', error);
     return [];
   }
 
@@ -28,7 +29,7 @@ export async function getAnnouncementBySlug(slug: string): Promise<Announcement 
     .single();
 
   if (error) {
-    console.error('Error fetching announcement:', error);
+    log.error('Error fetching announcement:', error);
     return null;
   }
 
@@ -59,7 +60,7 @@ export async function createAnnouncement(announcement: NewAnnouncement, userId: 
     .single();
 
   if (error) {
-    console.error('Error creating announcement:', error);
+    log.error('Error creating announcement:', error);
     return null;
   }
 

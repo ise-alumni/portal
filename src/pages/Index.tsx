@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Profile, ProfileFormData } from '@/lib/types';
 import { getProfileByUserId, updateProfile } from '@/lib/domain/profiles';
+import { log } from '@/lib/utils/logger';
 
 const Index = () => {
   const { user, session, loading } = useAuth();
@@ -89,7 +90,7 @@ const Index = () => {
           });
         }
       } catch (error) {
-        console.error("Error fetching profile:", error);
+        log.error("Error fetching profile:", error);
       } finally {
         setProfileLoading(false);
         isFetching.current = false;
@@ -130,7 +131,7 @@ const Index = () => {
       setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
       return publicUrl;
     } catch (error) {
-      console.error("Avatar upload error:", error);
+      log.error("Avatar upload error:", error);
       return null;
     }
   };
@@ -147,7 +148,7 @@ const Index = () => {
           setAvatarFile(null);
         } else {
           // If upload fails, don't update avatar_url
-          console.error("Avatar upload failed, keeping existing avatar");
+          log.error("Avatar upload failed, keeping existing avatar");
         }
       }
 

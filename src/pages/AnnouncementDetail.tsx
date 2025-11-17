@@ -18,6 +18,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditAnnouncementModal from "@/components/EditAnnouncementModal";
+import { log } from '@/lib/utils/logger';
 
 // Announcement data interface
 interface AnnouncementData {
@@ -81,7 +82,7 @@ const AnnouncementDetail = () => {
 
         setAnnouncement(transformedData);
       } catch (err) {
-        console.error('Error fetching announcement:', err);
+        log.error('Error fetching announcement:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
       } finally {
         setLoading(false);
@@ -203,7 +204,7 @@ const AnnouncementDetail = () => {
 
       navigate('/announcements');
     } catch (err) {
-      console.error('Error deleting announcement:', err);
+      log.error('Error deleting announcement:', err);
       alert('Failed to delete announcement. Please try again.');
     } finally {
       setIsDeleting(false);

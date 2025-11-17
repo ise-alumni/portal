@@ -5,12 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon } from "lucide-react";
+import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { log } from '@/lib/utils/logger';
+import { getAnnouncementTypesSync, getEventTagsSync, isValidEventTag, getEventTagOptions } from '@/lib/constants';
 
 interface NewEventModalProps {
   isOpen: boolean;
@@ -28,10 +30,10 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
   const [link, setLink] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
-  const [tags, setTags] = useState<string>("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [type, setType] = useState<'opportunity' | 'news' | 'lecture' | 'program'>('opportunity');
+  const [type, setType] = useState<string>(getAnnouncementTypesSync()[0] || 'opportunity');
   const [deadline, setDeadline] = useState<string>("");
   const [externalUrl, setExternalUrl] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string>("");
@@ -95,17 +97,11 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           .eq('user_id', user.id)
           .single();
 
-        // Parse tags from comma-separated string and convert to UUIDs
-        const tagNames = tags
-          .split(',')
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0);
-
-        let tagIds: string[] = [];
+        // Convert selected tag names to UUIDs
+        const tagIds: string[] = [];
         
-        // For each tag name, find existing tag or create new one
-        for (const tagName of tagNames) {
-          // First try to find existing tag
+        for (const tagName of selectedTags) {
+          // Find existing tag
           const { data: existingTag } = await supabase
             .from('tags')
             .select('id')
@@ -115,16 +111,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           if (existingTag) {
             tagIds.push(existingTag.id);
           } else {
-            // Create new tag if it doesn't exist
-            const { data: newTag } = await supabase
-              .from('tags')
-              .insert({ name: tagName })
-              .select('id')
-              .single();
-            
-            if (newTag) {
-              tagIds.push(newTag.id);
-            }
+            log.error('Tag not found in database:', tagName);
           }
         }
 
@@ -181,10 +168,10 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
       setLink("");
       setStartTime("");
       setEndTime("");
-      setTags("");
+      setSelectedTags([]);
       setDate(undefined);
       setShowPreview(false);
-      setType('opportunity');
+      setType(getAnnouncementTypesSync()[0] || 'opportunity');
       setDeadline("");
       setExternalUrl("");
       setImageUrl("");
@@ -192,7 +179,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
        onSubmit(data);
       onClose();
     } catch (err) {
-      console.error(`Error creating ${mode}:`, err);
+      log.error(`Error creating ${mode}:`, err);
       setError(err instanceof Error ? err.message : `Failed to create ${mode}`);
     } finally {
       setIsCreating(false);
@@ -239,14 +226,15 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
               <select
                 id="type"
                 value={type}
-                onChange={(e) => setType(e.target.value as any)}
+                onChange={(e) => setType(e.target.value)}
                 className="w-full p-2 border rounded-md"
                 disabled={isCreating}
               >
-                <option value="opportunity">Opportunity</option>
-                <option value="news">News</option>
-                <option value="lecture">Guest Lecture</option>
-                <option value="program">Program</option>
+                {getAnnouncementTypesSync().map(type => (
+                  <option key={type} value={type}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </option>
+                ))}
               </select>
             </div>
           )}
@@ -425,20 +413,55 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
             )}
           </div>
 
-          {/* Tags Section */}
-          <div className="space-y-2">
-            <Label htmlFor="tags" className="text-sm font-medium flex items-center gap-2">
-              <FileTextIcon className="w-4 h-4" />
-              Tags
-            </Label>
-            <Input
-              id="tags"
-              placeholder="e.g., Networking, Online, Career (comma-separated)"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              disabled={isCreating}
-            />
-          </div>
+          {/* Tags Section - Only show for events */}
+          {mode === 'event' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <FileTextIcon className="w-4 h-4" />
+                Tags
+              </Label>
+              <div className="space-y-2">
+                {/* Available tags */}
+                <div className="flex flex-wrap gap-2">
+                  {getEventTagOptions().map((tag) => {
+                    const isSelected = selectedTags.includes(tag.value);
+                    return (
+                      <button
+                        key={tag.value}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTags(selectedTags.filter(t => t !== tag.value));
+                          } else {
+                            setSelectedTags([...selectedTags, tag.value]);
+                          }
+                        }}
+                        disabled={isCreating}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={{
+                          backgroundColor: isSelected ? tag.color : undefined,
+                        }}
+                      >
+                        {tag.label}
+                        {isSelected && (
+                          <X className="w-3 h-3 ml-1 inline" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTags.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Select tags to categorize this event
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

@@ -12,6 +12,8 @@ import { type EventData, type Tag } from "@/lib/types";
 import { getEvents, getTags, isEventInPast, isEventUpcoming } from "@/lib/domain";
 import { formatDate } from "@/lib/utils/date";
 import { getRandomEventImage } from "@/lib/utils/images";
+import { log } from '@/lib/utils/logger';
+import { canUserCreateContent } from '@/lib/constants';
 
 const ExistingEvent = ({ event }: { event: EventData }) => {
   const navigate = useNavigate();
@@ -81,12 +83,12 @@ const Events = () => {
         getTags()
       ]);
 
-      console.log('Fetched events:', eventsData?.length, eventsData);
-      console.log('Fetched tags:', tagsData?.length, tagsData);
+      log.debug('Fetched events:', eventsData?.length, eventsData);
+      log.debug('Fetched tags:', tagsData?.length, tagsData);
       setEvents(eventsData);
       setAvailableTags(tagsData);
     } catch (err) {
-      console.error('Error fetching events:', err);
+      log.error('Error fetching events:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch events');
     } finally {
       setLoading(false);
@@ -111,7 +113,7 @@ const Events = () => {
 
       setUserProfile(data);
     } catch (err) {
-      console.error('Error fetching user profile:', err);
+      log.error('Error fetching user profile:', err);
     }
   };
 
@@ -127,7 +129,7 @@ const Events = () => {
   };
 
   // Check if user can create events (admin or staff)
-  const canCreateEvents = user && userProfile && (userProfile.user_type === 'Admin' || userProfile.user_type === 'Staff');
+  const canCreateEvents = user && userProfile && canUserCreateContent(userProfile.user_type);
 
   // Filter and sort events
   const allUpcomingEvents = events.filter(event => isEventUpcoming(event));
@@ -155,9 +157,9 @@ const Events = () => {
   });
 
   // Debug logging
-  console.log('Total events:', events.length);
-  console.log('Upcoming events:', upcomingEvents.length, upcomingEvents.map(e => ({ title: e.title, date: e.start_at })));
-  console.log('Past events:', pastEvents.length, pastEvents.map(e => ({ title: e.title, date: e.start_at })));
+  log.debug('Total events:', events.length);
+  log.debug('Upcoming events:', upcomingEvents.length, upcomingEvents.map(e => ({ title: e.title, date: e.start_at })));
+  log.debug('Past events:', pastEvents.length, pastEvents.map(e => ({ title: e.title, date: e.start_at })));
 
   // Pagination logic
   const totalUpcomingEvents = upcomingEvents.length;

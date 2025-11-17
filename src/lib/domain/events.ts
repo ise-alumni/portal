@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { type EventData, type NewEvent, type Tag } from '@/lib/types';
 import { getRandomEventImage } from '@/lib/utils/images';
+import { log } from '@/lib/utils/logger';
 
 export async function getEvents(): Promise<EventData[]> {
   const { data, error } = await supabase
@@ -15,7 +16,7 @@ export async function getEvents(): Promise<EventData[]> {
     .order('start_at', { ascending: true });
 
   if (error) {
-    console.error('Error fetching events:', error);
+    log.error('Error fetching events:', error);
     return [];
   }
 
@@ -39,7 +40,7 @@ export async function getEventBySlug(slug: string): Promise<EventData | null> {
     .single();
 
   if (error) {
-    console.error('Error fetching event:', error);
+    log.error('Error fetching event:', error);
     return null;
   }
 
@@ -57,13 +58,13 @@ export async function getTags(): Promise<Tag[]> {
       .order('name');
 
     if (error) {
-      console.error('Error fetching tags:', error);
+      log.error('Error fetching tags:', error);
       return [];
     }
 
     return data || [];
   } catch (error) {
-    console.error('Error in getTags:', error);
+    log.error('Error in getTags:', error);
     return [];
   }
 }

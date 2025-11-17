@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { type Profile, type ProfileFormData, type ProfileUpdatePayload } from '@/lib/types';
+import { log } from '@/lib/utils/logger';
 
 export async function getProfiles(): Promise<Profile[]> {
   const { data, error } = await supabase
@@ -9,7 +10,7 @@ export async function getProfiles(): Promise<Profile[]> {
     .order('full_name', { ascending: true });
 
   if (error) {
-    console.error('Error fetching profiles:', error);
+    log.error('Error fetching profiles:', error);
     return [];
   }
 
@@ -24,7 +25,7 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
     .single();
 
   if (error) {
-    console.error('Error fetching profile:', error);
+    log.error('Error fetching profile:', error);
     return null;
   }
 
@@ -58,13 +59,13 @@ export async function updateProfile(userId: string, formData: ProfileFormData): 
       .single();
 
     if (error) {
-      console.error('Error updating profile:', error);
+      log.error('Error updating profile:', error);
       return null;
     }
 
     return data;
   } catch (error) {
-    console.error('Error in updateProfile:', error);
+    log.error('Error in updateProfile:', error);
     return null;
   }
 }
@@ -80,7 +81,7 @@ export async function searchProfiles(query: string): Promise<Profile[]> {
     .order('full_name', { ascending: true });
 
   if (error) {
-    console.error('Error searching profiles:', error);
+    log.error('Error searching profiles:', error);
     return [];
   }
 

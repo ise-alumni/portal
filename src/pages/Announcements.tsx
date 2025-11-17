@@ -13,6 +13,8 @@ import { formatDateShort, isDateInPast, isDateWithinLastDays } from '@/lib/utils
 import { getRandomAnnouncementImage } from '@/lib/utils/images';
 import { getAnnouncementTypeColor, getAnnouncementTypeLabel } from '@/lib/utils/ui';
 import { filterAnnouncements, sortAnnouncements, type SortOption } from '@/lib/utils/data';
+import { log } from '@/lib/utils/logger';
+import { canUserCreateContent, getAnnouncementTypesSync } from '@/lib/constants';
 
 // Announcement Card Component
 const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
@@ -169,12 +171,12 @@ export const Announcements = () => {
      pastPage * itemsPerPage
    );
 
-   // Debug logging
-   console.log('Total announcements:', announcements.length);
-   console.log('Current announcements:', currentAnnouncements.length);
-   console.log('Past announcements:', pastAnnouncements.length);
-   console.log('Current page:', upcomingPage, 'Total pages:', upcomingTotalPages);
-   console.log('Past page:', pastPage, 'Total pages:', pastTotalPages);
+    // Debug logging
+    log.debug('Total announcements:', announcements.length);
+    log.debug('Current announcements:', currentAnnouncements.length);
+    log.debug('Past announcements:', pastAnnouncements.length);
+    log.debug('Current page:', upcomingPage, 'Total pages:', upcomingTotalPages);
+    log.debug('Past page:', pastPage, 'Total pages:', pastTotalPages);
 
    // Reset pagination when filters change
    useEffect(() => {
@@ -184,7 +186,7 @@ export const Announcements = () => {
 
    const fetchAnnouncements = async () => {
     const data = await getAnnouncements();
-    console.log('Fetched announcements:', data.length, data);
+     log.debug('Fetched announcements:', data.length, data);
     setAnnouncements(data);
     setLoading(false);
   };
@@ -195,15 +197,15 @@ export const Announcements = () => {
     const data = await createAnnouncement(announcement, user.id);
     
     if (data) {
-      console.log('Announcement created:', data);
+      log.info('Announcement created:', data);
       setIsModalOpen(false);
       fetchAnnouncements(); // Refresh announcements list
     } else {
-      console.error('Error creating announcement');
+      log.error('Error creating announcement');
     }
   };
 
-  const canCreateAnnouncement = userProfile?.user_type === 'Admin' || userProfile?.user_type === 'Staff';
+  const canCreateAnnouncement = canUserCreateContent(userProfile?.user_type || null);
 
   if (loading) {
     return (
@@ -235,11 +237,12 @@ export const Announcements = () => {
              onChange={(e) => setSelectedType(e.target.value)}
              className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
            >
-             <option value="">All Types</option>
-             <option value="opportunity">Opportunity</option>
-             <option value="news">News</option>
-             <option value="lecture">Guest Lecture</option>
-             <option value="program">Program</option>
+              <option value="">All Types</option>
+              {getAnnouncementTypesSync().map(type => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </option>
+              ))}
            </select>
            <select
              value={itemsPerPage}

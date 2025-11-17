@@ -8,6 +8,8 @@ import { FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, ExternalLinkIc
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { log } from '@/lib/utils/logger';
+import { getAnnouncementTypesSync } from '@/lib/constants';
 
 interface Announcement {
   id: string;
@@ -39,7 +41,7 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
   const [content, setContent] = useState<string>("");
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [title, setTitle] = useState<string>("");
-  const [type, setType] = useState<'opportunity' | 'news' | 'lecture' | 'program'>('opportunity');
+  const [type, setType] = useState<string>(getAnnouncementTypesSync()[0] || 'opportunity');
   const [deadline, setDeadline] = useState<string>("");
   const [externalUrl, setExternalUrl] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -80,7 +82,7 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       const data = {
         title: title,
         content: content || null,
-        type: type,
+        type: type as 'opportunity' | 'news' | 'lecture' | 'program',
         external_url: externalUrl || null,
         deadline: deadline || null,
         image_url: imageUrl || null,
@@ -100,7 +102,7 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       onSubmit(data);
       onClose();
     } catch (err) {
-      console.error("Error updating announcement:", err);
+      log.error("Error updating announcement:", err);
       setError(err instanceof Error ? err.message : "Failed to update announcement");
     } finally {
       setIsUpdating(false);
@@ -130,7 +132,7 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       onDelete();
       onClose();
     } catch (err) {
-      console.error("Error deleting announcement:", err);
+      log.error("Error deleting announcement:", err);
       setError(err instanceof Error ? err.message : "Failed to delete announcement");
     } finally {
       setIsDeleting(false);
@@ -180,10 +182,11 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
               className="w-full p-2 border rounded-md"
               disabled={isUpdating || isDeleting}
             >
-              <option value="opportunity">Opportunity</option>
-              <option value="news">News</option>
-              <option value="lecture">Guest Lecture</option>
-              <option value="program">Program</option>
+              {getAnnouncementTypesSync().map(type => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </option>
+              ))}
             </select>
           </div>
 
