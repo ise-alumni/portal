@@ -9,11 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { Tables } from "@/integrations/supabase/types";
 import { Github, Linkedin, Twitter, ExternalLink, Search } from "lucide-react";
-
-type Profile = Tables<"profiles">;
+import { Profile } from "@/lib/types";
+import { getProfiles, searchProfiles } from '@/lib/domain/profiles';
+import { filterProfiles, sortProfiles, paginateData, type FilterOptions, type SortOption } from '@/lib/utils/data';
+import { getCohortLabel } from '@/lib/utils/ui';
 
 const Directory = () => {
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
@@ -26,12 +26,6 @@ const Directory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
 
-  // Helper function to convert cohort number to readable label
-  const getCohortLabel = (cohort: number | null) => {
-    if (!cohort) return null;
-    return `Cohort ${cohort}`;
-  };
-
   // Load all profiles on mount
   useEffect(() => {
     const loadProfiles = async () => {
@@ -39,16 +33,9 @@ const Directory = () => {
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("is_public", true)
-          .order("user_type, cohort, graduation_year, full_name");
-
-        if (error) throw error;
-
-        setAllProfiles(data || []);
-        setFilteredProfiles(data || []);
+        const data = await getProfiles();
+        setAllProfiles(data);
+        setFilteredProfiles(data);
       } catch (err) {
         console.error("Error loading profiles:", err);
         setError("Failed to load alumni profiles. Please try again.");
@@ -62,28 +49,23 @@ const Directory = () => {
 
   // Filter profiles when search term changes
   useEffect(() => {
-    const filtered = allProfiles.filter((profile) => {
-      const searchLower = searchTerm.toLowerCase();
-
-      return (
-        profile.full_name?.toLowerCase().includes(searchLower) ||
-        profile.company?.toLowerCase().includes(searchLower) ||
-        getCohortLabel(profile.cohort)?.toLowerCase().includes(searchLower) ||
-        profile.job_title?.toLowerCase().includes(searchLower) ||
-        profile.city?.toLowerCase().includes(searchLower) ||
-        profile.country?.toLowerCase().includes(searchLower)
-      );
-    });
-
-    setFilteredProfiles(filtered);
+    const filters: FilterOptions = searchTerm ? { search: searchTerm } : {};
+    const sortOption: SortOption = { field: 'full_name', direction: 'asc' };
+    
+    const filtered = filterProfiles(allProfiles, filters);
+    const sorted = sortProfiles(filtered, sortOption);
+    
+    setFilteredProfiles(sorted);
     setCurrentPage(1); // Reset to first page when search changes
   }, [searchTerm, allProfiles]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredProfiles.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedProfiles = filteredProfiles.slice(startIndex, endIndex);
+  const paginationResult = paginateData(filteredProfiles, {
+    page: currentPage,
+    limit: itemsPerPage
+  });
+  const paginatedProfiles = paginationResult.data;
+  const totalPages = paginationResult.totalPages;
 
   if (loading) {
     return (
@@ -145,7 +127,7 @@ const Directory = () => {
       {/* Results count */}
       <div className="mb-6">
         <p className="text-sm text-muted-foreground">
-          Showing {Math.min(itemsPerPage, filteredProfiles.length - startIndex + 1)} of {filteredProfiles.length} alumni {searchTerm && `matching "${searchTerm}"`}
+          Showing {Math.min(itemsPerPage, (paginationResult.page - 1) * paginationResult.limit + paginationResult.data.length)} of {paginationResult.total} alumni {searchTerm && `matching "${searchTerm}"`}
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
