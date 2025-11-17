@@ -1,2 +1,32 @@
+# ISE Alumni Portal
 
-# alumni
+A portal for managing the alumni for ISE - facilitating events, announcements and the alumni's connection to the ISE programme.
+
+## Infrastructure
+
+- BaaS (Database + Backend) -> Supabase
+- Portal -> Vite + React + ShadCN
+- Build System -> pnpm
+
+## Development
+
+```bash
+git clone https://github.com/bxrne/ise-alumni.git 
+cd ise-alumni 
+
+cp .env.example .env 
+
+pnpm i # install deps 
+pnpm dev # run dev server
+```
+
+### Migrations
+
+To change DB schmema run the following workflow:
+
+```bash
+supabase link # connect project to instance if not already 
+
+supabase db pull # pull remote migration table 
+supabase db push # push local migrations to the db
+```
