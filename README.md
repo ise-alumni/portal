@@ -30,3 +30,8 @@ supabase link # connect project to instance if not already
 supabase db pull # pull remote migration table 
 supabase db push # push local migrations to the db
 ```
+
+## Feature flags 
+
+Some features may not be released to users but pushed regardless (they may be toggled over time) to facilitate this we can use the values in [features.ts](./src/config/features.ts)
+
