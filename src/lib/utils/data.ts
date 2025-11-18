@@ -127,7 +127,62 @@ export function paginateData<T>(
 
 // Profile-specific utilities
 export function filterProfiles(profiles: Profile[], filters: FilterOptions): Profile[] {
-  return filterData(profiles, filters, ['full_name', 'bio', 'company']);
+  return profiles.filter(item => {
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      const searchableFields = [
+        item.full_name,
+        item.bio,
+        item.company,
+        item.job_title,
+        item.city,
+        item.country,
+        item.cohort?.toString(),
+      ];
+      
+      const matchesSearch = searchableFields.some(value => 
+        value && String(value).toLowerCase().includes(searchLower)
+      );
+      if (!matchesSearch) return false;
+    }
+
+    // Tags filter (for events and announcements)
+    if (filters.tags && filters.tags.length > 0) {
+      const itemTags = (item as { tags?: unknown[] }).tags;
+      if (!itemTags || !Array.isArray(itemTags)) return false;
+      
+      const hasMatchingTag = filters.tags.some(tag => 
+        itemTags.some((itemTag: unknown) => 
+          typeof itemTag === 'object' && itemTag !== null && 'name' in itemTag 
+            ? (itemTag as { name: string }).name === tag 
+            : itemTag === tag
+        )
+      );
+      if (!hasMatchingTag) return false;
+    }
+
+    // Cohort filter (for profiles)
+    if (filters.cohort !== undefined) {
+      const itemCohort = (item as { cohort?: number }).cohort;
+      if (itemCohort !== filters.cohort) return false;
+    }
+
+    // User type filter (for profiles)
+    if (filters.userType) {
+      const itemType = (item as { user_type?: string }).user_type;
+      if (itemType !== filters.userType) return false;
+    }
+
+    // Date range filter
+    if (filters.dateFrom || filters.dateTo) {
+      const itemDate = new Date((item as { date?: string; created_at?: string }).date || (item as { created_at?: string }).created_at);
+      if (filters.dateFrom && itemDate < filters.dateFrom) return false;
+      if (filters.dateTo && itemDate > filters.dateTo) return false;
+    }
+
+    return true;
+  });
 }
 
 export function sortProfiles(profiles: Profile[], sortOption: SortOption): Profile[] {
