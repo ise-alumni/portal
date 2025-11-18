@@ -181,14 +181,16 @@ const Directory = () => {
                           {getCohortLabel(profile.cohort)}
                         </Badge>
                       )}
-                      {profile.msc ? (
-                        <Badge variant="outline" className="text-xs">
-                          MSc
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          BSc
-                        </Badge>
+                      {profile.user_type !== "Staff" && (
+                        profile.msc ? (
+                          <Badge variant="outline" className="text-xs">
+                            MSc
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            BSc
+                          </Badge>
+                        )
                       )}
                       {profile.graduation_year && (
                         <Badge variant="secondary" className="text-xs">
