@@ -282,7 +282,7 @@ const AnnouncementDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MegaphoneIcon className="w-5 h-5" />
-                Announcement Information
+               Info 
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -313,7 +313,7 @@ const AnnouncementDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileTextIcon className="w-5 h-5" />
-                About This Announcement
+                Details
               </CardTitle>
             </CardHeader>
             <CardContent>

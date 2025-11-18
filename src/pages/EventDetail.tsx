@@ -273,7 +273,7 @@ const EventDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5" />
-                Event Information
+                Info
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -314,7 +314,7 @@ const EventDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileTextIcon className="w-5 h-5" />
-                About This Event
+                Details
               </CardTitle>
             </CardHeader>
             <CardContent>
