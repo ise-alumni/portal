@@ -13,6 +13,7 @@ import Map from "./pages/Map";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Directory from "./pages/Directory";
+import ProfilePage from "./pages/ProfilePage";
 import Layout from "@/components/Layout";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/events" element={<Layout><Events /></Layout>} />
             <Route path="/events/:id" element={<Layout><EventDetail /></Layout>} />
             <Route path="/directory" element={<Layout><Directory /></Layout>} />
+            <Route path="/profile/:id" element={<Layout><ProfilePage /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

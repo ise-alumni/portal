@@ -1,6 +1,6 @@
 // Common types used across the application
 
-export type UserRole = 'Alum' | 'Staff' | 'Admin';
+export type UserRole = 'Alum' | 'Staff' | 'Admin' ;
 
 export interface PaginationState {
   currentPage: number;
