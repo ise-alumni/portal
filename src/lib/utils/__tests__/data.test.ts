@@ -104,7 +104,6 @@ const mockEvents: EventData[] = [
   { 
     id: '1', 
     title: 'React Workshop', 
-    slug: 'react-workshop',
     description: 'Learn React basics', 
     location: 'Online',
     location_url: null,
@@ -124,7 +123,6 @@ const mockEvents: EventData[] = [
   { 
     id: '2', 
     title: 'Networking Event', 
-    slug: 'networking-event',
     description: 'Meet alumni', 
     location: 'Office',
     location_url: null,
@@ -143,7 +141,6 @@ const mockEvents: EventData[] = [
   { 
     id: '3', 
     title: 'Career Fair', 
-    slug: 'career-fair',
     description: 'Job opportunities', 
     location: 'Campus',
     location_url: null,
@@ -167,41 +164,41 @@ const mockAnnouncements: Announcement[] = [
     id: '1', 
     title: 'Job Opening', 
     content: 'Software engineer position',
-    type: 'opportunity',
     external_url: null,
     deadline: null,
     image_url: null,
     created_at: '2024-01-10',
     updated_at: '2024-01-10',
     created_by: '1',
-    slug: 'job-opening'
+    slug: 'job-opening',
+    organiser_profile_id: null
   },
   { 
     id: '2', 
     title: 'New Course', 
     content: 'Advanced React course',
-    type: 'lecture',
     external_url: null,
     deadline: null,
     image_url: null,
     created_at: '2024-01-15',
     updated_at: '2024-01-15',
     created_by: '1',
-    slug: 'new-course'
+    slug: 'new-course',
+    organiser_profile_id: null
   },
   { 
     id: '3', 
     title: 'Alumni Meetup', 
     content: 'Monthly gathering',
-    type: 'program',
     external_url: null,
     deadline: null,
     image_url: null,
     created_at: '2024-01-20',
     updated_at: '2024-01-20',
     created_by: '1',
-    slug: 'alumni-meetup'
-  },
+    slug: 'alumni-meetup',
+    organiser_profile_id: null
+  }
 ]
 
 describe('filterData', () => {

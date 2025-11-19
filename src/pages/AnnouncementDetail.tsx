@@ -18,7 +18,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditAnnouncementModal from "@/components/EditAnnouncementModal";
-// import { getAnnouncementBySlug } from '@/lib/domain/announcements';
+// import { getAnnouncementById } from '@/lib/domain/announcements';
 import { log } from '@/lib/utils/logger';
 import type { ProfileRow, AnnouncementRow } from '@/integrations/supabase/types';
 
@@ -35,6 +35,13 @@ interface AnnouncementData {
   created_at: string;
   updated_at: string;
   slug: string | null;
+  organiser_profile_id: string | null;
+  organiser?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    email_visible: boolean | null;
+  } | null;
   tags?: Array<{ id: string; name: string; color: string }>;
   creator?: ProfileRow | null;
 }
@@ -91,33 +98,35 @@ const AnnouncementDetail = () => {
          throw new Error('Announcement not found');
        }
 
-        // Transform data to match our interface
-        const announcementData = data as AnnouncementRow & { 
-          organiser?: { id: string; full_name: string | null; email: string | null } | null;
-          announcement_tags?: Array<{ 
-            tag_id: string; 
-              tags: { id: string; name: string; color: string } 
-          }> 
-        };
+         // Transform data to match our interface
+         const announcementData = data as AnnouncementRow & { 
+           organiser?: { id: string; full_name: string | null; email: string | null; email_visible: boolean | null } | null;
+           announcement_tags?: Array<{ 
+             tag_id: string; 
+               tags: { id: string; name: string; color: string } 
+           }> 
+         };
         
-        const transformedData: AnnouncementData = {
-          id: announcementData.id,
-          title: announcementData.title,
-          content: announcementData.content,
-          external_url: announcementData.external_url,
-          deadline: announcementData.deadline,
-          image_url: announcementData.image_url || null,
-          created_by: announcementData.created_by,
-          created_at: announcementData.created_at,
-          updated_at: announcementData.updated_at,
-          slug: announcementData.slug,
-          tags: announcementData.announcement_tags?.map((tagRelation) => ({
-            id: tagRelation.tags.id,
-            name: tagRelation.tags.name,
-            color: tagRelation.tags.color
-          })) || [],
-          creator: announcementData.organiser as ProfileRow | null, // Use organiser as creator
-        };
+         const transformedData: AnnouncementData = {
+         id: announcementData.id,
+         title: announcementData.title,
+         content: announcementData.content,
+         external_url: announcementData.external_url,
+         deadline: announcementData.deadline,
+         image_url: announcementData.image_url || 'https://placehold.co/600x400',
+         created_by: announcementData.created_by,
+         created_at: announcementData.created_at,
+         updated_at: announcementData.updated_at,
+         slug: announcementData.slug,
+         organiser_profile_id: announcementData.organiser_profile_id,
+         organiser: announcementData.organiser,
+         tags: announcementData.announcement_tags?.map((tagRelation) => ({
+           id: tagRelation.tags.id,
+           name: tagRelation.tags.name,
+           color: tagRelation.tags.color
+         })) || [],
+           creator: announcementData.organiser as ProfileRow | null, // Use organiser as creator
+         };
 
        setAnnouncement(transformedData);
     } catch (err) {
@@ -389,7 +398,7 @@ const AnnouncementDetail = () => {
                   {announcement.creator?.full_name || 'Unknown'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {announcement.creator?.email || 'No email available'}
+                  {announcement.creator?.email_visible && announcement.creator?.email ? announcement.creator.email : 'Email hidden'}
                 </p>
               </div>
             </CardContent>
