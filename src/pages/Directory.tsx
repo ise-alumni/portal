@@ -149,12 +149,16 @@ const Directory = () => {
             <Card key={profile.id} className="h-full hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
-                  {profile.avatar_url && (
+                  {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
                       alt={`${profile.full_name || "User"} avatar`}
                       className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0"
                     />
+                  ) : (
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-medium text-sm">
+                      {profile.full_name ? profile.full_name.split(' ').map(word => word[0]).join('').toUpperCase() : 'U'}
+                    </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <CardTitle className="text-base sm:text-lg mb-2 leading-tight">
