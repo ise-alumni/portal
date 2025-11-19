@@ -35,7 +35,6 @@ interface AnnouncementData {
   deadline: string | null;
   image_url: string | null;
   created_by: string;
-  tag_ids: string[];
 }
 
 interface NewEventModalProps {
@@ -182,25 +181,61 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
         data = eventData;
       } else {
         // Announcement mode
-        data = {
+        // Convert selected tag names to UUIDs
+        const tagIds: string[] = [];
+        
+        for (const tagName of selectedTags) {
+          // Find existing tag
+          const { data: existingTag } = await supabase
+            .from('tags')
+            .select('id')
+            .eq('name', tagName)
+            .single();
+
+          if (existingTag && (existingTag as { id: string }).id) {
+            tagIds.push((existingTag as { id: string }).id);
+          } else {
+            log.error('Tag not found in database:', tagName);
+          }
+        }
+
+        // Create announcement without tags first
+        const announcementData = {
           title: eventName,
           content: description || null,
           external_url: externalUrl || null,
           deadline: deadline || null,
           image_url: imageUrl || null,
           created_by: user.id,
-          tag_ids: selectedTags,
         };
 
-        const { error: insertError } = await (supabase as any)
+        const { data: createdAnnouncement, error: insertError } = await (supabase as any)
           .from('announcements')
-          .insert(data)
+          .insert(announcementData)
           .select()
           .single();
 
         if (insertError) {
           throw insertError;
         }
+
+        // Now insert tag relationships into announcement_tags junction table
+        if (tagIds.length > 0 && createdAnnouncement?.id) {
+          const announcementTagRelations = tagIds.map(tagId => ({
+            announcement_id: createdAnnouncement.id,
+            tag_id: tagId
+          }));
+
+          const { error: tagInsertError } = await (supabase as any)
+            .from('announcement_tags')
+            .insert(announcementTagRelations);
+
+          if (tagInsertError) {
+            throw tagInsertError;
+          }
+        }
+
+        data = announcementData;
       }
 
       // Reset form and close modal
@@ -263,27 +298,49 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           {/* Tag Selection - Only show for announcements */}
           {mode === 'announcement' && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Tags</Label>
-              <div className="flex flex-wrap gap-2">
-                {getEventTagOptions().map(tagOption => (
-                  <label key={tagOption.value} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      value={tagOption.value}
-                      checked={selectedTags.includes(tagOption.value)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTags([...selectedTags, tagOption.value]);
-                        } else {
-                          setSelectedTags(selectedTags.filter(t => t !== tagOption.value));
-                        }
-                      }}
-                      disabled={isCreating}
-                      className="rounded"
-                    />
-                    <span className="text-sm">{tagOption.label}</span>
-                  </label>
-                ))}
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <FileTextIcon className="w-4 h-4" />
+                Tags
+              </Label>
+              <div className="space-y-2">
+                {/* Available tags */}
+                <div className="flex flex-wrap gap-2">
+                  {getEventTagOptions().map((tag) => {
+                    const isSelected = selectedTags.includes(tag.value);
+                    return (
+                      <button
+                        key={tag.value}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTags(selectedTags.filter(t => t !== tag.value));
+                          } else {
+                            setSelectedTags([...selectedTags, tag.value]);
+                          }
+                        }}
+                        disabled={isCreating}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={{
+                          backgroundColor: isSelected ? tag.color : undefined,
+                        }}
+                      >
+                        {tag.label}
+                        {isSelected && (
+                          <X className="w-3 h-3 ml-1 inline" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTags.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Select tags to categorize this announcement
+                  </p>
+                )}
               </div>
             </div>
           )}
