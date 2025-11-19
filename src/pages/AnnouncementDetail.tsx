@@ -63,7 +63,18 @@ const AnnouncementDetail = () => {
       // Fetch announcement with creator profile data and tags
       const { data, error: fetchError } = await supabase
         .from('announcements')
-        .select('*')
+        .select(`
+          *,
+          announcement_tags!inner(
+            tag_id,
+              tags!inner(
+                id,
+                name,
+                color
+              )
+            )
+          )
+        `)
         .eq('id', id)
         .single();
 
@@ -75,8 +86,14 @@ const AnnouncementDetail = () => {
          throw new Error('Announcement not found');
        }
 
-       // Transform the data to match our interface
-       const announcementData: AnnouncementRow = data;
+       // Transform data to match our interface
+       const announcementData = data as AnnouncementRow & { 
+         announcement_tags?: Array<{ 
+           tag_id: string; 
+             tags: { id: string; name: string; color: string } 
+         }> 
+       };
+       
        const transformedData: AnnouncementData = {
          id: announcementData.id,
          title: announcementData.title,
@@ -88,7 +105,11 @@ const AnnouncementDetail = () => {
          created_at: announcementData.created_at,
          updated_at: announcementData.updated_at,
          slug: announcementData.slug,
-         tags: [], // TODO: Fetch tags separately when relations are fixed
+         tags: announcementData.announcement_tags?.map((tagRelation) => ({
+           id: tagRelation.tags.id,
+           name: tagRelation.tags.name,
+           color: tagRelation.tags.color
+         })) || [],
          creator: null, // We'll fetch this separately if needed
        };
 

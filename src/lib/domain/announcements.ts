@@ -9,7 +9,17 @@ type SupabaseAny = any;
 export async function getAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase
     .from('announcements')
-    .select('*')
+    .select(`
+      *,
+      announcement_tags!inner(
+        tag_id,
+        tags!inner(
+          id,
+          name,
+          color
+        )
+      )
+    `)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -17,25 +27,48 @@ export async function getAnnouncements(): Promise<Announcement[]> {
     return [];
   }
 
-  return data?.map((announcement: AnnouncementRow) => ({
-    id: announcement.id,
-    title: announcement.title,
-    content: announcement.content,
-    external_url: announcement.external_url,
-    deadline: announcement.deadline,
-    image_url: announcement.image_url || 'https://placehold.co/600x400',
-    created_by: announcement.created_by,
-    created_at: announcement.created_at,
-    updated_at: announcement.updated_at,
-    slug: announcement.slug,
-    tags: [] // TODO: Fetch tags separately when relation is fixed
-  })) || [];
+  return data?.map((announcement) => {
+    const ann = announcement as AnnouncementRow & { 
+      announcement_tags?: Array<{ 
+        tag_id: string; 
+        tags: { id: string; name: string; color: string } 
+      }> 
+    };
+    
+    return {
+      id: ann.id,
+      title: ann.title,
+      content: ann.content,
+      external_url: ann.external_url,
+      deadline: ann.deadline,
+      image_url: ann.image_url || 'https://placehold.co/600x400',
+      created_by: ann.created_by,
+      created_at: ann.created_at,
+      updated_at: ann.updated_at,
+      slug: ann.slug,
+      tags: ann.announcement_tags?.map((tagRelation) => ({
+        id: tagRelation.tags.id,
+        name: tagRelation.tags.name,
+        color: tagRelation.tags.color
+      })) || []
+    };
+  }) || [];
 }
 
 export async function getAnnouncementBySlug(slug: string): Promise<Announcement | null> {
   const { data, error } = await supabase
     .from('announcements')
-    .select('*')
+    .select(`
+      *,
+      announcement_tags!inner(
+        tag_id,
+        tags!inner(
+          id,
+          name,
+          color
+        )
+      )
+    `)
     .eq('slug', slug)
     .single();
 
@@ -48,20 +81,29 @@ export async function getAnnouncementBySlug(slug: string): Promise<Announcement 
     return null;
   }
 
-  const announcement: AnnouncementRow = data;
-  const result: AnnouncementRow = data as AnnouncementRow;
+  const announcement = data as AnnouncementRow & { 
+    announcement_tags?: Array<{ 
+      tag_id: string; 
+        tags: { id: string; name: string; color: string } 
+    }> 
+  };
+  
   return {
-    id: result.id,
-    title: result.title,
-    content: result.content,
-    external_url: result.external_url,
-    deadline: result.deadline,
-    image_url: result.image_url || 'https://placehold.co/600x400',
-    created_by: result.created_by,
-    created_at: result.created_at,
-    updated_at: result.updated_at,
-    slug: result.slug,
-    tags: [] // TODO: Fetch tags separately when relation is fixed
+    id: announcement.id,
+    title: announcement.title,
+    content: announcement.content,
+    external_url: announcement.external_url,
+    deadline: announcement.deadline,
+    image_url: announcement.image_url || 'https://placehold.co/600x400',
+    created_by: announcement.created_by,
+    created_at: announcement.created_at,
+    updated_at: announcement.updated_at,
+    slug: announcement.slug,
+    tags: announcement.announcement_tags?.map((tagRelation) => ({
+      id: tagRelation.tags.id,
+      name: tagRelation.tags.name,
+      color: tagRelation.tags.color
+    })) || []
   };
 }
 
@@ -101,13 +143,13 @@ export async function createAnnouncement(announcement: NewAnnouncement, userId: 
       tag_id
     }));
     
-    // Skip tag association for now - TODO: Fix when database relations are working
-    // const { error: tagError } = await (supabase.from('announcement_tags') as any)
-    //   .insert(tagRelations);
+    const { error: tagError } = await (supabase.from('announcement_tags') as SupabaseAny)
+      .insert(tagRelations);
 
-    // if (tagError) {
-    //   log.error('Error associating tags with announcement:', tagError);
-    // }
+    if (tagError) {
+      log.error('Error associating tags with announcement:', tagError);
+      // Don't return null here - announcement was created successfully
+    }
   }
 
   return {
