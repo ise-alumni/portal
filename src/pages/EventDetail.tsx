@@ -19,12 +19,42 @@ import {
 } from "lucide-react";
 import EditEventModal from "@/components/EditEventModal";
 import { log } from '@/lib/utils/logger';
+import { SupabaseClient } from '@/integrations/supabase/types';
+
+// Temporary interface for Supabase response
+interface SupabaseEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  location_url: string | null;
+  registration_url: string | null;
+  start_at: string;
+  end_at: string | null;
+  organiser_profile_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  image_url: string | null;
+  event_tags?: Array<{
+    tag: {
+      id: string;
+      name: string;
+      color: string;
+    };
+  }>;
+  organiser?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    email_visible: boolean | null;
+  };
+}
 
 // Event data interface
 interface EventData {
   id: string;
   title: string;
-  slug: string;
   description: string | null;
   location: string | null;
   location_url: string | null;
@@ -41,6 +71,7 @@ interface EventData {
     id: string;
     full_name: string | null;
     email: string | null;
+    email_visible: boolean | null;
   };
 }
 
@@ -66,14 +97,15 @@ const EventDetail = () => {
       setError(null);
 
       // Fetch event with organiser profile data and tags
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await (supabase as SupabaseClient)
         .from('events')
         .select(`
           *,
           organiser:organiser_profile_id (
             id,
             full_name,
-            email
+            email,
+            email_visible
           ),
           event_tags (
             tag:tags (
@@ -90,11 +122,27 @@ const EventDetail = () => {
         throw fetchError;
       }
 
+      if (!data) {
+        throw new Error('Event not found');
+      }
+
       // Transform the data to match our interface
-      const transformedData = {
-        ...data,
-        image_url: (data as { image_url?: string | null }).image_url || null,
-        tags: data.event_tags?.map((et: { tag: { id: string; name: string; color: string } }) => et.tag) || null,
+      const transformedData: EventData = {
+        id: (data as SupabaseEvent).id,
+        title: (data as SupabaseEvent).title,
+        description: (data as SupabaseEvent).description,
+        location: (data as SupabaseEvent).location,
+        location_url: (data as SupabaseEvent).location_url,
+        registration_url: (data as SupabaseEvent).registration_url,
+        start_at: (data as SupabaseEvent).start_at,
+        end_at: (data as SupabaseEvent).end_at,
+        organiser_profile_id: (data as SupabaseEvent).organiser_profile_id,
+        created_by: (data as SupabaseEvent).created_by,
+        created_at: (data as SupabaseEvent).created_at,
+        updated_at: (data as SupabaseEvent).updated_at,
+        image_url: (data as SupabaseEvent).image_url || null,
+        tags: (data as SupabaseEvent).event_tags?.map((et: { tag: { id: string; name: string; color: string } }) => et.tag) || null,
+        organiser: (data as SupabaseEvent).organiser,
       };
 
       setEvent(transformedData);
@@ -390,7 +438,7 @@ const EventDetail = () => {
                   {event.organiser?.full_name || 'Unknown Organiser'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {event.organiser?.email || 'No email available'}
+                  {event.organiser?.email_visible && event.organiser?.email ? event.organiser.email : 'Email hidden'}
                 </p>
               </div>
             </CardContent>

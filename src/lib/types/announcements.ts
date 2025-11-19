@@ -16,7 +16,6 @@ export interface Announcement {
   created_at: string;
   updated_at: string;
   created_by: string;
-  slug: string | null;
   organiser_profile_id: string | null;
   tags?: Tag[];
   organiser?: {

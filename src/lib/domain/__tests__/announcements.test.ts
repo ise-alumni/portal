@@ -43,8 +43,7 @@ const createTestAnnouncement = (overrides: Partial<Announcement> = {}): Announce
   created_at: '2024-01-15T10:00:00Z',
   updated_at: '2024-01-15T10:00:00Z',
   created_by: 'user-1',
-  slug: 'test-announcement',
-  tags: [],
+  organiser_profile_id: null,
   ...overrides
 })
 
@@ -55,32 +54,13 @@ describe('Announcements domain functions', () => {
 
   describe('getAnnouncements', () => {
     it('should fetch announcements successfully', async () => {
-      const mockAnnouncements = [
-        {
-          id: '1',
-          title: 'Test Announcement',
-          content: 'Test content',
-          external_url: null,
-          deadline: null,
-          image_url: null,
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
-          created_by: 'user-123',
-          slug: 'test-announcement'
-        },
-        {
-          id: '2',
-          title: 'Another Announcement',
-          content: 'Another content',
-          external_url: null,
-          deadline: null,
-          image_url: null,
-          created_at: '2024-01-14T10:00:00Z',
-          updated_at: '2024-01-14T10:00:00Z',
-          created_by: 'user-123',
-          slug: 'another-announcement'
-        }
-      ]
+  const mockAnnouncements = [
+    createTestAnnouncement(),
+    createTestAnnouncement({ 
+      title: 'Another Announcement', 
+      content: 'Another content'
+    })
+  ]
 
       // Create mock chain step by step
       const mockOrder = vi.fn().mockResolvedValue({
@@ -170,8 +150,7 @@ describe('Announcements domain functions', () => {
         deadline: null,
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-01-15T10:00:00Z',
-        created_by: 'user-123',
-        slug: 'test-announcement'
+        created_by: 'user-123'
       }
 
       const mockOrder = vi.fn().mockResolvedValue({
@@ -322,7 +301,8 @@ describe('Announcements domain functions', () => {
         content: 'New content',
         external_url: null,
         deadline: null,
-        image_url: null
+        image_url: null,
+        organiser_profile_id: null
       }
 
       const createdAnnouncement = {
@@ -330,8 +310,7 @@ describe('Announcements domain functions', () => {
         ...newAnnouncement,
         created_by: 'user-123',
         created_at: '2024-01-15T10:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        slug: 'new-announcement'
+        updated_at: '2024-01-15T10:00:00Z'
       }
 
       const mockSingle = vi.fn().mockResolvedValue({
@@ -346,11 +325,21 @@ describe('Announcements domain functions', () => {
       const result = await createAnnouncement(newAnnouncement, 'user-123')
 
       expect(mockedSupabase.from).toHaveBeenCalledWith('announcements')
-      expect(result).toEqual({
-        ...createdAnnouncement,
+      const expectedResult: Announcement = {
+        id: '1',
+        title: 'New Announcement',
+        content: 'New content',
+        external_url: null,
+        deadline: null,
         image_url: 'https://placehold.co/600x400',
+        created_by: 'user-123',
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        organiser_profile_id: null,
         tags: []
-      })
+      }
+      
+      expect(result).toEqual(expectedResult)
     })
 
     it('should handle creation errors gracefully', async () => {
@@ -371,6 +360,7 @@ describe('Announcements domain functions', () => {
         external_url: null,
         deadline: null,
         image_url: null,
+        organiser_profile_id: null,
         tag_ids: []
       }, 'user-123')
 

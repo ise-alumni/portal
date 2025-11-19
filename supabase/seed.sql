@@ -40,7 +40,6 @@ INSERT INTO auth.users (
 -- Create test events with the dummy user
 INSERT INTO public.events (
   title,
-  slug,
   description,
   location,
   location_url,
@@ -53,7 +52,6 @@ INSERT INTO public.events (
 ) VALUES 
 (
   'Alumni Dinner    ',
-  'alumni-dinner-2025',
   'Join us for our annual alumni dinner. This is a great opportunity to catch up with fellow alumni and network.',
   'Limerick',
   'https://maps.google.com/',
@@ -66,7 +64,6 @@ INSERT INTO public.events (
 ),
 (
   'Hack Night at DogPatch Labs',
-  'hack-night-2025',
   'Here is the github link, [here](https://github.com). A collaborative coding night where alumni come together to work on projects, share knowledge, and build something amazing. Bring your laptop and ideas!',
   'DogPatch Labs',
   'https://maps.google.com/', 
@@ -79,7 +76,6 @@ INSERT INTO public.events (
 ),
 (
   'Career Roundtable',
-  'career-roundtable-november',
   'An intimate discussion about career transitions, leadership, and professional growth. Share your experiences and learn from fellow alumni.',
   'Remote',
   'https://maps.google.com/',

@@ -62,7 +62,6 @@ export interface TagRow {
 export interface EventRow {
   id: string;
   title: string;
-  slug: string;
   description: string | null;
   location: string | null;
   location_url: string | null;
@@ -106,7 +105,7 @@ export interface Database {
       }
       events: {
         Row: EventRow;
-        Insert: Partial<EventRow> & Pick<EventRow, 'title' | 'slug' | 'start_at' | 'created_by'>;
+        Insert: Partial<EventRow> & Pick<EventRow, 'title' | 'start_at' | 'created_by'>;
         Update: Partial<EventRow>;
       }
       event_tags: {

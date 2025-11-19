@@ -17,7 +17,6 @@ import { getEventTagsSync, isValidEventTag, getEventTagOptions } from '@/lib/con
 
 interface EventData {
   title: string;
-  slug: string;
   description: string | null;
   location: string | null;
   location_url: string | null;
@@ -62,12 +61,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
   const [imageUrl, setImageUrl] = useState<string>("");
   const { user } = useAuth();
 
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  };
+
 
   const handleCreate = async () => {
     if (mode === 'event') {
@@ -141,7 +135,6 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
         // Create event without tags first
         const eventData = {
           title: eventName,
-          slug: generateSlug(eventName),
           description: description || null,
           location: location || null,
           location_url: link || null,

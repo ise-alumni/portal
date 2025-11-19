@@ -35,7 +35,6 @@ interface EditEventModalProps {
   onClose: () => void;
   onSubmit: (data: {
     title: string;
-    slug: string;
     description: string | null;
     location: string | null;
     location_url: string | null;
@@ -94,12 +93,7 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
     }
   }, [event, isOpen]);
 
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  };
+
 
   const handleUpdate = async () => {
     if (!event) return;
@@ -157,7 +151,6 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
 
       const eventData = {
         title: eventName,
-        slug: generateSlug(eventName),
         description: description || null,
         location: location || null,
         location_url: link || null,

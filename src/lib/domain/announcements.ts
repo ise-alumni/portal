@@ -14,7 +14,8 @@ export async function getAnnouncements(): Promise<Announcement[]> {
       organiser:organiser_profile_id (
         id,
         full_name,
-        email
+        email,
+        email_visible
       ),
       announcement_tags!inner(
         tag_id,
@@ -34,7 +35,7 @@ export async function getAnnouncements(): Promise<Announcement[]> {
 
   return data?.map((announcement) => {
     const ann = announcement as AnnouncementRow & { 
-      organiser?: { id: string; full_name: string | null; email: string | null } | null;
+      organiser?: { id: string; full_name: string | null; email: string; email_visible: boolean } | null;
       announcement_tags?: Array<{ 
         tag_id: string; 
         tags: { id: string; name: string; color: string } 
@@ -63,7 +64,7 @@ export async function getAnnouncements(): Promise<Announcement[]> {
   }) || [];
 }
 
-export async function getAnnouncementBySlug(slug: string): Promise<Announcement | null> {
+export async function getAnnouncementById(id: string): Promise<Announcement | null> {
   const { data, error } = await supabase
     .from('announcements')
     .select(`
@@ -71,7 +72,8 @@ export async function getAnnouncementBySlug(slug: string): Promise<Announcement 
       organiser:organiser_profile_id (
         id,
         full_name,
-        email
+        email,
+        email_visible
       ),
       announcement_tags!inner(
         tag_id,
@@ -82,20 +84,15 @@ export async function getAnnouncementBySlug(slug: string): Promise<Announcement 
         )
       )
     `)
-    .eq('slug', slug)
+    .eq('id', id)
     .single();
-
-  if (error) {
-    log.error('Error fetching announcement:', error);
-    return null;
-  }
 
   if (!data) {
     return null;
   }
 
   const announcement = data as AnnouncementRow & { 
-    organiser?: { id: string; full_name: string | null; email: string | null } | null;
+    organiser?: { id: string; full_name: string | null; email: string; email_visible: boolean } | null;
     announcement_tags?: Array<{ 
       tag_id: string; 
         tags: { id: string; name: string; color: string } 
@@ -133,47 +130,80 @@ export function isAnnouncementActive(announcement: Announcement): boolean {
 }
 
 export async function createAnnouncement(announcement: NewAnnouncement, userId: string): Promise<Announcement | null> {
-  // First create announcement
-  const { data, error } = await (supabase
-    .from('announcements') as SupabaseAny)
-    .insert({
-      title: announcement.title,
-      content: announcement.content,
-      external_url: announcement.external_url,
-      deadline: announcement.deadline,
-      image_url: announcement.image_url,
-      organiser_profile_id: announcement.organiser_profile_id,
-      created_by: userId,
-    })
-    .select()
-    .single();
+  try {
+    // Get current user's profile to set as organiser
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
 
-  if (error) {
-    log.error('Error creating announcement:', error);
+    // Create announcement without tags first
+    const { data: createdAnnouncement, error: insertError } = await (supabase as SupabaseAny)
+      .from('announcements')
+      .insert({
+        title: announcement.title,
+        content: announcement.content,
+        external_url: announcement.external_url,
+        deadline: announcement.deadline,
+        image_url: announcement.image_url,
+        organiser_profile_id: (profile as { id: string })?.id || null,
+        created_by: userId
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      log.error('Error creating announcement:', insertError);
+      return null;
+    }
+
+    // Now insert tag relationships if any tags were provided
+    if (announcement.tag_ids && announcement.tag_ids.length > 0 && createdAnnouncement?.id) {
+      const tagRelations = announcement.tag_ids.map(tagId => ({
+        announcement_id: createdAnnouncement.id,
+        tag_id: tagId
+      }));
+
+      const { error: tagInsertError } = await (supabase as SupabaseAny)
+        .from('announcement_tags')
+        .insert(tagRelations);
+
+      if (tagInsertError) {
+        log.error('Error inserting announcement tags:', tagInsertError);
+        // Don't fail the entire operation if tag insertion fails
+      }
+    }
+
+    const announcementData = createdAnnouncement as AnnouncementRow & { 
+      organiser?: { id: string; full_name: string | null; email: string; email_visible: boolean } | null;
+      announcement_tags?: Array<{ 
+        tag_id: string; 
+        tags: { id: string; name: string; color: string } 
+      }> 
+    };
+
+    return {
+      id: announcementData.id,
+      title: announcementData.title,
+      content: announcementData.content,
+      external_url: announcementData.external_url,
+      deadline: announcementData.deadline,
+      image_url: announcementData.image_url || 'https://placehold.co/600x400',
+      created_by: announcementData.created_by,
+      created_at: announcementData.created_at,
+      updated_at: announcementData.updated_at,
+      slug: announcementData.slug,
+      organiser_profile_id: announcementData.organiser_profile_id,
+      organiser: announcementData.organiser,
+      tags: announcementData.announcement_tags?.map((tagRelation) => ({
+        id: tagRelation.tags.id,
+        name: tagRelation.tags.name,
+        color: tagRelation.tags.color
+      })) || []
+    };
+  } catch (err) {
+    log.error('Error creating announcement:', err);
     return null;
   }
-
-  // Then associate tags if provided
-  if (announcement.tag_ids && announcement.tag_ids.length > 0) {
-    const tagRelations = announcement.tag_ids.map((tag_id: string) => ({
-      announcement_id: data.id,
-      tag_id
-    }));
-    
-    const { error: tagError } = await (supabase.from('announcement_tags') as SupabaseAny)
-      .insert(tagRelations);
-
-    if (tagError) {
-      log.error('Error associating tags with announcement:', tagError);
-      // Don't return null here - announcement was created successfully
-    }
-  }
-
-  return {
-    ...data,
-    image_url: data.image_url || 'https://placehold.co/600x400',
-    organiser_profile_id: data.organiser_profile_id,
-    organiser: null, // Will be populated when fetched again
-    tags: [] // Will be populated when fetched again
-  };
 }
