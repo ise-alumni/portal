@@ -226,7 +226,9 @@ const Directory = () => {
                   ) : (
                     <div className="text-sm text-muted-foreground">(email hidden)</div>
                   )}
-                  {user && user.id === profile.id && (
+                </CardDescription>
+                {user && user.id === profile.id && (
+                  <div className="px-6 pb-6 pt-0">
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -235,8 +237,8 @@ const Directory = () => {
                     >
                       Edit Profile
                     </Button>
-                  )}
-                </CardDescription>
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="pt-0">
