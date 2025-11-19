@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -18,7 +18,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditAnnouncementModal from "@/components/EditAnnouncementModal";
-import { getAnnouncementBySlug } from '@/lib/domain/announcements';
+// import { getAnnouncementBySlug } from '@/lib/domain/announcements';
 import { log } from '@/lib/utils/logger';
 
 // Announcement data interface
@@ -48,29 +48,57 @@ const AnnouncementDetail = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    const fetchAnnouncement = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchAnnouncement = useCallback(async () => {
+    if (!id) {
+      setError("No announcement ID provided");
+      setLoading(false);
+      return;
+    }
 
-        const data = await getAnnouncementBySlug(id);
+    try {
+      setLoading(true);
+      setError(null);
 
-        if (!data) {
-          throw new Error('Announcement not found');
-        }
+      // Fetch announcement with creator profile data and tags
+      const { data, error: fetchError } = await supabase
+        .from('announcements')
+        .select(`
+          *,
+          announcement_tags (
+            tag:tags (
+              id,
+              name,
+              color
+            )
+          )
+        `)
+        .eq('id', id)
+        .single();
 
-        setAnnouncement(data as any);
-      } catch (err) {
-        log.error('Error fetching announcement:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
-      } finally {
-        setLoading(false);
+      if (fetchError) {
+        throw fetchError;
       }
-    };
 
-    fetchAnnouncement();
+      // Transform the data to match our interface
+      const transformedData = {
+        ...data,
+        image_url: data.image_url || null,
+        tags: data.announcement_tags?.map((at: any) => at.tag) || [],
+        creator: null, // We'll fetch this separately if needed
+      };
+
+      setAnnouncement(transformedData as any);
+    } catch (err) {
+      log.error('Error fetching announcement:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchAnnouncement();
+  }, [id, fetchAnnouncement]);
 
   // Loading state
   if (loading) {
