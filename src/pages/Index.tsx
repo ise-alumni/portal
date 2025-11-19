@@ -282,11 +282,20 @@ const Index = () => {
                        <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
                      </div>
            </div>
-                  <div className="flex flex-col md:flex-row md:justify-end">
-                    <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
-                      {saving ? 'Saving…' : 'Save Profile'}
-            </Button>
-          </div>
+                   <div className="flex flex-col md:flex-row md:justify-end gap-2">
+                     <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
+                       {saving ? 'Saving…' : 'Save Profile'}
+             </Button>
+                     {profile && (
+                       <Button 
+                         variant="outline" 
+                         onClick={() => navigate(`/profile/${profile.id}`)}
+                         className="w-full md:w-auto border-2 border-foreground shadow-none"
+                       >
+                         See Profile
+                       </Button>
+                     )}
+           </div>
                 </div>
               );
             })()

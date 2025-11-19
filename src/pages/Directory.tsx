@@ -9,15 +9,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Github, Linkedin, Twitter, ExternalLink, Search } from "lucide-react";
+import { Github, Linkedin, Twitter, ExternalLink, Search, ChevronRight } from "lucide-react";
 import { Profile } from "@/lib/types";
 import { getProfiles, searchProfiles } from '@/lib/domain/profiles';
 import { filterProfiles, sortProfiles, paginateData, type FilterOptions, type SortOption } from '@/lib/utils/data';
 import { getCohortLabel } from '@/lib/utils/ui';
 import { log } from '@/lib/utils/logger';
 import { getUserTypesSync } from '@/lib/constants';
+import { useNavigate } from "react-router-dom";
+import { useAuth } from '@/hooks/useAuth';
 
 const Directory = () => {
+  const { user } = useAuth();
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,6 +71,7 @@ const Directory = () => {
   });
   const paginatedProfiles = paginationResult.data;
   const totalPages = paginationResult.totalPages;
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -146,7 +150,7 @@ const Directory = () => {
         <>
           <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
             {paginatedProfiles.map((profile) => (
-            <Card key={profile.id} className="h-full hover:shadow-md transition-shadow">
+            <Card key={profile.id} className="h-full hover:shadow-md transition-shadow relative group cursor-pointer" onClick={() => navigate(`/profile/${profile.id}`)}>
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
                   {profile.avatar_url ? (
@@ -217,18 +221,25 @@ const Directory = () => {
                         .join(", ")}
                     </div>
                   )}
-                  {profile.email_visible && profile.email && (
+                  {profile.email_visible && profile.email ? (
                     <div className="text-sm">{profile.email}</div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">(email hidden)</div>
+                  )}
+                  {user && user.id === profile.id && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => navigate('/')}
+                      className="mt-2 w-full"
+                    >
+                      Edit Profile
+                    </Button>
                   )}
                 </CardDescription>
               </CardHeader>
 
               <CardContent className="pt-0">
-                {profile.bio && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                    {profile.bio}
-                  </p>
-                )}
 
                 {/* Social Links */}
                 {(profile.github_url ||
@@ -242,6 +253,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Github className="h-4 w-4" />
                         <span>GitHub</span>
@@ -253,6 +265,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Linkedin className="h-4 w-4" />
                         <span>LinkedIn</span>
@@ -264,6 +277,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Twitter className="h-4 w-4" />
                         <span>Twitter</span>
@@ -275,6 +289,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <ExternalLink className="h-4 w-4" />
                         <span>Website</span>
@@ -283,6 +298,31 @@ const Directory = () => {
                   </div>
                 )}
               </CardContent>
+              
+
+<div className="group">
+  <div
+    className="
+      absolute inset-y-0 right-0 w-[10%]
+      bg-white
+      group-hover:bg-foreground
+      transition-colors duration-200
+      flex items-center justify-center
+      pointer-events-none
+    "
+  >
+    <div
+      className="
+        p-1
+        text-black
+        group-hover:text-white
+        transition-colors duration-200
+      "
+    >
+      <ChevronRight className="h-4 w-4" />
+    </div>
+  </div>
+</div>
             </Card>
           ))}
         </div>
