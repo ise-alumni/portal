@@ -58,6 +58,27 @@ export interface TagRow {
   updated_at: string;
 }
 
+export interface EventRow {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  location: string | null;
+  location_url: string | null;
+  start_at: string;
+  end_at: string | null;
+  organiser_profile_id: string | null;
+  created_by: string;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventTagRow {
+  event_id: string;
+  tag_id: string;
+}
+
 // Legacy Database interface for compatibility
 export interface Database {
   public: {
@@ -81,6 +102,16 @@ export interface Database {
         Row: TagRow;
         Insert: Partial<TagRow> & Pick<TagRow, 'name'>;
         Update: Partial<TagRow>;
+      }
+      events: {
+        Row: EventRow;
+        Insert: Partial<EventRow> & Pick<EventRow, 'title' | 'slug' | 'start_at' | 'created_by'>;
+        Update: Partial<EventRow>;
+      }
+      event_tags: {
+        Row: EventTagRow;
+        Insert: EventTagRow;
+        Update: Partial<EventTagRow>;
       }
     }
     Views: {

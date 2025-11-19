@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
-import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogTitle, DialogHeader, DialogContent, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,7 +26,6 @@ interface EventData {
   organiser_profile_id: string | null;
   created_by: string;
   image_url: string | null;
-  tags: string[];
 }
 
 interface AnnouncementData {
@@ -132,14 +132,15 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
             .eq('name', tagName)
             .single();
 
-          if (existingTag) {
-            tagIds.push(existingTag.id);
+          if (existingTag && (existingTag as { id: string }).id) {
+            tagIds.push((existingTag as { id: string }).id);
           } else {
             log.error('Tag not found in database:', tagName);
           }
         }
 
-        data = {
+        // Create event without tags first
+        const eventData = {
           title: eventName,
           slug: generateSlug(eventName),
           description: description || null,
@@ -147,21 +148,38 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           location_url: link || null,
           start_at: startDateTime.toISOString(),
           end_at: endDateTime?.toISOString() || null,
-          organiser_profile_id: profile?.id || null,
+          organiser_profile_id: (profile as { id: string })?.id || null,
           created_by: user.id,
           image_url: imageUrl || null,
-          tags: tagIds,
         };
 
-        const { error: insertError } = await supabase
+        const { data: createdEvent, error: insertError } = await (supabase as any)
           .from('events')
-          .insert(data)
+          .insert(eventData)
           .select()
           .single();
 
         if (insertError) {
           throw insertError;
         }
+
+        // Now insert tag relationships into event_tags junction table
+        if (tagIds.length > 0 && createdEvent?.id) {
+          const eventTagRelations = tagIds.map(tagId => ({
+            event_id: createdEvent.id,
+            tag_id: tagId
+          }));
+
+          const { error: tagInsertError } = await (supabase as any)
+            .from('event_tags')
+            .insert(eventTagRelations);
+
+          if (tagInsertError) {
+            throw tagInsertError;
+          }
+        }
+
+        data = eventData;
       } else {
         // Announcement mode
         data = {
@@ -174,7 +192,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           tag_ids: selectedTags,
         };
 
-        const { error: insertError } = await supabase
+        const { error: insertError } = await (supabase as any)
           .from('announcements')
           .insert(data)
           .select()
@@ -216,9 +234,9 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           <DialogTitle className="text-2xl font-semibold">
             Create New {mode === 'event' ? 'Event' : 'Announcement'}
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <DialogDescription>
             Fill in the details below to add a new {mode === 'event' ? 'event' : 'announcement'}
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
