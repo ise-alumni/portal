@@ -17,7 +17,13 @@ export interface Announcement {
   updated_at: string;
   created_by: string;
   slug: string | null;
+  organiser_profile_id: string | null;
   tags?: Tag[];
+  organiser?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  } | null;
 }
 
 export interface NewAnnouncement {
@@ -26,6 +32,7 @@ export interface NewAnnouncement {
   external_url: string | null;
   deadline: string | null;
   image_url: string | null;
+  organiser_profile_id: string | null;
   tag_ids?: string[];
 }
 

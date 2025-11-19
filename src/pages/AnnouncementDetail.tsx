@@ -60,11 +60,16 @@ const AnnouncementDetail = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch announcement with creator profile data and tags
+      // Fetch announcement with organiser profile data and tags
       const { data, error: fetchError } = await supabase
         .from('announcements')
         .select(`
           *,
+          organiser:organiser_profile_id (
+            id,
+            full_name,
+            email
+          ),
           announcement_tags!inner(
             tag_id,
               tags!inner(
@@ -86,32 +91,33 @@ const AnnouncementDetail = () => {
          throw new Error('Announcement not found');
        }
 
-       // Transform data to match our interface
-       const announcementData = data as AnnouncementRow & { 
-         announcement_tags?: Array<{ 
-           tag_id: string; 
-             tags: { id: string; name: string; color: string } 
-         }> 
-       };
-       
-       const transformedData: AnnouncementData = {
-         id: announcementData.id,
-         title: announcementData.title,
-         content: announcementData.content,
-         external_url: announcementData.external_url,
-         deadline: announcementData.deadline,
-         image_url: announcementData.image_url || null,
-         created_by: announcementData.created_by,
-         created_at: announcementData.created_at,
-         updated_at: announcementData.updated_at,
-         slug: announcementData.slug,
-         tags: announcementData.announcement_tags?.map((tagRelation) => ({
-           id: tagRelation.tags.id,
-           name: tagRelation.tags.name,
-           color: tagRelation.tags.color
-         })) || [],
-         creator: null, // We'll fetch this separately if needed
-       };
+        // Transform data to match our interface
+        const announcementData = data as AnnouncementRow & { 
+          organiser?: { id: string; full_name: string | null; email: string | null } | null;
+          announcement_tags?: Array<{ 
+            tag_id: string; 
+              tags: { id: string; name: string; color: string } 
+          }> 
+        };
+        
+        const transformedData: AnnouncementData = {
+          id: announcementData.id,
+          title: announcementData.title,
+          content: announcementData.content,
+          external_url: announcementData.external_url,
+          deadline: announcementData.deadline,
+          image_url: announcementData.image_url || null,
+          created_by: announcementData.created_by,
+          created_at: announcementData.created_at,
+          updated_at: announcementData.updated_at,
+          slug: announcementData.slug,
+          tags: announcementData.announcement_tags?.map((tagRelation) => ({
+            id: tagRelation.tags.id,
+            name: tagRelation.tags.name,
+            color: tagRelation.tags.color
+          })) || [],
+          creator: announcementData.organiser as ProfileRow | null, // Use organiser as creator
+        };
 
        setAnnouncement(transformedData);
     } catch (err) {

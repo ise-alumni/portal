@@ -18,6 +18,7 @@ export interface AnnouncementRow {
   created_at: string;
   updated_at: string;
   slug: string | null;
+  organiser_profile_id: string | null;
 }
 
 export interface AnnouncementTagRow {

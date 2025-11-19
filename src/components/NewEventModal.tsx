@@ -91,6 +91,13 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
       setIsCreating(true);
       setError(null);
 
+      // Get current user's profile to set as organiser (used for both events and announcements)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
       let data: EventData | AnnouncementData;
 
       if (mode === 'event') {
@@ -112,13 +119,6 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           const [endHour, endMinute] = endTime.split(':');
             endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
         }
-
-        // Get current user's profile to set as organiser
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
 
         // Convert selected tag names to UUIDs
         const tagIds: string[] = [];
@@ -206,6 +206,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           external_url: externalUrl || null,
           deadline: deadline || null,
           image_url: imageUrl || null,
+          organiser_profile_id: (profile as { id: string })?.id || null,
           created_by: user.id,
         };
 
