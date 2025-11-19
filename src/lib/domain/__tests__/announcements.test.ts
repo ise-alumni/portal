@@ -10,7 +10,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 }))
 
 vi.mock('@/lib/utils/images', () => ({
-  getRandomAnnouncementImage: vi.fn(() => 'https://picsum.photos/seed/announcement123/400/200.jpg')
+
 }))
 
 vi.mock('@/lib/utils/logger', () => ({
@@ -21,7 +21,7 @@ vi.mock('@/lib/utils/logger', () => ({
 
 const mockedSupabase = vi.mocked(supabase)
 const { log } = await import('@/lib/utils/logger')
-const { getRandomAnnouncementImage } = await import('@/lib/utils/images')
+
 
 // Import domain functions after mocking
 const {
@@ -99,7 +99,7 @@ describe('Announcements domain functions', () => {
       expect(result).toHaveLength(2)
       expect(result[0]).toEqual({
       ...mockAnnouncements[0],
-      image_url: 'https://picsum.photos/seed/announcement123/400/200.jpg',
+      image_url: 'https://placehold.co/600x400',
       tags: []
       })
     })
@@ -160,8 +160,7 @@ describe('Announcements domain functions', () => {
 
       const result = await getAnnouncements()
 
-      expect(getRandomAnnouncementImage).toHaveBeenCalled()
-      expect(result[0].image_url).toBe('https://picsum.photos/seed/announcement123/400/200.jpg')
+      expect(result[0].image_url).toBe('https://placehold.co/600x400')
     })
 
     it('should preserve existing image_url when present', async () => {
@@ -189,7 +188,7 @@ describe('Announcements domain functions', () => {
 
       const result = await getAnnouncements()
 
-      expect(getRandomAnnouncementImage).not.toHaveBeenCalled()
+
       expect(result[0].image_url).toBe('https://example.com/custom-image.jpg')
     })
   })
@@ -224,7 +223,7 @@ describe('Announcements domain functions', () => {
       expect(mockedSupabase.from).toHaveBeenCalledWith('announcements')
       expect(result).toEqual({
         ...mockAnnouncement,
-        image_url: 'https://picsum.photos/seed/announcement123/400/200.jpg',
+        image_url: 'https://placehold.co/600x400',
         tags: []
       })
     })
@@ -354,9 +353,9 @@ describe('Announcements domain functions', () => {
 
       expect(mockedSupabase.from).toHaveBeenCalledWith('announcements')
       expect(result).toEqual({
-      ...createdAnnouncement,
-      image_url: 'https://picsum.photos/seed/announcement123/400/200.jpg',
-      tags: []
+        ...createdAnnouncement,
+        image_url: 'https://placehold.co/600x400',
+        tags: []
       })
     })
 

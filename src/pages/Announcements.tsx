@@ -10,7 +10,6 @@ import NewEventModal from '@/components/NewEventModal';
 import { Announcement, NewAnnouncement, type Tag } from '@/lib/types';
 import { getAnnouncements, createAnnouncement } from '@/lib/domain/announcements';
 import { formatDateShort, isDateInPast, isDateWithinLastDays } from '@/lib/utils/date';
-import { getRandomAnnouncementImage } from '@/lib/utils/images';
 import { filterAnnouncements, sortAnnouncements, type SortOption } from '@/lib/utils/data';
 import { log } from '@/lib/utils/logger';
 import { canUserCreateContent } from '@/lib/constants';
@@ -25,7 +24,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
     navigate(`/announcements/${announcement.id}`);
   };
 
-  const imageUrl = announcement.image_url || getRandomAnnouncementImage();
+  const imageUrl = announcement.image_url || `https://placehold.co/600x400?text=Announcement+${announcement.id}`;
 
   return (
     <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden">
@@ -35,9 +34,10 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           alt={announcement.title}
           className="w-full h-full object-cover"
           onError={(e) => {
-            // Fallback to another random image if the first one fails
+            // Fallback to another random image if first one fails
             const target = e.target as HTMLImageElement;
-            target.src = getRandomAnnouncementImage();
+            const randomId = Math.floor(Math.random() * 1000);
+            target.src = `https://placehold.co/600x400?text=Announcement+${randomId}`;
           }}
         />
       </div>

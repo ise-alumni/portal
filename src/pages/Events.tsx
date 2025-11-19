@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useCallback } from "react";
 import { CalendarIcon, MapPinIcon, Loader2Icon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +12,6 @@ import NewEventModal from "@/components/NewEventModal";
 import { type EventData, type Tag } from "@/lib/types";
 import { getEvents, getTags, isEventInPast, isEventUpcoming } from "@/lib/domain";
 import { formatDate } from "@/lib/utils/date";
-import { getRandomEventImage } from "@/lib/utils/images";
 import { log } from '@/lib/utils/logger';
 import { canUserCreateContent } from '@/lib/constants';
 
@@ -22,7 +22,7 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
     navigate(`/events/${event.id}`);
   };
 
-  const imageUrl = event.image_url || getRandomEventImage();
+  const imageUrl = event.image_url || `https://placehold.co/600x400?text=Event+${event.id}`;
 
   return (
     <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden">
@@ -34,7 +34,8 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
           onError={(e) => {
             // Fallback to another random image if first one fails
             const target = e.target as HTMLImageElement;
-            target.src = getRandomEventImage();
+            const randomId = Math.floor(Math.random() * 1000);
+            target.src = `https://placehold.co/600x400?text=Event+${randomId}`;
           }}
         />
       </div>
@@ -48,6 +49,23 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
           <div className="flex items-center text-sm text-muted-foreground">
             <MapPinIcon className="w-4 h-4 mr-1" />
             {event.location}
+          </div>
+        )}
+        {event.event_tags && event.event_tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {event.event_tags.map((eventTag) => (
+              <Badge 
+                key={eventTag.tags.id} 
+                style={{ 
+                  backgroundColor: eventTag.tags.color + '20',
+                  borderColor: eventTag.tags.color,
+                  color: eventTag.tags.color 
+                }}
+                className="text-xs"
+              >
+                {eventTag.tags.name}
+              </Badge>
+            ))}
           </div>
         )}
       </CardHeader>

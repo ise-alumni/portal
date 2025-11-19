@@ -36,7 +36,7 @@ interface EventData {
   created_at: string;
   updated_at: string;
   image_url: string | null;
-  tags: Array<{ id: string; name: string }> | null;
+  tags: Array<{ id: string; name: string; color: string }> | null;
   organiser?: {
     id: string;
     full_name: string | null;
@@ -78,7 +78,8 @@ const EventDetail = () => {
           event_tags (
             tag:tags (
               id,
-              name
+              name,
+              color
             )
           )
         `)
@@ -93,7 +94,7 @@ const EventDetail = () => {
       const transformedData = {
         ...data,
         image_url: (data as { image_url?: string | null }).image_url || null,
-        tags: data.event_tags?.map((et: { tag: { id: string; name: string } }) => et.tag) || null,
+        tags: data.event_tags?.map((et: { tag: { id: string; name: string; color: string } }) => et.tag) || null,
       };
 
       setEvent(transformedData);
@@ -172,13 +173,7 @@ const EventDetail = () => {
     });
   };
 
-  // Generate random Behance image for fallback
-  const getRandomImage = () => {
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/event${randomId}/800/400.jpg`;
-  };
-
-  const imageUrl = event.image_url || getRandomImage();
+  const imageUrl = event.image_url || `https://placehold.co/600x400?text=Event+${event.id}`;
 
   // Check if current user can edit this event
   const canEdit = user && (event.created_by === user.id);
@@ -260,9 +255,10 @@ const EventDetail = () => {
                 alt={event.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Fallback to another random image if the first one fails
+                  // Fallback to another random image if first one fails
                   const target = e.target as HTMLImageElement;
-                  target.src = getRandomImage();
+                  const randomId = Math.floor(Math.random() * 1000);
+                  target.src = `https://placehold.co/600x400?text=Event+${randomId}`;
                 }}
               />
             </div>
@@ -336,7 +332,15 @@ const EventDetail = () => {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {event.tags?.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
+                    <Badge 
+                      key={index} 
+                      style={{ 
+                        backgroundColor: tag.color + '20',
+                        borderColor: tag.color,
+                        color: tag.color 
+                      }}
+                      className="text-xs"
+                    >
                       {tag.name}
                     </Badge>
                   ))}

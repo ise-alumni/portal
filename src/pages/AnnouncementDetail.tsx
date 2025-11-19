@@ -62,16 +62,7 @@ const AnnouncementDetail = () => {
       // Fetch announcement with creator profile data and tags
       const { data, error: fetchError } = await supabase
         .from('announcements')
-        .select(`
-          *,
-          announcement_tags (
-            tag:tags (
-              id,
-              name,
-              color
-            )
-          )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -82,8 +73,8 @@ const AnnouncementDetail = () => {
       // Transform the data to match our interface
       const transformedData = {
         ...data,
-        image_url: data.image_url || null,
-        tags: data.announcement_tags?.map((at: any) => at.tag) || [],
+        image_url: (data as any).image_url || null,
+        tags: [], // TODO: Fetch tags separately when relations are fixed
         creator: null, // We'll fetch this separately if needed
       };
 
@@ -157,13 +148,7 @@ const AnnouncementDetail = () => {
 
 
 
-  // Generate random Behance image for fallback
-  const getRandomImage = () => {
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/announcement${randomId}/800/400.jpg`;
-  };
-
-  const imageUrl = announcement.image_url || getRandomImage();
+  const imageUrl = announcement.image_url || `https://placehold.co/600x400?text=Announcement+${announcement.id}`;
 
   // Check if current user can edit this announcement
   const canEdit = user && (announcement.created_by === user.id);
@@ -246,9 +231,10 @@ const AnnouncementDetail = () => {
                 alt={announcement.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Fallback to another random image if the first one fails
+                  // Fallback to another random image if first one fails
                   const target = e.target as HTMLImageElement;
-                  target.src = getRandomImage();
+                  const randomId = Math.floor(Math.random() * 1000);
+                  target.src = `https://placehold.co/600x400?text=Announcement+${randomId}`;
                 }}
               />
             </div>

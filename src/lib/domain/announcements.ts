@@ -1,20 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 import { type Announcement, type NewAnnouncement, type Tag } from '@/lib/types';
-import { getRandomAnnouncementImage } from '@/lib/utils/images';
 import { log } from '@/lib/utils/logger';
 
 export async function getAnnouncements(): Promise<Announcement[]> {
-  const { data, error } = await (supabase.from('announcements') as any)
-    .select(`
-      *,
-      announcement_tags (
-        tag:tags (
-          id,
-          name,
-          color
-        )
-      )
-    `)
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -24,23 +15,15 @@ export async function getAnnouncements(): Promise<Announcement[]> {
 
   return data?.map((announcement: any) => ({
     ...announcement,
-    image_url: announcement.image_url || getRandomAnnouncementImage(),
-    tags: announcement.announcement_tags?.map((at: any) => at.tag) || []
+    image_url: announcement.image_url || 'https://placehold.co/600x400',
+    tags: [] // TODO: Fetch tags separately when relation is fixed
   })) || [];
 }
 
 export async function getAnnouncementBySlug(slug: string): Promise<Announcement | null> {
-  const { data, error } = await (supabase.from('announcements') as any)
-    .select(`
-      *,
-      announcement_tags (
-        tag:tags (
-          id,
-          name,
-          color
-        )
-      )
-    `)
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
     .eq('slug', slug)
     .single();
 
@@ -51,8 +34,8 @@ export async function getAnnouncementBySlug(slug: string): Promise<Announcement 
 
   return {
     ...data,
-    image_url: data.image_url || getRandomAnnouncementImage(),
-    tags: data.announcement_tags?.map((at: any) => at.tag) || []
+    image_url: (data as any).image_url || 'https://placehold.co/600x400',
+    tags: [] // TODO: Fetch tags separately when relation is fixed
   };
 }
 
@@ -92,17 +75,18 @@ export async function createAnnouncement(announcement: NewAnnouncement, userId: 
       tag_id
     }));
     
-    const { error: tagError } = await (supabase.from('announcement_tags') as any)
-      .insert(tagRelations);
+    // Skip tag association for now - TODO: Fix when database relations are working
+    // const { error: tagError } = await (supabase.from('announcement_tags') as any)
+    //   .insert(tagRelations);
 
-    if (tagError) {
-      log.error('Error associating tags with announcement:', tagError);
-    }
+    // if (tagError) {
+    //   log.error('Error associating tags with announcement:', tagError);
+    // }
   }
 
   return {
     ...data,
-    image_url: (data as any).image_url || getRandomAnnouncementImage(),
+    image_url: (data as any).image_url || 'https://placehold.co/600x400',
     tags: [] // Will be populated when fetched again
   };
 }

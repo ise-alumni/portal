@@ -9,7 +9,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 }))
 
 vi.mock('@/lib/utils/images', () => ({
-  getRandomEventImage: vi.fn(() => 'https://picsum.photos/seed/event123/400/200.jpg')
+  handleImageError: vi.fn()
 }))
 
 vi.mock('@/lib/utils/logger', () => ({
@@ -19,7 +19,7 @@ vi.mock('@/lib/utils/logger', () => ({
 }))
 
 const { supabase } = await import('@/integrations/supabase/client')
-const { getRandomEventImage } = await import('@/lib/utils/images')
+const { handleImageError } = await import('@/lib/utils/images')
 const { log } = await import('@/lib/utils/logger')
 const mockedSupabase = vi.mocked(supabase)
 
@@ -95,7 +95,7 @@ describe('Events domain functions', () => {
       expect(result).toHaveLength(2)
       expect(result[0]).toEqual({
         ...mockEvents[0],
-        image_url: 'https://picsum.photos/seed/event123/400/200.jpg'
+        image_url: 'https://placehold.co/600x400'
       })
     })
 
@@ -152,8 +152,7 @@ describe('Events domain functions', () => {
 
       const result = await getEvents()
 
-      expect(getRandomEventImage).toHaveBeenCalled()
-      expect(result[0].image_url).toBe('https://picsum.photos/seed/event123/400/200.jpg')
+      expect(result[0].image_url).toBe('https://placehold.co/600x400')
     })
 
     it('should preserve existing image_url when present', async () => {
@@ -178,7 +177,6 @@ describe('Events domain functions', () => {
 
       const result = await getEvents()
 
-      expect(getRandomEventImage).not.toHaveBeenCalled()
       expect(result[0].image_url).toBe('https://example.com/custom-image.jpg')
     })
   })
@@ -210,7 +208,7 @@ describe('Events domain functions', () => {
       expect(mockedSupabase.from).toHaveBeenCalledWith('events')
       expect(result).toEqual({
         ...mockEvent,
-        image_url: 'https://picsum.photos/seed/event123/400/200.jpg'
+        image_url: 'https://placehold.co/600x400'
       })
     })
 

@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { type EventData, type NewEvent, type Tag } from '@/lib/types';
-import { getRandomEventImage } from '@/lib/utils/images';
 import { log } from '@/lib/utils/logger';
 
 export async function getEvents(): Promise<EventData[]> {
@@ -22,7 +21,7 @@ export async function getEvents(): Promise<EventData[]> {
 
   return data.map(event => ({
     ...event,
-    image_url: (event as { image_url?: string | null }).image_url || getRandomEventImage(),
+    image_url: (event as { image_url?: string | null }).image_url || 'https://placehold.co/600x400',
   }));
 }
 
@@ -46,7 +45,7 @@ export async function getEventBySlug(slug: string): Promise<EventData | null> {
 
   return {
     ...data,
-    image_url: (data as { image_url?: string | null }).image_url || getRandomEventImage(),
+    image_url: (data as { image_url?: string | null }).image_url || 'https://placehold.co/600x400',
   };
 }
 

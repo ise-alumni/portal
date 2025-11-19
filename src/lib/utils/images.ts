@@ -2,16 +2,6 @@
  * Image generation utilities
  */
 
-export const getRandomEventImage = (): string => {
-  const randomId = Math.floor(Math.random() * 1000);
-  return `https://picsum.photos/seed/event${randomId}/400/200.jpg`;
-};
-
-export const getRandomAnnouncementImage = (): string => {
-  const randomId = Math.floor(Math.random() * 1000);
-  return `https://picsum.photos/seed/announcement${randomId}/400/200.jpg`;
-};
-
 export const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>): void => {
   const target = event.target as HTMLImageElement;
   // Generate a new random image URL
@@ -19,11 +9,11 @@ export const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>):
   const currentSrc = target.src;
   
   if (currentSrc.toLowerCase().includes('event')) {
-    target.src = `https://picsum.photos/seed/event${randomId}/400/200.jpg`;
+    target.src = `https://placehold.co/600x400?text=Event+${randomId}`;
   } else if (currentSrc.toLowerCase().includes('announcement')) {
-    target.src = `https://picsum.photos/seed/announcement${randomId}/400/200.jpg`;
+    target.src = `https://placehold.co/600x400?text=Announcement+${randomId}`;
   } else {
     // Fallback for any other image type
-    target.src = `https://picsum.photos/seed/fallback${randomId}/400/200.jpg`;
+    target.src = `https://placehold.co/600x400?text=Placeholder+${randomId}`;
   }
 };
