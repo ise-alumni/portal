@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogTitle, DialogHeader, DialogContent, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, ExternalLinkIcon, CalendarIcon } from "lucide-react";
+import { FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, ExternalLinkIcon, CalendarIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,9 +12,9 @@ import { log } from '@/lib/utils/logger';
 import { getEventTagOptions } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
-// Temporary type to bypass Supabase complex typing
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseAny = any;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+
 
 interface Announcement {
   id: string;
@@ -87,17 +87,35 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       setIsUpdating(true);
       setError(null);
 
+      // Convert selected tag names to UUIDs first
+      const tagIds: string[] = [];
+      
+      for (const tagName of selectedTags) {
+        // Find existing tag
+        const { data: existingTag } = await supabase
+          .from('tags')
+          .select('id')
+          .eq('name', tagName)
+          .single();
+
+        if (existingTag && (existingTag as { id: string }).id) {
+          tagIds.push((existingTag as { id: string }).id);
+        } else {
+          log.error('Tag not found in database:', tagName);
+        }
+      }
+
       const data = {
         title: title,
         content: content || null,
         external_url: externalUrl || null,
         deadline: deadline || null,
         image_url: imageUrl || null,
-        tag_ids: selectedTags,
+        tag_ids: tagIds,
       };
 
-      const { error: updateError } = await (supabase
-        .from('announcements') as SupabaseAny)
+      const { error: updateError } = await (supabase as any)
+        .from('announcements')
         .update({
           title: title,
           content: content || null,
@@ -114,24 +132,30 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       }
       
       // Update tag associations
-      if (selectedTags.length > 0) {
+      if (tagIds.length > 0) {
         // First delete existing tag associations
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase
-          .from('announcement_tags') as SupabaseAny)
+        const { error: deleteError } = await (supabase as any)
+          .from('announcement_tags')
           .delete()
           .eq('announcement_id', announcement.id);
 
+        if (deleteError) {
+          throw deleteError;
+        }
+
         // Then insert new tag associations
-        const tagRelations = selectedTags.map(tagName => ({
+        const tagRelations = tagIds.map(tagId => ({
           announcement_id: announcement.id,
-          tag_id: tagName
+          tag_id: tagId
         }));
         
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase
-          .from('announcement_tags') as SupabaseAny)
+        const { error: tagInsertError } = await (supabase as any)
+          .from('announcement_tags')
           .insert(tagRelations);
+
+        if (tagInsertError) {
+          throw tagInsertError;
+        }
       }
       
       onSubmit(data);
@@ -155,9 +179,8 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       setIsDeleting(true);
       setError(null);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: deleteError } = await (supabase
-        .from('announcements') as SupabaseAny)
+        .from('announcements') as any)
         .delete()
         .eq('id', announcement.id);
 
@@ -182,9 +205,9 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
           <DialogTitle className="text-2xl font-semibold">
             Edit Announcement
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <DialogDescription>
             Update the announcement details below
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -210,27 +233,48 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
 
           {/* Tag Selection */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Tags</Label>
-            <div className="flex flex-wrap gap-2">
-              {getEventTagOptions().map(tagOption => (
-                <label key={tagOption.value} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    value={tagOption.value}
-                    checked={selectedTags.includes(tagOption.value)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedTags([...selectedTags, tagOption.value]);
-                      } else {
-                        setSelectedTags(selectedTags.filter(t => t !== tagOption.value));
-                      }
-                    }}
-                    disabled={isUpdating || isDeleting}
-                    className="rounded"
-                  />
-                  <span className="text-sm">{tagOption.label}</span>
-                </label>
-              ))}
+            <Label className="text-sm font-medium flex items-center gap-2">
+              Tags
+            </Label>
+            <div className="space-y-2">
+              {/* Available tags */}
+              <div className="flex flex-wrap gap-2">
+                {getEventTagOptions().map((tag) => {
+                  const isSelected = selectedTags.includes(tag.value);
+                  return (
+                    <button
+                      key={tag.value}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedTags(selectedTags.filter(t => t !== tag.value));
+                        } else {
+                          setSelectedTags([...selectedTags, tag.value]);
+                        }
+                      }}
+                      disabled={isUpdating || isDeleting}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        isSelected
+                          ? 'text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      style={{
+                        backgroundColor: isSelected ? tag.color : undefined,
+                      }}
+                    >
+                      {tag.label}
+                      {isSelected && (
+                        <X className="w-3 h-3 ml-1 inline" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedTags.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Select tags to categorize this announcement
+                </p>
+              )}
             </div>
           </div>
 

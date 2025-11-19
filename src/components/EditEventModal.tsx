@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogTitle, DialogHeader, DialogContent, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,6 +13,10 @@ import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { log } from '@/lib/utils/logger';
 import { getEventTagsSync, getEventTagOptions } from '@/lib/constants';
+
+// Temporary type to bypass Supabase complex typing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseAny = any;
 
 interface Event {
   id: string;
@@ -144,14 +148,14 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
           .eq('name', tagName)
           .single();
 
-        if (existingTag) {
-          tagIds.push(existingTag.id);
+        if (existingTag && (existingTag as { id: string }).id) {
+          tagIds.push((existingTag as { id: string }).id);
         } else {
           log.error('Tag not found in database:', tagName);
         }
       }
 
-      const data = {
+      const eventData = {
         title: eventName,
         slug: generateSlug(eventName),
         description: description || null,
@@ -160,12 +164,12 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
         start_at: startDateTime.toISOString(),
         end_at: endDateTime?.toISOString() || null,
         image_url: imageUrl || null,
-        tags: tagIds,
       };
 
-      const { error: updateError } = await supabase
+      // Update event without tags first
+      const { error: updateError } = await (supabase as SupabaseAny)
         .from('events')
-        .update(data)
+        .update(eventData)
         .eq('id', event.id)
         .select()
         .single();
@@ -173,8 +177,35 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
       if (updateError) {
         throw updateError;
       }
+
+      // Update tag relationships: delete existing and insert new ones
+      if (tagIds.length > 0) {
+        // Delete existing tag relationships
+        const { error: deleteError } = await (supabase as SupabaseAny)
+          .from('event_tags')
+          .delete()
+          .eq('event_id', event.id);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+
+        // Insert new tag relationships
+        const eventTagRelations = tagIds.map(tagId => ({
+          event_id: event.id,
+          tag_id: tagId
+        }));
+
+        const { error: tagInsertError } = await (supabase as SupabaseAny)
+          .from('event_tags')
+          .insert(eventTagRelations);
+
+        if (tagInsertError) {
+          throw tagInsertError;
+        }
+      }
       
-      onSubmit(data);
+      onSubmit({ ...eventData, tags: tagIds });
       onClose();
     } catch (err) {
       log.error("Error updating event:", err);
@@ -221,9 +252,9 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
           <DialogTitle className="text-2xl font-semibold">
             Edit Event
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <DialogDescription>
             Update the event details below
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
