@@ -478,73 +478,174 @@ const ProfilePage = () => {
 
       {/* User's Announcements - Full Width */}
       {userAnnouncements.length > 0 && (
-        <Card className="w-full mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card className="w-full mt-6 border-2 border-foreground shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="tracking-tight flex items-center gap-2">
               <CalendarIcon className="w-5 h-5" />
-              Announcements by {profile.full_name || 'User'}
+              ANNOUNCEMENTS
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {userAnnouncements.map((announcement) => (
-                <div key={announcement.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-primary">{announcement.title}</h3>
-                      {announcement.deadline && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            Deadline: {formatDate(announcement.deadline)}
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm text-muted-foreground">
-                        {formatDate(announcement.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {announcement.content && (
-                    <div className="prose prose prose-sm max-w-none">
-                      <p>{announcement.content}</p>
-                    </div>
-                  )}
-                  
-                  {announcement.external_url && (
-                    <div className="mt-3">
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={announcement.external_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                          <ExternalLinkIcon className="w-4 h-4" />
-                          External Link
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {announcement.tags && announcement.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {announcement.tags.map((tag) => (
-                        <Badge 
-                          key={tag.id}
-                          variant="secondary" 
-                          className="text-xs"
-                          style={{ 
-                            backgroundColor: tag.color + '20',
-                            borderColor: tag.color,
-                            color: tag.color 
-                          }}
-                        >
-                          {tag.name}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="border-b-2 border-foreground">TITLE</TableHead>
+                  <TableHead className="border-b-2 border-foreground">DEADLINE</TableHead>
+                  <TableHead className="border-b-2 border-foreground">DATE</TableHead>
+                  <TableHead className="border-b-2 border-foreground">ACTIONS</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {userAnnouncements.map((announcement) => (
+                  <TableRow key={announcement.id} className="border-b border-foreground">
+                    <TableCell className="font-medium">
+                      <div>
+                        <div className="font-bold">{announcement.title}</div>
+                        {announcement.content && (
+                          <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {announcement.content}
+                          </div>
+                        )}
+                        {announcement.tags && announcement.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {announcement.tags.map((tag) => (
+                              <Badge 
+                                key={tag.id}
+                                variant="secondary" 
+                                className="text-xs"
+                                style={{ 
+                                  backgroundColor: tag.color + '20',
+                                  borderColor: tag.color,
+                                  color: tag.color 
+                                }}
+                              >
+                                {tag.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {announcement.deadline ? (
+                        <Badge variant="outline" className="text-xs">
+                          {formatDate(announcement.deadline)}
                         </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(announcement.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      {announcement.external_url && (
+                        <Button variant="outline" size="sm" asChild className="border-2 border-foreground shadow-none">
+                          <a href={announcement.external_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                            <ExternalLinkIcon className="w-4 h-4" />
+                            LINK
+                          </a>
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User's Events - Full Width */}
+      {userEvents.length > 0 && (
+        <Card className="w-full mt-6 border-2 border-foreground shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="tracking-tight flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5" />
+              EVENTS
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="border-b-2 border-foreground">TITLE</TableHead>
+                  <TableHead className="border-b-2 border-foreground">DATE</TableHead>
+                  <TableHead className="border-b-2 border-foreground">LOCATION</TableHead>
+                  <TableHead className="border-b-2 border-foreground">ACTIONS</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {userEvents.map((event) => (
+                  <TableRow key={event.id} className="border-b border-foreground">
+                    <TableCell className="font-medium">
+                      <div>
+                        <div className="font-bold">{event.title}</div>
+                        {event.description && (
+                          <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {event.description}
+                          </div>
+                        )}
+                        {event.event_tags && event.event_tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {event.event_tags.map((tagRelation) => (
+                              <Badge 
+                                key={tagRelation.tag_id}
+                                variant="secondary" 
+                                className="text-xs"
+                                style={{ 
+                                  backgroundColor: tagRelation.tags.color + '20',
+                                  borderColor: tagRelation.tags.color,
+                                  color: tagRelation.tags.color 
+                                }}
+                              >
+                                {tagRelation.tags.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div className="font-medium">{formatDate(event.start_at)}</div>
+                        {event.end_at && (
+                          <div className="text-muted-foreground">to {formatDate(event.end_at)}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {event.location ? (
+                        <div className="text-sm">
+                          <div>{event.location}</div>
+                          {event.location_url && (
+                            <Button variant="ghost" size="sm" asChild className="p-0 h-auto text-xs">
+                              <a href={event.location_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline">
+                                MAP
+                              </a>
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {event.registration_url && (
+                          <Button variant="outline" size="sm" asChild className="border-2 border-foreground shadow-none">
+                            <a href={event.registration_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                              <ExternalLinkIcon className="w-4 h-4" />
+                              REGISTER
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

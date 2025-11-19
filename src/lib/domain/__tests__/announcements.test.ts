@@ -26,7 +26,7 @@ const { log } = await import('@/lib/utils/logger')
 // Import domain functions after mocking
 const {
   getAnnouncements,
-  getAnnouncementBySlug,
+  getAnnouncementById,
   isAnnouncementExpired,
   isAnnouncementActive,
   createAnnouncement
@@ -168,8 +168,8 @@ describe('Announcements domain functions', () => {
     })
   })
 
-  describe('getAnnouncementBySlug', () => {
-    it('should fetch announcement by slug successfully', async () => {
+  describe('getAnnouncementById', () => {
+    it('should fetch announcement by id successfully', async () => {
       const mockAnnouncement = {
         id: '1',
         title: 'Test Announcement',
@@ -192,7 +192,7 @@ describe('Announcements domain functions', () => {
 
       mockedSupabase.from.mockReturnValue({ select: mockSelect })
 
-      const result = await getAnnouncementBySlug('test-announcement')
+      const result = await getAnnouncementById('1')
 
       expect(mockedSupabase.from).toHaveBeenCalledWith('announcements')
       expect(result).toEqual({
@@ -203,20 +203,17 @@ describe('Announcements domain functions', () => {
     })
 
     it('should return null when announcement not found', async () => {
-      const mockError = new Error('No rows found')
-
       const mockSingle = vi.fn().mockResolvedValue({
         data: null,
-        error: mockError
+        error: null
       })
       const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
       const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
 
       mockedSupabase.from.mockReturnValue({ select: mockSelect })
 
-      const result = await getAnnouncementBySlug('non-existent')
+      const result = await getAnnouncementById('non-existent')
 
-      expect(log.error).toHaveBeenCalledWith('Error fetching announcement:', mockError)
       expect(result).toBeNull()
     })
   })
@@ -305,6 +302,10 @@ describe('Announcements domain functions', () => {
         organiser_profile_id: null
       }
 
+      const userProfile = {
+        id: 'profile-123'
+      }
+
       const createdAnnouncement = {
         id: '1',
         ...newAnnouncement,
@@ -313,18 +314,31 @@ describe('Announcements domain functions', () => {
         updated_at: '2024-01-15T10:00:00Z'
       }
 
-      const mockSingle = vi.fn().mockResolvedValue({
+      // Mock profile lookup
+      const mockProfileSingle = vi.fn().mockResolvedValue({
+        data: userProfile,
+        error: null
+      })
+      const mockProfileEq = vi.fn().mockReturnValue({ single: mockProfileSingle })
+      const mockProfileSelect = vi.fn().mockReturnValue({ eq: mockProfileEq })
+
+      // Mock announcement creation
+      const mockAnnouncementSingle = vi.fn().mockResolvedValue({
         data: createdAnnouncement,
         error: null
       })
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect })
+      const mockAnnouncementSelect = vi.fn().mockReturnValue({ single: mockAnnouncementSingle })
+      const mockAnnouncementInsert = vi.fn().mockReturnValue({ select: mockAnnouncementSelect })
 
-      mockedSupabase.from.mockReturnValue({ insert: mockInsert })
+      // Set up mock chain for both calls
+      mockedSupabase.from
+        .mockReturnValueOnce({ select: mockProfileSelect }) // First call: profiles
+        .mockReturnValueOnce({ insert: mockAnnouncementInsert }) // Second call: announcements
 
       const result = await createAnnouncement(newAnnouncement, 'user-123')
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('announcements')
+      expect(mockedSupabase.from).toHaveBeenNthCalledWith(1, 'profiles')
+      expect(mockedSupabase.from).toHaveBeenNthCalledWith(2, 'announcements')
       const expectedResult: Announcement = {
         id: '1',
         title: 'New Announcement',
@@ -336,6 +350,7 @@ describe('Announcements domain functions', () => {
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-01-15T10:00:00Z',
         organiser_profile_id: null,
+        organiser: undefined,
         tags: []
       }
       
@@ -345,14 +360,26 @@ describe('Announcements domain functions', () => {
     it('should handle creation errors gracefully', async () => {
       const mockError = new Error('Creation failed')
 
-      const mockSingle = vi.fn().mockResolvedValue({
+      // Mock profile lookup
+      const mockProfileSingle = vi.fn().mockResolvedValue({
+        data: { id: 'profile-123' },
+        error: null
+      })
+      const mockProfileEq = vi.fn().mockReturnValue({ single: mockProfileSingle })
+      const mockProfileSelect = vi.fn().mockReturnValue({ eq: mockProfileEq })
+
+      // Mock announcement creation error
+      const mockAnnouncementSingle = vi.fn().mockResolvedValue({
         data: null,
         error: mockError
       })
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect })
+      const mockAnnouncementSelect = vi.fn().mockReturnValue({ single: mockAnnouncementSingle })
+      const mockAnnouncementInsert = vi.fn().mockReturnValue({ select: mockAnnouncementSelect })
 
-      mockedSupabase.from.mockReturnValue({ insert: mockInsert })
+      // Set up mock chain for both calls
+      mockedSupabase.from
+        .mockReturnValueOnce({ select: mockProfileSelect }) // First call: profiles
+        .mockReturnValueOnce({ insert: mockAnnouncementInsert }) // Second call: announcements
 
       const result = await createAnnouncement({
         title: 'Test',

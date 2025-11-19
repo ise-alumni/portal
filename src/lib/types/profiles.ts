@@ -31,6 +31,7 @@ export interface ProfileFormData {
   city: string;
   country: string;
   graduationYear: string;
+  msc: boolean;
   jobTitle: string;
   company: string;
   bio: string;
@@ -42,23 +43,7 @@ export interface ProfileFormData {
   emailVisible: boolean;
 }
 
-export interface ProfileUpdatePayload {
-  user_id: string;
-  full_name: string | null;
-  email?: string | null;
-  city: string | null;
-  country: string | null;
-  graduation_year: number | null;
-  job_title: string | null;
-  company: string | null;
-  bio: string | null;
-  github_url: string | null;
-  linkedin_url: string | null;
-  twitter_url: string | null;
-  website_url: string | null;
-  email_visible: boolean;
-  avatar_url?: string;
-}
+
 
 // Re-export Supabase types for compatibility
 export type ProfileTable = Database['public']['Tables']['profiles']['Row'];

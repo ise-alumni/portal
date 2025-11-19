@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { type Profile, type ProfileFormData, type ProfileUpdatePayload } from '@/lib/types';
+import { type Profile, type ProfileFormData } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
 
 export async function getProfiles(): Promise<Profile[]> {
@@ -34,12 +34,13 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
 
 export async function updateProfile(userId: string, formData: ProfileFormData): Promise<Profile | null> {
   try {
-    const updatePayload: ProfileUpdatePayload = {
+    const updatePayload = {
       user_id: userId,
       full_name: formData.fullName || null,
       city: formData.city || null,
       country: formData.country || null,
       graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
+      msc: formData.msc,
       job_title: formData.jobTitle || null,
       company: formData.company || null,
       bio: formData.bio || null,

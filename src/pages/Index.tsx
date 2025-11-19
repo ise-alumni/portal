@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Profile, ProfileFormData } from '@/lib/types';
 import { getProfileByUserId, updateProfile } from '@/lib/domain/profiles';
 import { log } from '@/lib/utils/logger';
@@ -23,6 +24,7 @@ const Index = () => {
     city: '',
     country: '',
     graduationYear: '',
+    msc: false,
     jobTitle: '',
     company: '',
     bio: '',
@@ -43,6 +45,7 @@ const Index = () => {
         city: '',
         country: '',
         graduationYear: '',
+        msc: false,
         jobTitle: '',
         company: '',
         bio: '',
@@ -78,6 +81,7 @@ const Index = () => {
             city: data.city ?? '',
             country: data.country ?? '',
             graduationYear: data.graduation_year?.toString() ?? '',
+            msc: data.msc ?? false,
             jobTitle: data.job_title ?? '',
             company: data.company ?? '',
             bio: data.bio ?? '',
@@ -240,15 +244,28 @@ const Index = () => {
                           />
                         </div>
                       </div>
-                       <div>
-                         <label className="text-xs opacity-70">Graduation Year</label>
-                         <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
-                       </div>
+                        <div>
+                          <label className="text-xs opacity-70">Graduation Year</label>
+                          <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
+                        </div>
 
-                       <div>
-                         <label className="text-xs opacity-70">City</label>
-                         <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
-                       </div>
+                        <div>
+                          <label className="text-xs opacity-70">Program</label>
+                          <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select program" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="bsc">BSc</SelectItem>
+                              <SelectItem value="msc">MSc</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs opacity-70">City</label>
+                          <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
+                        </div>
                        <div>
                          <label className="text-xs opacity-70">Country</label>
                          <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
@@ -316,14 +333,26 @@ const Index = () => {
                        <label className="text-xs opacity-70">Full Name</label>
                        <Input value={formData.fullName} onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Your full name" />
                      </div>
-                     <div>
-                       <label className="text-xs opacity-70">Graduation Year</label>
-                       <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">City</label>
-                       <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
-                     </div>
+                      <div>
+                        <label className="text-xs opacity-70">Graduation Year</label>
+                        <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
+                      </div>
+                      <div>
+                        <label className="text-xs opacity-70">Program</label>
+                        <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select program" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bsc">BSc</SelectItem>
+                            <SelectItem value="msc">MSc</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs opacity-70">City</label>
+                        <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
+                      </div>
                      <div>
                        <label className="text-xs opacity-70">Country</label>
                        <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
