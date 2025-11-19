@@ -1,4 +1,4 @@
-import { Tables } from '@/integrations/supabase/types';
+import { Database } from '@/integrations/supabase/types';
 import { UserRole } from './common';
 
 export interface Profile {
@@ -61,4 +61,4 @@ export interface ProfileUpdatePayload {
 }
 
 // Re-export Supabase types for compatibility
-export type ProfileTable = Tables<'profiles'>;
+export type ProfileTable = Database['public']['Tables']['profiles']['Row'];

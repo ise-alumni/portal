@@ -1,4 +1,4 @@
-import { Tables } from '@/integrations/supabase/types';
+import { Database } from '@/integrations/supabase/types';
 
 export interface Tag {
   id: string;
@@ -33,4 +33,4 @@ export type AnnouncementSortBy = 'created_at' | 'deadline' | 'title';
 export type AnnouncementView = 'current' | 'past';
 
 // Re-export Supabase types for compatibility
-export type AnnouncementTable = Tables<'announcements'>;
+export type AnnouncementTable = Database['public']['Tables']['announcements']['Row'];

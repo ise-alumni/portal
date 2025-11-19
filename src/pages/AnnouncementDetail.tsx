@@ -20,6 +20,7 @@ import {
 import EditAnnouncementModal from "@/components/EditAnnouncementModal";
 // import { getAnnouncementBySlug } from '@/lib/domain/announcements';
 import { log } from '@/lib/utils/logger';
+import type { ProfileRow, AnnouncementRow } from '@/integrations/supabase/types';
 
 // Announcement data interface
 interface AnnouncementData {
@@ -35,7 +36,7 @@ interface AnnouncementData {
   updated_at: string;
   slug: string | null;
   tags?: Array<{ id: string; name: string; color: string }>;
-  creator?: any;
+  creator?: ProfileRow | null;
 }
 
 const AnnouncementDetail = () => {
@@ -66,19 +67,32 @@ const AnnouncementDetail = () => {
         .eq('id', id)
         .single();
 
-      if (fetchError) {
-        throw fetchError;
-      }
+       if (fetchError) {
+         throw fetchError;
+       }
 
-      // Transform the data to match our interface
-      const transformedData = {
-        ...data,
-        image_url: (data as any).image_url || null,
-        tags: [], // TODO: Fetch tags separately when relations are fixed
-        creator: null, // We'll fetch this separately if needed
-      };
+       if (!data) {
+         throw new Error('Announcement not found');
+       }
 
-      setAnnouncement(transformedData as any);
+       // Transform the data to match our interface
+       const announcementData: AnnouncementRow = data;
+       const transformedData: AnnouncementData = {
+         id: announcementData.id,
+         title: announcementData.title,
+         content: announcementData.content,
+         external_url: announcementData.external_url,
+         deadline: announcementData.deadline,
+         image_url: announcementData.image_url || null,
+         created_by: announcementData.created_by,
+         created_at: announcementData.created_at,
+         updated_at: announcementData.updated_at,
+         slug: announcementData.slug,
+         tags: [], // TODO: Fetch tags separately when relations are fixed
+         creator: null, // We'll fetch this separately if needed
+       };
+
+       setAnnouncement(transformedData);
     } catch (err) {
       log.error('Error fetching announcement:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
@@ -364,7 +378,7 @@ const AnnouncementDetail = () => {
           onClose={() => setIsEditModalOpen(false)}
           onSubmit={handleAnnouncementUpdated}
           onDelete={handleDelete}
-          announcement={announcement as any}
+          announcement={announcement}
         />
       )}
     </div>

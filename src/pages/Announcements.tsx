@@ -210,29 +210,42 @@ export const Announcements = () => {
     setLoading(false);
   };
 
-  const handleCreateAnnouncement = async (data: any) => {
+type AnnouncementData = {
+  title: string;
+  content: string | null;
+  external_url: string | null;
+  deadline: string | null;
+  image_url: string | null;
+  created_by: string;
+  tag_ids: string[];
+};
+
+  const handleCreateAnnouncement = async (data: AnnouncementData) => {
     if (!user) return;
 
-    // Convert AnnouncementData to NewAnnouncement format
-    const announcement: NewAnnouncement = {
-      title: data.title,
-      content: data.content,
-      external_url: data.external_url,
-      deadline: data.deadline,
-      image_url: data.image_url,
-      tag_ids: data.tag_ids,
-    };
+    // Handle both EventData and AnnouncementData from NewEventModal
+    if ('content' in data) {
+      // This is AnnouncementData
+      const announcement: NewAnnouncement = {
+        title: data.title,
+        content: data.content,
+        external_url: data.external_url,
+        deadline: data.deadline,
+        image_url: data.image_url,
+        tag_ids: data.tag_ids,
+      };
 
-    const result = await createAnnouncement(announcement, user.id);
-    
-    if (result) {
-      log.info('Announcement created:', result);
-      setIsModalOpen(false);
-      fetchAnnouncements(); // Refresh announcements list
-    } else {
-      log.error('Error creating announcement');
-    }
-  };
+      const result = await createAnnouncement(announcement, user.id);
+      
+      if (result) {
+        log.info('Announcement created:', result);
+        setIsModalOpen(false);
+        fetchAnnouncements(); // Refresh announcements list
+      } else {
+        log.error('Error creating announcement');
+      }
+     }
+   };
 
   const canCreateAnnouncement = canUserCreateContent(userProfile?.user_type || null);
 

@@ -1,6 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { type Announcement, type NewAnnouncement, type Tag } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
+import type { Database, AnnouncementRow } from '@/integrations/supabase/types';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseAny = any;
 
 export async function getAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase
@@ -13,9 +17,17 @@ export async function getAnnouncements(): Promise<Announcement[]> {
     return [];
   }
 
-  return data?.map((announcement: any) => ({
-    ...announcement,
+  return data?.map((announcement: AnnouncementRow) => ({
+    id: announcement.id,
+    title: announcement.title,
+    content: announcement.content,
+    external_url: announcement.external_url,
+    deadline: announcement.deadline,
     image_url: announcement.image_url || 'https://placehold.co/600x400',
+    created_by: announcement.created_by,
+    created_at: announcement.created_at,
+    updated_at: announcement.updated_at,
+    slug: announcement.slug,
     tags: [] // TODO: Fetch tags separately when relation is fixed
   })) || [];
 }
@@ -32,9 +44,23 @@ export async function getAnnouncementBySlug(slug: string): Promise<Announcement 
     return null;
   }
 
+  if (!data) {
+    return null;
+  }
+
+  const announcement: AnnouncementRow = data;
+  const result: AnnouncementRow = data as AnnouncementRow;
   return {
-    ...data,
-    image_url: (data as any).image_url || 'https://placehold.co/600x400',
+    id: result.id,
+    title: result.title,
+    content: result.content,
+    external_url: result.external_url,
+    deadline: result.deadline,
+    image_url: result.image_url || 'https://placehold.co/600x400',
+    created_by: result.created_by,
+    created_at: result.created_at,
+    updated_at: result.updated_at,
+    slug: result.slug,
     tags: [] // TODO: Fetch tags separately when relation is fixed
   };
 }
@@ -50,8 +76,8 @@ export function isAnnouncementActive(announcement: Announcement): boolean {
 
 export async function createAnnouncement(announcement: NewAnnouncement, userId: string): Promise<Announcement | null> {
   // First create announcement
-  const { data, error } = await supabase
-    .from('announcements')
+  const { data, error } = await (supabase
+    .from('announcements') as SupabaseAny)
     .insert({
       title: announcement.title,
       content: announcement.content,
@@ -86,7 +112,7 @@ export async function createAnnouncement(announcement: NewAnnouncement, userId: 
 
   return {
     ...data,
-    image_url: (data as any).image_url || 'https://placehold.co/600x400',
+    image_url: data.image_url || 'https://placehold.co/600x400',
     tags: [] // Will be populated when fetched again
   };
 }
