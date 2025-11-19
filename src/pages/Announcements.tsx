@@ -75,7 +75,6 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
       </CardHeader>
       <CardContent>
         <CardDescription className="text-base">
-          {announcement.content}
         </CardDescription>
         <div className="mt-4 space-y-2">
           <Button className="w-full" onClick={handleViewDetails}>Details</Button>
