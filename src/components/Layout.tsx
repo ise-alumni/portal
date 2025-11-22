@@ -45,22 +45,22 @@ const Layout = ({ children }: LayoutProps) => {
                  <div className="p-4">
                   <nav className="flex flex-col gap-4 text-sm justify-center items-center">
                     <DrawerClose asChild>
-                      <Button asChild variant="outline" className="w-full max-w-xs bg-[#0C314C] text-white hover:bg-[#0C314C]/80">
+                      <Button asChild variant="outline" className="w-full max-w-xs">
                         <Link to="/events">Events</Link>
                       </Button>
                     </DrawerClose>
                     <DrawerClose asChild>
-                      <Button asChild variant="outline" className="w-full max-w-xs bg-[#1BA165] text-white hover:bg-[#1BA165]/80">
+                      <Button asChild variant="outline" className="w-full max-w-xs">
                         <Link to="/map">Map</Link>
                       </Button>
                     </DrawerClose>
                      <DrawerClose asChild>
-                       <Button asChild variant="outline" className="w-full max-w-xs bg-[#126E56] text-white hover:bg-[#126E56]/80">
+                       <Button asChild variant="outline" className="w-full max-w-xs">
                          <Link to="/announcements">Announcements</Link>
                        </Button>
                      </DrawerClose>
                     <DrawerClose asChild>
-                      <Button asChild variant="outline" className="w-full max-w-xs bg-[#0C314C] text-white hover:bg-[#0C314C]/80">
+                      <Button asChild variant="outline" className="w-full max-w-xs">
                         <Link to="/directory">Directory</Link>
                       </Button>
                     </DrawerClose>
@@ -83,16 +83,16 @@ const Layout = ({ children }: LayoutProps) => {
             {/* Desktop - Inline Navbar */}
             <div className="hidden lg:flex items-center gap-4">
               <nav className="flex items-center gap-4">
-                <Button asChild variant="outline" className="bg-[#0C314C] text-white hover:bg-[#0C314C]/80">
+                <Button asChild variant="outline">
                   <Link to="/events">Events</Link>
                 </Button>
-                <Button asChild variant="outline" className="bg-[#1BA165] text-white hover:bg-[#1BA165]/80">
+                <Button asChild variant="outline">
                   <Link to="/map">Map</Link>
                 </Button>
-                <Button asChild variant="outline" className="bg-[#126E56] text-white hover:bg-[#126E56]/80">
+                <Button asChild variant="outline">
                   <Link to="/announcements">Announcements</Link>
                 </Button>
-                <Button asChild variant="outline" className="bg-[#0C314C] text-white hover:bg-[#0C314C]/80">
+                <Button asChild variant="outline">
                   <Link to="/directory">Directory</Link>
                 </Button>
               </nav>
