@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, MailIcon, ArrowLeftIcon, ExternalLinkIcon, MapPinIcon, BriefcaseIcon, GraduationCapIcon, GithubIcon, LinkedinIcon, TwitterIcon, GlobeIcon } from 'lucide-react';
+import { CalendarIcon, MailIcon, ArrowLeftIcon, ExternalLinkIcon, MapPinIcon, BriefcaseIcon, GraduationCapIcon, GithubIcon, LinkedinIcon, TwitterIcon, GlobeIcon, PaperclipIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate } from '@/lib/utils/date';
@@ -315,8 +315,8 @@ const ProfilePage = () => {
         <Card className="grid-contact">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <MailIcon className="w-5 h-5" />
-              Contact
+            <PaperclipIcon className="w-5 h-5" />
+              Details
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -331,20 +331,22 @@ const ProfilePage = () => {
                 </a>
               </div>
             )}
-            
-            {profile.city && (
+
+            {!profile.email_visible && (
               <div className="flex items-center gap-2">
-                <MapPinIcon className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{profile.city}</span>
+                <MailIcon className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">(email hidden)</span>
               </div>
             )}
-            
-            {profile.country && (
+
+            {profile.city && profile.country && (
               <div className="flex items-center gap-2">
                 <MapPinIcon className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{profile.country}</span>
+                <span className="text-sm">{profile.city}, {profile.country}</span>
               </div>
             )}
+
+            
           </CardContent>
         </Card>
 
@@ -361,7 +363,7 @@ const ProfilePage = () => {
               {profile.cohort && (
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground text-sm">Cohort:</span>
-                  <span className="text-sm">{getCohortLabel(profile.cohort)}</span>
+                  <span className="text-sm">#{getCohortLabel(profile.cohort).split("Cohort")[1].trim()}</span>
                 </div>
               )}
               
