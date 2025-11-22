@@ -79,6 +79,17 @@ export interface EventTagRow {
   tag_id: string;
 }
 
+export interface ProfileHistoryRow {
+  id: string;
+  profile_id: string;
+  job_title: string | null;
+  company: string | null;
+  city: string | null;
+  country: string | null;
+  changed_at: string;
+  change_type: 'INSERT' | 'UPDATE';
+}
+
 // Legacy Database interface for compatibility
 export interface Database {
   public: {
@@ -112,6 +123,11 @@ export interface Database {
         Row: EventTagRow;
         Insert: EventTagRow;
         Update: Partial<EventTagRow>;
+      }
+      profiles_history: {
+        Row: ProfileHistoryRow;
+        Insert: Omit<ProfileHistoryRow, 'id' | 'changed_at'>;
+        Update: Partial<ProfileHistoryRow>;
       }
     }
     Views: {
