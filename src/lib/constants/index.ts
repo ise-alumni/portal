@@ -17,11 +17,11 @@ export async function getUserTypes(): Promise<string[]> {
     }
 
     // Extract unique user types
-    const uniqueTypes = [...new Set(data?.map((p: any) => p.user_type).filter(Boolean) as string[])];
-    return uniqueTypes.length > 0 ? uniqueTypes : ['Admin', 'Staff', 'Alumni'];
+    const uniqueTypes = [...new Set(data?.map((p: { user_type?: string }) => p.user_type).filter(Boolean) as string[])];
+    return uniqueTypes.length > 0 ? uniqueTypes : ['Admin', 'Staff', 'Alum'];
   } catch (error) {
     log.error('Error fetching user types:', error);
-    return ['Admin', 'Staff', 'Alumni']; // Fallback
+    return ['Admin', 'Staff', 'Alum']; // Fallback
   }
   }
  
@@ -48,7 +48,6 @@ export async function getEventTags(): Promise<Array<{ name: string; color: strin
       { name: 'Social', color: '#ef4444' },
       { name: 'Career', color: '#8b5cf6' },
       { name: 'Technical', color: '#06b6d4' },
-      { name: 'Alumni', color: '#84cc16' },
       { name: 'Online', color: '#6366f1' },
       { name: 'In-Person', color: '#f97316' }
     ];
@@ -91,7 +90,6 @@ export function getEventTagsSync(): Array<{ name: string; color: string }> {
     { name: 'Social', color: '#ef4444' },
     { name: 'Career', color: '#8b5cf6' },
     { name: 'Technical', color: '#06b6d4' },
-    { name: 'Alumni', color: '#84cc16' },
     { name: 'Online', color: '#6366f1' },
     { name: 'In-Person', color: '#f97316' }
   ];

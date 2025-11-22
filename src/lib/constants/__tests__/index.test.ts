@@ -168,7 +168,6 @@ describe('Constants functions', () => {
         { name: 'Social', color: '#ef4444' },
         { name: 'Career', color: '#8b5cf6' },
         { name: 'Technical', color: '#06b6d4' },
-        { name: 'Alumni', color: '#84cc16' },
         { name: 'Online', color: '#6366f1' },
         { name: 'In-Person', color: '#f97316' }
       ])
@@ -259,7 +258,6 @@ describe('Constants functions', () => {
         { name: 'Social', color: '#ef4444' },
         { name: 'Career', color: '#8b5cf6' },
         { name: 'Technical', color: '#06b6d4' },
-        { name: 'Alumni', color: '#84cc16' },
         { name: 'Online', color: '#6366f1' },
         { name: 'In-Person', color: '#f97316' }
       ])
@@ -346,7 +344,7 @@ describe('Constants functions', () => {
       const { isAdmin } = constants
 
       expect(isAdmin('Admin')).toBe(true)
-      expect(isAdmin('Staff')).toBe(true)
+      expect(isAdmin('Staff')).toBe(false)
       expect(isAdmin('Alum')).toBe(false)
       expect(isAdmin(null)).toBe(false)
     })
