@@ -7,14 +7,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NewEventModal from '@/components/NewEventModal';
-import { Announcement, NewAnnouncement, type Tag } from '@/lib/types';
-import { getAnnouncements, createAnnouncement, getAnnouncementById } from '@/lib/domain/announcements';
+import { Announcement, type Tag } from '@/lib/types';
+import { getAnnouncements } from '@/lib/domain/announcements';
 import { formatDateShort, isDateInPast, isDateWithinLastDays } from '@/lib/utils/date';
 import { filterAnnouncements, sortAnnouncements, type SortOption } from '@/lib/utils/data';
 import { log } from '@/lib/utils/logger';
 import { canUserCreateAnnouncements } from '@/lib/constants';
 import { getTags } from '@/lib/domain';
-import { getEventTagColorClass } from '@/lib/utils/ui';
+
 
 // Announcement Card Component
 const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
