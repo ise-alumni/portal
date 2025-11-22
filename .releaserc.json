@@ -19,7 +19,12 @@
           {"type": "build", "release": "patch"},
           {"type": "ci", "release": false},
           {"breaking": true, "release": "major"}
-        ]
+        ],
+        "parserOpts": {
+          "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"],
+          "defaultReleaseType": "patch"
+        }
+
       }
     ],
     [
