@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -18,24 +18,32 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditAnnouncementModal from "@/components/EditAnnouncementModal";
+// import { getAnnouncementById } from '@/lib/domain/announcements';
+import { log } from '@/lib/utils/logger';
+import type { ProfileRow, AnnouncementRow } from '@/integrations/supabase/types';
 
 // Announcement data interface
 interface AnnouncementData {
   id: string;
   title: string;
   content: string | null;
-  type: 'opportunity' | 'news' | 'lecture' | 'program';
+  type?: string;
   external_url: string | null;
   deadline: string | null;
   image_url: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
-  creator?: {
+  slug: string | null;
+  organiser_profile_id: string | null;
+  organiser?: {
     id: string;
     full_name: string | null;
     email: string | null;
-  };
+    email_visible: boolean | null;
+  } | null;
+  tags?: Array<{ id: string; name: string; color: string }>;
+  creator?: ProfileRow | null;
 }
 
 const AnnouncementDetail = () => {
@@ -48,48 +56,91 @@ const AnnouncementDetail = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    const fetchAnnouncement = async () => {
-      if (!id) {
-        setError("No announcement ID provided");
-        setLoading(false);
-        return;
-      }
+  const fetchAnnouncement = useCallback(async () => {
+    if (!id) {
+      setError("No announcement ID provided");
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        // Fetch announcement data
-        const { data, error: fetchError } = await supabase
-          .from('announcements')
-          .select('*')
-          .eq('id', id)
-          .single();
+      // Fetch announcement with organiser profile data and tags
+      const { data, error: fetchError } = await supabase
+        .from('announcements')
+        .select(`
+          *,
+          organiser:organiser_profile_id (
+            id,
+            full_name,
+            email,
+            email_visible
+          ),
+          announcement_tags!inner(
+            tag_id,
+              tags!inner(
+                id,
+                  name,
+                  color
+              )
+            )
+          )
+        `)
+        .eq('id', id)
+        .single();
 
-        if (fetchError) {
-          throw fetchError;
-        }
+       if (fetchError) {
+         throw fetchError;
+       }
 
-        // Transform the data to match our interface
-        const transformedData = {
-          ...data,
-          image_url: (data as { image_url?: string | null }).image_url || null,
-          type: data.type as 'opportunity' | 'news' | 'lecture' | 'program',
-          creator: null, // We'll fetch this separately if needed
-        };
+       if (!data) {
+         throw new Error('Announcement not found');
+       }
 
-        setAnnouncement(transformedData);
-      } catch (err) {
-        console.error('Error fetching announcement:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
-      } finally {
-        setLoading(false);
-      }
-    };
+         // Transform data to match our interface
+         const announcementData = data as AnnouncementRow & { 
+           organiser?: { id: string; full_name: string | null; email: string | null; email_visible: boolean | null } | null;
+           announcement_tags?: Array<{ 
+             tag_id: string; 
+               tags: { id: string; name: string; color: string } 
+           }> 
+         };
+        
+         const transformedData: AnnouncementData = {
+         id: announcementData.id,
+         title: announcementData.title,
+         content: announcementData.content,
+         external_url: announcementData.external_url,
+         deadline: announcementData.deadline,
+         image_url: announcementData.image_url || 'https://placehold.co/600x400',
+         created_by: announcementData.created_by,
+         created_at: announcementData.created_at,
+         updated_at: announcementData.updated_at,
+         slug: announcementData.slug,
+         organiser_profile_id: announcementData.organiser_profile_id,
+         organiser: announcementData.organiser,
+         tags: announcementData.announcement_tags?.map((tagRelation) => ({
+           id: tagRelation.tags.id,
+           name: tagRelation.tags.name,
+           color: tagRelation.tags.color
+         })) || [],
+           creator: announcementData.organiser as ProfileRow | null, // Use organiser as creator
+         };
 
-    fetchAnnouncement();
+       setAnnouncement(transformedData);
+    } catch (err) {
+      log.error('Error fetching announcement:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch announcement');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchAnnouncement();
+  }, [id, fetchAnnouncement]);
 
   // Loading state
   if (loading) {
@@ -146,46 +197,12 @@ const AnnouncementDetail = () => {
     });
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'news':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'lecture':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'program':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'Opportunity';
-      case 'news':
-        return 'News';
-      case 'lecture':
-        return 'Guest Lecture';
-      case 'program':
-        return 'Program';
-      default:
-        return type;
-    }
-  };
 
-  // Generate random Behance image for fallback
-  const getRandomImage = () => {
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/announcement${randomId}/800/400.jpg`;
-  };
+  const imageUrl = announcement.image_url || `https://placehold.co/600x400?text=Announcement+${announcement.id}`;
 
-  const imageUrl = announcement.image_url || getRandomImage();
-
-  // Check if current user can edit this announcement
-  const canEdit = user && (announcement.created_by === user.id);
+  // Check if current user can edit this announcement (organiser only)
+  const canEdit = user && (announcement.organiser_profile_id === user.id);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this announcement? This action cannot be undone.')) {
@@ -203,7 +220,7 @@ const AnnouncementDetail = () => {
 
       navigate('/announcements');
     } catch (err) {
-      console.error('Error deleting announcement:', err);
+      log.error('Error deleting announcement:', err);
       alert('Failed to delete announcement. Please try again.');
     } finally {
       setIsDeleting(false);
@@ -236,9 +253,6 @@ const AnnouncementDetail = () => {
           <p className="text-muted-foreground mt-1">Announcement Details</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className={getTypeColor(announcement.type)}>
-            {getTypeLabel(announcement.type)}
-          </Badge>
           <Badge variant={getStatus(announcement.deadline) === 'active' ? 'default' : 'secondary'}>
             {getStatus(announcement.deadline)}
           </Badge>
@@ -268,9 +282,10 @@ const AnnouncementDetail = () => {
                 alt={announcement.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Fallback to another random image if the first one fails
+                  // Fallback to another random image if first one fails
                   const target = e.target as HTMLImageElement;
-                  target.src = getRandomImage();
+                  const randomId = Math.floor(Math.random() * 1000);
+                  target.src = `https://placehold.co/600x400?text=Announcement+${randomId}`;
                 }}
               />
             </div>
@@ -281,7 +296,7 @@ const AnnouncementDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MegaphoneIcon className="w-5 h-5" />
-                Announcement Information
+               Info 
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -312,7 +327,7 @@ const AnnouncementDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileTextIcon className="w-5 h-5" />
-                About This Announcement
+                Details
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -343,6 +358,36 @@ const AnnouncementDetail = () => {
             </CardContent>
           </Card>
 
+          {/* Tags Section */}
+          {announcement.tags && announcement.tags.length > 0 && (
+            <Card className="border-2 border-foreground shadow-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileTextIcon className="w-5 h-5" />
+                  Tags
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {announcement.tags?.map((tag, index) => (
+                    <Badge 
+                      key={index} 
+                      variant="secondary" 
+                      className="text-xs"
+                      style={{ 
+                        backgroundColor: tag.color + '20',
+                        borderColor: tag.color,
+                        color: tag.color 
+                      }}
+                    >
+                      {tag.name}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Creator Info */}
           <Card className="border-2 border-foreground shadow-none">
             <CardHeader>
@@ -354,7 +399,7 @@ const AnnouncementDetail = () => {
                   {announcement.creator?.full_name || 'Unknown'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {announcement.creator?.email || 'No email available'}
+                  {announcement.creator?.email_visible && announcement.creator?.email ? announcement.creator.email : 'Email hidden'}
                 </p>
               </div>
             </CardContent>

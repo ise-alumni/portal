@@ -9,13 +9,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { Tables } from "@/integrations/supabase/types";
-import { Github, Linkedin, Twitter, ExternalLink, Search } from "lucide-react";
-
-type Profile = Tables<"profiles">;
+import { Github, Linkedin, Twitter, ExternalLink, Search, ChevronRight } from "lucide-react";
+import { Profile } from "@/lib/types";
+import { getProfiles, searchProfiles } from '@/lib/domain/profiles';
+import { filterProfiles, sortProfiles, paginateData, type FilterOptions, type SortOption } from '@/lib/utils/data';
+import { getCohortLabel } from '@/lib/utils/ui';
+import { log } from '@/lib/utils/logger';
+import { getUserTypesSync } from '@/lib/constants';
+import { useNavigate } from "react-router-dom";
+import { useAuth } from '@/hooks/useAuth';
 
 const Directory = () => {
+  const { user } = useAuth();
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,12 +31,6 @@ const Directory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
 
-  // Helper function to convert cohort number to readable label
-  const getCohortLabel = (cohort: number | null) => {
-    if (!cohort) return null;
-    return `Cohort ${cohort}`;
-  };
-
   // Load all profiles on mount
   useEffect(() => {
     const loadProfiles = async () => {
@@ -39,18 +38,11 @@ const Directory = () => {
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("is_public", true)
-          .order("user_type, cohort, graduation_year, full_name");
-
-        if (error) throw error;
-
-        setAllProfiles(data || []);
-        setFilteredProfiles(data || []);
+        const data = await getProfiles();
+        setAllProfiles(data);
+        setFilteredProfiles(data);
       } catch (err) {
-        console.error("Error loading profiles:", err);
+        log.error("Error loading profiles:", err);
         setError("Failed to load alumni profiles. Please try again.");
       } finally {
         setLoading(false);
@@ -62,28 +54,24 @@ const Directory = () => {
 
   // Filter profiles when search term changes
   useEffect(() => {
-    const filtered = allProfiles.filter((profile) => {
-      const searchLower = searchTerm.toLowerCase();
-
-      return (
-        profile.full_name?.toLowerCase().includes(searchLower) ||
-        profile.company?.toLowerCase().includes(searchLower) ||
-        getCohortLabel(profile.cohort)?.toLowerCase().includes(searchLower) ||
-        profile.job_title?.toLowerCase().includes(searchLower) ||
-        profile.city?.toLowerCase().includes(searchLower) ||
-        profile.country?.toLowerCase().includes(searchLower)
-      );
-    });
-
-    setFilteredProfiles(filtered);
+    const filters: FilterOptions = searchTerm ? { search: searchTerm } : {};
+    const sortOption: SortOption = { field: 'full_name', direction: 'asc' };
+    
+    const filtered = filterProfiles(allProfiles, filters);
+    const sorted = sortProfiles(filtered, sortOption);
+    
+    setFilteredProfiles(sorted);
     setCurrentPage(1); // Reset to first page when search changes
   }, [searchTerm, allProfiles]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredProfiles.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedProfiles = filteredProfiles.slice(startIndex, endIndex);
+  const paginationResult = paginateData(filteredProfiles, {
+    page: currentPage,
+    limit: itemsPerPage
+  });
+  const paginatedProfiles = paginationResult.data;
+  const totalPages = paginationResult.totalPages;
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -145,7 +133,7 @@ const Directory = () => {
       {/* Results count */}
       <div className="mb-6">
         <p className="text-sm text-muted-foreground">
-          Showing {Math.min(itemsPerPage, filteredProfiles.length - startIndex + 1)} of {filteredProfiles.length} alumni {searchTerm && `matching "${searchTerm}"`}
+          Showing {Math.min(itemsPerPage, (paginationResult.page - 1) * paginationResult.limit + paginationResult.data.length)} of {paginationResult.total} alumni {searchTerm && `matching "${searchTerm}"`}
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
@@ -162,15 +150,19 @@ const Directory = () => {
         <>
           <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
             {paginatedProfiles.map((profile) => (
-            <Card key={profile.id} className="h-full hover:shadow-md transition-shadow">
+            <Card key={profile.id} className="h-full hover:shadow-md transition-shadow relative group cursor-pointer" onClick={() => navigate(`/profile/${profile.id}`)}>
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
-                  {profile.avatar_url && (
+                  {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
                       alt={`${profile.full_name || "User"} avatar`}
                       className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0"
                     />
+                  ) : (
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-medium text-sm">
+                      {profile.full_name ? profile.full_name.split(' ').map(word => word[0]).join('').toUpperCase() : 'U'}
+                    </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <CardTitle className="text-base sm:text-lg mb-2 leading-tight">
@@ -197,14 +189,16 @@ const Directory = () => {
                           {getCohortLabel(profile.cohort)}
                         </Badge>
                       )}
-                      {profile.msc ? (
-                        <Badge variant="outline" className="text-xs">
-                          MSc
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          BSc
-                        </Badge>
+                      {profile.user_type !== "Staff" && (
+                        profile.msc ? (
+                          <Badge variant="outline" className="text-xs">
+                            MSc
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            BSc
+                          </Badge>
+                        )
                       )}
                       {profile.graduation_year && (
                         <Badge variant="secondary" className="text-xs">
@@ -227,18 +221,27 @@ const Directory = () => {
                         .join(", ")}
                     </div>
                   )}
-                  {profile.email_visible && profile.email && (
+                  {profile.email_visible && profile.email ? (
                     <div className="text-sm">{profile.email}</div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">(email hidden)</div>
                   )}
                 </CardDescription>
+                {user && user.id === profile.id && (
+                  <div className="px-6 pb-6 pt-0">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => navigate('/')}
+                      className="mt-2 w-full"
+                    >
+                      Edit Profile
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="pt-0">
-                {profile.bio && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                    {profile.bio}
-                  </p>
-                )}
 
                 {/* Social Links */}
                 {(profile.github_url ||
@@ -252,6 +255,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Github className="h-4 w-4" />
                         <span>GitHub</span>
@@ -263,6 +267,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Linkedin className="h-4 w-4" />
                         <span>LinkedIn</span>
@@ -274,6 +279,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Twitter className="h-4 w-4" />
                         <span>Twitter</span>
@@ -285,6 +291,7 @@ const Directory = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <ExternalLink className="h-4 w-4" />
                         <span>Website</span>
@@ -293,6 +300,31 @@ const Directory = () => {
                   </div>
                 )}
               </CardContent>
+              
+
+<div className="group">
+  <div
+    className="
+      absolute inset-y-0 right-0 w-[10%]
+      bg-white
+      group-hover:bg-foreground
+      transition-colors duration-200
+      flex items-center justify-center
+      pointer-events-none
+    "
+  >
+    <div
+      className="
+        p-1
+        text-black
+        group-hover:text-white
+        transition-colors duration-200
+      "
+    >
+      <ChevronRight className="h-4 w-4" />
+    </div>
+  </div>
+</div>
             </Card>
           ))}
         </div>

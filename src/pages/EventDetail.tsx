@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -18,12 +18,13 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditEventModal from "@/components/EditEventModal";
+import { log } from '@/lib/utils/logger';
+import { SupabaseClient } from '@/integrations/supabase/types';
 
-// Event data interface
-interface EventData {
+// Temporary interface for Supabase response
+interface SupabaseEvent {
   id: string;
   title: string;
-  slug: string;
   description: string | null;
   location: string | null;
   location_url: string | null;
@@ -35,11 +36,42 @@ interface EventData {
   created_at: string;
   updated_at: string;
   image_url: string | null;
-  tags: Array<{ id: string; name: string }> | null;
+  event_tags?: Array<{
+    tag: {
+      id: string;
+      name: string;
+      color: string;
+    };
+  }>;
   organiser?: {
     id: string;
     full_name: string | null;
     email: string | null;
+    email_visible: boolean | null;
+  };
+}
+
+// Event data interface
+interface EventData {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  location_url: string | null;
+  registration_url: string | null;
+  start_at: string;
+  end_at: string | null;
+  organiser_profile_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  image_url: string | null;
+  tags: Array<{ id: string; name: string; color: string }> | null;
+  organiser?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    email_visible: boolean | null;
   };
 }
 
@@ -53,7 +85,7 @@ const EventDetail = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchEvent = async () => {
+  const fetchEvent = useCallback(async () => {
     if (!id) {
       setError("No event ID provided");
       setLoading(false);
@@ -65,19 +97,21 @@ const EventDetail = () => {
       setError(null);
 
       // Fetch event with organiser profile data and tags
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await (supabase as SupabaseClient)
         .from('events')
         .select(`
           *,
           organiser:organiser_profile_id (
             id,
             full_name,
-            email
+            email,
+            email_visible
           ),
           event_tags (
             tag:tags (
               id,
-              name
+              name,
+              color
             )
           )
         `)
@@ -88,25 +122,41 @@ const EventDetail = () => {
         throw fetchError;
       }
 
+      if (!data) {
+        throw new Error('Event not found');
+      }
+
       // Transform the data to match our interface
-      const transformedData = {
-        ...data,
-        image_url: (data as { image_url?: string | null }).image_url || null,
-        tags: data.event_tags?.map((et: { tag: { id: string; name: string } }) => et.tag) || null,
+      const transformedData: EventData = {
+        id: (data as SupabaseEvent).id,
+        title: (data as SupabaseEvent).title,
+        description: (data as SupabaseEvent).description,
+        location: (data as SupabaseEvent).location,
+        location_url: (data as SupabaseEvent).location_url,
+        registration_url: (data as SupabaseEvent).registration_url,
+        start_at: (data as SupabaseEvent).start_at,
+        end_at: (data as SupabaseEvent).end_at,
+        organiser_profile_id: (data as SupabaseEvent).organiser_profile_id,
+        created_by: (data as SupabaseEvent).created_by,
+        created_at: (data as SupabaseEvent).created_at,
+        updated_at: (data as SupabaseEvent).updated_at,
+        image_url: (data as SupabaseEvent).image_url || null,
+        tags: (data as SupabaseEvent).event_tags?.map((et: { tag: { id: string; name: string; color: string } }) => et.tag) || null,
+        organiser: (data as SupabaseEvent).organiser,
       };
 
       setEvent(transformedData);
     } catch (err) {
-      console.error('Error fetching event:', err);
+      log.error('Error fetching event:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch event');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchEvent();
-  }, [id]);
+  }, [id, fetchEvent]);
 
   // Loading state
   if (loading) {
@@ -171,16 +221,10 @@ const EventDetail = () => {
     });
   };
 
-  // Generate random Behance image for fallback
-  const getRandomImage = () => {
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/event${randomId}/800/400.jpg`;
-  };
+  const imageUrl = event.image_url || `https://placehold.co/600x400?text=Event+${event.id}`;
 
-  const imageUrl = event.image_url || getRandomImage();
-
-  // Check if current user can edit this event
-  const canEdit = user && (event.created_by === user.id);
+  // Check if current user can edit this event (organiser only)
+  const canEdit = user && (event.organiser_profile_id === user.id);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
@@ -198,7 +242,7 @@ const EventDetail = () => {
 
       navigate('/events');
     } catch (err) {
-      console.error('Error deleting event:', err);
+      log.error('Error deleting event:', err);
       alert('Failed to delete event. Please try again.');
     } finally {
       setIsDeleting(false);
@@ -259,9 +303,10 @@ const EventDetail = () => {
                 alt={event.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Fallback to another random image if the first one fails
+                  // Fallback to another random image if first one fails
                   const target = e.target as HTMLImageElement;
-                  target.src = getRandomImage();
+                  const randomId = Math.floor(Math.random() * 1000);
+                  target.src = `https://placehold.co/600x400?text=Event+${randomId}`;
                 }}
               />
             </div>
@@ -272,7 +317,7 @@ const EventDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5" />
-                Event Information
+                Info
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -313,7 +358,7 @@ const EventDetail = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileTextIcon className="w-5 h-5" />
-                About This Event
+                Details
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -335,7 +380,15 @@ const EventDetail = () => {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {event.tags?.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
+                    <Badge 
+                      key={index} 
+                      style={{ 
+                        backgroundColor: tag.color + '20',
+                        borderColor: tag.color,
+                        color: tag.color 
+                      }}
+                      className="text-xs"
+                    >
                       {tag.name}
                     </Badge>
                   ))}
@@ -385,7 +438,7 @@ const EventDetail = () => {
                   {event.organiser?.full_name || 'Unknown Organiser'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {event.organiser?.email || 'No email available'}
+                  {event.organiser?.email_visible && event.organiser?.email ? event.organiser.email : 'Email hidden'}
                 </p>
               </div>
             </CardContent>

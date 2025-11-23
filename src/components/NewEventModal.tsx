@@ -1,21 +1,45 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
-import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogTitle, DialogHeader, DialogContent, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon } from "lucide-react";
+import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { log } from '@/lib/utils/logger';
+import { getEventTagsSync, isValidEventTag, getEventTagOptions } from '@/lib/constants';
+
+interface EventData {
+  title: string;
+  description: string | null;
+  location: string | null;
+  location_url: string | null;
+  start_at: string;
+  end_at: string | null;
+  organiser_profile_id: string | null;
+  created_by: string;
+  image_url: string | null;
+}
+
+interface AnnouncementData {
+  title: string;
+  content: string | null;
+  external_url: string | null;
+  deadline: string | null;
+  image_url: string | null;
+  created_by: string;
+}
 
 interface NewEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: EventData | AnnouncementData) => void;
   mode: 'event' | 'announcement';
 }
 
@@ -28,21 +52,16 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
   const [link, setLink] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
-  const [tags, setTags] = useState<string>("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [type, setType] = useState<'opportunity' | 'news' | 'lecture' | 'program'>('opportunity');
+
   const [deadline, setDeadline] = useState<string>("");
   const [externalUrl, setExternalUrl] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string>("");
   const { user } = useAuth();
 
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  };
+
 
   const handleCreate = async () => {
     if (mode === 'event') {
@@ -66,7 +85,14 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
       setIsCreating(true);
       setError(null);
 
-      let data: any;
+      // Get current user's profile to set as organiser (used for both events and announcements)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      let data: EventData | AnnouncementData;
 
       if (mode === 'event') {
         // Combine date and time for start_at
@@ -88,90 +114,122 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
             endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
         }
 
-        // Get current user's profile to set as organiser
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        // Parse tags from comma-separated string and convert to UUIDs
-        const tagNames = tags
-          .split(',')
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0);
-
-        let tagIds: string[] = [];
+        // Convert selected tag names to UUIDs
+        const tagIds: string[] = [];
         
-        // For each tag name, find existing tag or create new one
-        for (const tagName of tagNames) {
-          // First try to find existing tag
+        for (const tagName of selectedTags) {
+          // Find existing tag
           const { data: existingTag } = await supabase
             .from('tags')
             .select('id')
             .eq('name', tagName)
             .single();
 
-          if (existingTag) {
-            tagIds.push(existingTag.id);
+          if (existingTag && (existingTag as { id: string }).id) {
+            tagIds.push((existingTag as { id: string }).id);
           } else {
-            // Create new tag if it doesn't exist
-            const { data: newTag } = await supabase
-              .from('tags')
-              .insert({ name: tagName })
-              .select('id')
-              .single();
-            
-            if (newTag) {
-              tagIds.push(newTag.id);
-            }
+            log.error('Tag not found in database:', tagName);
           }
         }
 
-        data = {
+        // Create event without tags first
+        const eventData = {
           title: eventName,
-          slug: generateSlug(eventName),
           description: description || null,
           location: location || null,
           location_url: link || null,
           start_at: startDateTime.toISOString(),
           end_at: endDateTime?.toISOString() || null,
-          organiser_profile_id: profile?.id || null,
+          organiser_profile_id: (profile as { id: string })?.id || null,
           created_by: user.id,
           image_url: imageUrl || null,
-          tags: tagIds,
         };
 
-        const { error: insertError } = await supabase
+        const { data: createdEvent, error: insertError } = await (supabase as any)
           .from('events')
-          .insert(data)
+          .insert(eventData)
           .select()
           .single();
 
         if (insertError) {
           throw insertError;
         }
+
+        // Now insert tag relationships into event_tags junction table
+        if (tagIds.length > 0 && createdEvent?.id) {
+          const eventTagRelations = tagIds.map(tagId => ({
+            event_id: createdEvent.id,
+            tag_id: tagId
+          }));
+
+          const { error: tagInsertError } = await (supabase as any)
+            .from('event_tags')
+            .insert(eventTagRelations);
+
+          if (tagInsertError) {
+            throw tagInsertError;
+          }
+        }
+
+        data = eventData;
       } else {
         // Announcement mode
-        data = {
+        // Convert selected tag names to UUIDs
+        const tagIds: string[] = [];
+        
+        for (const tagName of selectedTags) {
+          // Find existing tag
+          const { data: existingTag } = await supabase
+            .from('tags')
+            .select('id')
+            .eq('name', tagName)
+            .single();
+
+          if (existingTag && (existingTag as { id: string }).id) {
+            tagIds.push((existingTag as { id: string }).id);
+          } else {
+            log.error('Tag not found in database:', tagName);
+          }
+        }
+
+        // Create announcement without tags first
+        const announcementData = {
           title: eventName,
           content: description || null,
-          type: type,
           external_url: externalUrl || null,
           deadline: deadline || null,
           image_url: imageUrl || null,
+          organiser_profile_id: (profile as { id: string })?.id || null,
           created_by: user.id,
         };
 
-        const { error: insertError } = await supabase
+        const { data: createdAnnouncement, error: insertError } = await (supabase as any)
           .from('announcements')
-          .insert(data)
+          .insert(announcementData)
           .select()
           .single();
 
         if (insertError) {
           throw insertError;
         }
+
+        // Now insert tag relationships into announcement_tags junction table
+        if (tagIds.length > 0 && createdAnnouncement?.id) {
+          const announcementTagRelations = tagIds.map(tagId => ({
+            announcement_id: createdAnnouncement.id,
+            tag_id: tagId
+          }));
+
+          const { error: tagInsertError } = await (supabase as any)
+            .from('announcement_tags')
+            .insert(announcementTagRelations);
+
+          if (tagInsertError) {
+            throw tagInsertError;
+          }
+        }
+
+        data = announcementData;
       }
 
       // Reset form and close modal
@@ -181,10 +239,9 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
       setLink("");
       setStartTime("");
       setEndTime("");
-      setTags("");
+      setSelectedTags([]);
       setDate(undefined);
       setShowPreview(false);
-      setType('opportunity');
       setDeadline("");
       setExternalUrl("");
       setImageUrl("");
@@ -192,7 +249,7 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
        onSubmit(data);
       onClose();
     } catch (err) {
-      console.error(`Error creating ${mode}:`, err);
+      log.error(`Error creating ${mode}:`, err);
       setError(err instanceof Error ? err.message : `Failed to create ${mode}`);
     } finally {
       setIsCreating(false);
@@ -206,9 +263,9 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           <DialogTitle className="text-2xl font-semibold">
             Create New {mode === 'event' ? 'Event' : 'Announcement'}
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <DialogDescription>
             Fill in the details below to add a new {mode === 'event' ? 'event' : 'announcement'}
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -232,22 +289,53 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
             />
           </div>
 
-          {/* Announcement Type Selection - Only show for announcements */}
+          {/* Tag Selection - Only show for announcements */}
           {mode === 'announcement' && (
             <div className="space-y-2">
-              <Label htmlFor="type" className="text-sm font-medium">Type</Label>
-              <select
-                id="type"
-                value={type}
-                onChange={(e) => setType(e.target.value as any)}
-                className="w-full p-2 border rounded-md"
-                disabled={isCreating}
-              >
-                <option value="opportunity">Opportunity</option>
-                <option value="news">News</option>
-                <option value="lecture">Guest Lecture</option>
-                <option value="program">Program</option>
-              </select>
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <FileTextIcon className="w-4 h-4" />
+                Tags
+              </Label>
+              <div className="space-y-2">
+                {/* Available tags */}
+                <div className="flex flex-wrap gap-2">
+                  {getEventTagOptions().map((tag) => {
+                    const isSelected = selectedTags.includes(tag.value);
+                    return (
+                      <button
+                        key={tag.value}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTags(selectedTags.filter(t => t !== tag.value));
+                          } else {
+                            setSelectedTags([...selectedTags, tag.value]);
+                          }
+                        }}
+                        disabled={isCreating}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={{
+                          backgroundColor: isSelected ? tag.color : undefined,
+                        }}
+                      >
+                        {tag.label}
+                        {isSelected && (
+                          <X className="w-3 h-3 ml-1 inline" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTags.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Select tags to categorize this announcement
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -425,20 +513,55 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
             )}
           </div>
 
-          {/* Tags Section */}
-          <div className="space-y-2">
-            <Label htmlFor="tags" className="text-sm font-medium flex items-center gap-2">
-              <FileTextIcon className="w-4 h-4" />
-              Tags
-            </Label>
-            <Input
-              id="tags"
-              placeholder="e.g., Networking, Online, Career (comma-separated)"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              disabled={isCreating}
-            />
-          </div>
+          {/* Tags Section - Only show for events */}
+          {mode === 'event' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <FileTextIcon className="w-4 h-4" />
+                Tags
+              </Label>
+              <div className="space-y-2">
+                {/* Available tags */}
+                <div className="flex flex-wrap gap-2">
+                  {getEventTagOptions().map((tag) => {
+                    const isSelected = selectedTags.includes(tag.value);
+                    return (
+                      <button
+                        key={tag.value}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedTags(selectedTags.filter(t => t !== tag.value));
+                          } else {
+                            setSelectedTags([...selectedTags, tag.value]);
+                          }
+                        }}
+                        disabled={isCreating}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={{
+                          backgroundColor: isSelected ? tag.color : undefined,
+                        }}
+                      >
+                        {tag.label}
+                        {isSelected && (
+                          <X className="w-3 h-3 ml-1 inline" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTags.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Select tags to categorize this event
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

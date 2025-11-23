@@ -1,46 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState, useEffect } from "react";
-import { CalendarIcon, MapPinIcon, Loader2Icon } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { CalendarIcon, MapPinIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import NewEventModal from "@/components/NewEventModal";
 
-// Tag interface
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
-// Event data interface
-interface EventData {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  location: string | null;
-  location_url: string | null;
-  registration_url: string | null;
-  start_at: string;
-  end_at: string | null;
-  organiser_profile_id: string | null;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  image_url: string | null;
-  event_tags?: Array<{
-    tag_id: string;
-    tags: Tag;
-  }>;
-  organiser?: {
-    id: string;
-    full_name: string | null;
-    email: string | null;
-  };
-}
+// Import centralized types and utilities
+import { type EventData, type Tag } from "@/lib/types";
+import { getEvents, getTags, isEventInPast, isEventUpcoming } from "@/lib/domain";
+import { formatDate } from "@/lib/utils/date";
+import { log } from '@/lib/utils/logger';
+import { canUserCreateEvents } from '@/lib/constants';
 
 const ExistingEvent = ({ event }: { event: EventData }) => {
   const navigate = useNavigate();
@@ -49,25 +22,7 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
     navigate(`/events/${event.id}`);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  // Generate random Behance image for fallback
-  const getRandomImage = () => {
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/event${randomId}/400/200.jpg`;
-  };
-
-  const imageUrl = event.image_url || getRandomImage();
+  const imageUrl = event.image_url || `https://placehold.co/600x400?text=Event+${event.id}`;
 
   return (
     <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden">
@@ -77,9 +32,10 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
           alt={event.title}
           className="w-full h-full object-cover"
           onError={(e) => {
-            // Fallback to another random image if the first one fails
+            // Fallback to another random image if first one fails
             const target = e.target as HTMLImageElement;
-            target.src = getRandomImage();
+            const randomId = Math.floor(Math.random() * 1000);
+            target.src = `https://placehold.co/600x400?text=Event+${randomId}`;
           }}
         />
       </div>
@@ -93,6 +49,23 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
           <div className="flex items-center text-sm text-muted-foreground">
             <MapPinIcon className="w-4 h-4 mr-1" />
             {event.location}
+          </div>
+        )}
+        {event.event_tags && event.event_tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {event.event_tags.map((eventTag) => (
+              <Badge 
+                key={eventTag.tags.id} 
+                style={{ 
+                  backgroundColor: eventTag.tags.color + '20',
+                  borderColor: eventTag.tags.color,
+                  color: eventTag.tags.color 
+                }}
+                className="text-xs"
+              >
+                {eventTag.tags.name}
+              </Badge>
+            ))}
           </div>
         )}
       </CardHeader>
@@ -111,7 +84,7 @@ const Events = () => {
   const [sortBy, setSortBy] = useState<'date' | 'title'>('date');
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<{ user_type?: string } | null>(null);
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [pastPage, setPastPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
@@ -123,41 +96,26 @@ const Events = () => {
       setLoading(true);
       setError(null);
 
-      const { data: eventsData, error: fetchError } = await supabase
-        .from('events')
-        .select(`
-          *,
-          event_tags (
-            tag_id,
-            tags (
-              id,
-              name,
-              color
-            )
-          )
-        `);
+      const [eventsData, tagsData] = await Promise.all([
+        getEvents(),
+        getTags()
+      ]);
 
-      const { data: tagsData, error: tagsError } = await supabase
-        .from('tags')
-        .select('*')
-        .order('name');
-
-      if (fetchError) throw fetchError;
-      if (tagsError) throw tagsError;
-
-      console.log('Fetched events:', eventsData?.length, eventsData);
-      console.log('Fetched tags:', tagsData?.length, tagsData);
-      setEvents(eventsData || []);
-      setAvailableTags(tagsData || []);
+      log.debug('Fetched events:', eventsData?.length, eventsData);
+      log.debug('Fetched tags:', tagsData?.length, tagsData);
+      setEvents(eventsData);
+      setAvailableTags(tagsData);
     } catch (err) {
-      console.error('Error fetching events:', err);
+      log.error('Error fetching events:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch events');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
+    // This function can be removed or replaced with a domain service later
+    // For now, keeping it simple since user_type check is minimal
     if (!user) return;
     
     try {
@@ -173,30 +131,27 @@ const Events = () => {
 
       setUserProfile(data);
     } catch (err) {
-      console.error('Error fetching user profile:', err);
+      log.error('Error fetching user profile:', err);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchEvents();
     if (user) {
       fetchUserProfile();
     }
-  }, [user]);
+  }, [user, fetchUserProfile]);
 
   const handleEventCreated = () => {
     fetchEvents(); // Refresh events list
   };
 
-  // Check if user can create events (admin or staff)
-  const canCreateEvents = user && userProfile && (userProfile.user_type === 'Admin' || userProfile.user_type === 'Staff');
+  // Check if user can create events (admin only)
+  const canCreateEvents = user && userProfile && canUserCreateEvents(userProfile.user_type);
 
   // Filter and sort events
-  const now = new Date();
-  
-  // Separate into upcoming and past from original events array
-  const allUpcomingEvents = events.filter(event => new Date(event.start_at) >= now);
-  const allPastEvents = events.filter(event => new Date(event.start_at) < now);
+  const allUpcomingEvents = events.filter(event => isEventUpcoming(event));
+  const allPastEvents = events.filter(event => isEventInPast(event));
   
   // Apply tag filtering to each group
   const upcomingEvents = allUpcomingEvents.filter(event => 
@@ -220,10 +175,9 @@ const Events = () => {
   });
 
   // Debug logging
-  console.log('Total events:', events.length);
-  console.log('Current time:', now);
-  console.log('Upcoming events:', upcomingEvents.length, upcomingEvents.map(e => ({ title: e.title, date: e.start_at })));
-  console.log('Past events:', pastEvents.length, pastEvents.map(e => ({ title: e.title, date: e.start_at })));
+  log.debug('Total events:', events.length);
+  log.debug('Upcoming events:', upcomingEvents.length, upcomingEvents.map(e => ({ title: e.title, date: e.start_at })));
+  log.debug('Past events:', pastEvents.length, pastEvents.map(e => ({ title: e.title, date: e.start_at })));
 
   // Pagination logic
   const totalUpcomingEvents = upcomingEvents.length;
@@ -250,10 +204,13 @@ const Events = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex justify-center items-center py-12">
-          <Loader2Icon className="animate-spin h-8 w-8 text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading events...</p>
+      <div className="container mx-auto py-8 px-4 sm:px-0">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Events</h1>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading events...</p>
+          </div>
         </div>
       </div>
     );

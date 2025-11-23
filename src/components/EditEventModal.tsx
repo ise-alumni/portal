@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogTitle, DialogHeader, DialogContent, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon } from "lucide-react";
+import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { log } from '@/lib/utils/logger';
+import { getEventTagsSync, getEventTagOptions } from '@/lib/constants';
+
+// Temporary type to bypass Supabase complex typing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseAny = any;
 
 interface Event {
   id: string;
@@ -29,7 +35,6 @@ interface EditEventModalProps {
   onClose: () => void;
   onSubmit: (data: {
     title: string;
-    slug: string;
     description: string | null;
     location: string | null;
     location_url: string | null;
@@ -51,7 +56,7 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
   const [link, setLink] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
-  const [tags, setTags] = useState<string>("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,17 +88,12 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
       
       // Set tags
       if (event.tags && event.tags.length > 0) {
-        setTags(event.tags.map(tag => tag.name).join(', '));
+        setSelectedTags(event.tags.map(tag => tag.name));
       }
     }
   }, [event, isOpen]);
 
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  };
+
 
   const handleUpdate = async () => {
     if (!event) return;
@@ -131,54 +131,38 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
         endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
       }
 
-      // Parse tags from comma-separated string and convert to UUIDs
-      const tagNames = tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0);
-
+      // Convert selected tag names to UUIDs
       const tagIds: string[] = [];
       
-      // For each tag name, find existing tag or create new one
-      for (const tagName of tagNames) {
-        // First try to find existing tag
+      for (const tagName of selectedTags) {
+        // Find existing tag
         const { data: existingTag } = await supabase
           .from('tags')
           .select('id')
           .eq('name', tagName)
           .single();
 
-        if (existingTag) {
-          tagIds.push(existingTag.id);
+        if (existingTag && (existingTag as { id: string }).id) {
+          tagIds.push((existingTag as { id: string }).id);
         } else {
-          // Create new tag if it doesn't exist
-          const { data: newTag } = await supabase
-            .from('tags')
-            .insert({ name: tagName })
-            .select('id')
-            .single();
-          
-          if (newTag) {
-            tagIds.push(newTag.id);
-          }
+          log.error('Tag not found in database:', tagName);
         }
       }
 
-      const data = {
+      const eventData = {
         title: eventName,
-        slug: generateSlug(eventName),
         description: description || null,
         location: location || null,
         location_url: link || null,
         start_at: startDateTime.toISOString(),
         end_at: endDateTime?.toISOString() || null,
         image_url: imageUrl || null,
-        tags: tagIds,
       };
 
-      const { error: updateError } = await supabase
+      // Update event without tags first
+      const { error: updateError } = await (supabase as SupabaseAny)
         .from('events')
-        .update(data)
+        .update(eventData)
         .eq('id', event.id)
         .select()
         .single();
@@ -186,11 +170,38 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
       if (updateError) {
         throw updateError;
       }
+
+      // Update tag relationships: delete existing and insert new ones
+      if (tagIds.length > 0) {
+        // Delete existing tag relationships
+        const { error: deleteError } = await (supabase as SupabaseAny)
+          .from('event_tags')
+          .delete()
+          .eq('event_id', event.id);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+
+        // Insert new tag relationships
+        const eventTagRelations = tagIds.map(tagId => ({
+          event_id: event.id,
+          tag_id: tagId
+        }));
+
+        const { error: tagInsertError } = await (supabase as SupabaseAny)
+          .from('event_tags')
+          .insert(eventTagRelations);
+
+        if (tagInsertError) {
+          throw tagInsertError;
+        }
+      }
       
-      onSubmit(data);
+      onSubmit({ ...eventData, tags: tagIds });
       onClose();
     } catch (err) {
-      console.error("Error updating event:", err);
+      log.error("Error updating event:", err);
       setError(err instanceof Error ? err.message : "Failed to update event");
     } finally {
       setIsUpdating(false);
@@ -220,7 +231,7 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
       onDelete();
       onClose();
     } catch (err) {
-      console.error("Error deleting event:", err);
+      log.error("Error deleting event:", err);
       setError(err instanceof Error ? err.message : "Failed to delete event");
     } finally {
       setIsDeleting(false);
@@ -234,9 +245,9 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
           <DialogTitle className="text-2xl font-semibold">
             Edit Event
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <DialogDescription>
             Update the event details below
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -411,17 +422,50 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
 
           {/* Tags Section */}
           <div className="space-y-2">
-            <Label htmlFor="tags" className="text-sm font-medium flex items-center gap-2">
+            <Label className="text-sm font-medium flex items-center gap-2">
               <FileTextIcon className="w-4 h-4" />
               Tags
             </Label>
-            <Input
-              id="tags"
-              placeholder="e.g., Networking, Online, Career (comma-separated)"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              disabled={isUpdating || isDeleting}
-            />
+            <div className="space-y-2">
+              {/* Available tags */}
+              <div className="flex flex-wrap gap-2">
+                {getEventTagOptions().map((tag) => {
+                  const isSelected = selectedTags.includes(tag.value);
+                  return (
+                    <button
+                      key={tag.value}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedTags(selectedTags.filter(t => t !== tag.value));
+                        } else {
+                          setSelectedTags([...selectedTags, tag.value]);
+                        }
+                      }}
+                      disabled={isUpdating || isDeleting}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        isSelected
+                          ? 'text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      style={{
+                        backgroundColor: isSelected ? tag.color : undefined,
+                      }}
+                    >
+                      {tag.label}
+                      {isSelected && (
+                        <X className="w-3 h-3 ml-1 inline" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedTags.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Select tags to categorize this event
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

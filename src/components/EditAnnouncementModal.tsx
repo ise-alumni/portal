@@ -1,23 +1,33 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogTitle, DialogHeader, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogTitle, DialogHeader, DialogContent, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, ExternalLinkIcon, CalendarIcon } from "lucide-react";
+import { FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, ExternalLinkIcon, CalendarIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { log } from '@/lib/utils/logger';
+import { getEventTagOptions } from '@/lib/constants';
+import type { Database } from '@/integrations/supabase/types';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+
 
 interface Announcement {
   id: string;
   title: string;
   content: string | null;
-  type: 'opportunity' | 'news' | 'lecture' | 'program';
   external_url: string | null;
   deadline: string | null;
   image_url: string | null;
   created_by: string;
+  created_at: string;
+  updated_at: string;
+  slug: string | null;
+  tags?: Array<{ id: string; name: string; color: string }>;
 }
 
 interface EditAnnouncementModalProps {
@@ -26,10 +36,10 @@ interface EditAnnouncementModalProps {
   onSubmit: (data: {
     title: string;
     content: string | null;
-    type: 'opportunity' | 'news' | 'lecture' | 'program';
     external_url: string | null;
     deadline: string | null;
     image_url: string | null;
+    tag_ids: string[];
   }) => void;
   onDelete?: () => void;
   announcement: Announcement | null;
@@ -39,7 +49,7 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
   const [content, setContent] = useState<string>("");
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [title, setTitle] = useState<string>("");
-  const [type, setType] = useState<'opportunity' | 'news' | 'lecture' | 'program'>('opportunity');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [deadline, setDeadline] = useState<string>("");
   const [externalUrl, setExternalUrl] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -53,7 +63,7 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
     if (announcement && isOpen) {
       setTitle(announcement.title);
       setContent(announcement.content || "");
-      setType(announcement.type);
+      setSelectedTags(announcement.tags?.map(tag => tag.name) || []);
       setDeadline(announcement.deadline || "");
       setExternalUrl(announcement.external_url || "");
       setImageUrl(announcement.image_url || "");
@@ -77,18 +87,42 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       setIsUpdating(true);
       setError(null);
 
+      // Convert selected tag names to UUIDs first
+      const tagIds: string[] = [];
+      
+      for (const tagName of selectedTags) {
+        // Find existing tag
+        const { data: existingTag } = await supabase
+          .from('tags')
+          .select('id')
+          .eq('name', tagName)
+          .single();
+
+        if (existingTag && (existingTag as { id: string }).id) {
+          tagIds.push((existingTag as { id: string }).id);
+        } else {
+          log.error('Tag not found in database:', tagName);
+        }
+      }
+
       const data = {
         title: title,
         content: content || null,
-        type: type,
         external_url: externalUrl || null,
         deadline: deadline || null,
         image_url: imageUrl || null,
+        tag_ids: tagIds,
       };
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('announcements')
-        .update(data)
+        .update({
+          title: title,
+          content: content || null,
+          external_url: externalUrl || null,
+          deadline: deadline || null,
+          image_url: imageUrl || null,
+        })
         .eq('id', announcement.id)
         .select()
         .single();
@@ -97,10 +131,37 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
         throw updateError;
       }
       
+      // Update tag associations
+      if (tagIds.length > 0) {
+        // First delete existing tag associations
+        const { error: deleteError } = await (supabase as any)
+          .from('announcement_tags')
+          .delete()
+          .eq('announcement_id', announcement.id);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+
+        // Then insert new tag associations
+        const tagRelations = tagIds.map(tagId => ({
+          announcement_id: announcement.id,
+          tag_id: tagId
+        }));
+        
+        const { error: tagInsertError } = await (supabase as any)
+          .from('announcement_tags')
+          .insert(tagRelations);
+
+        if (tagInsertError) {
+          throw tagInsertError;
+        }
+      }
+      
       onSubmit(data);
       onClose();
     } catch (err) {
-      console.error("Error updating announcement:", err);
+      log.error("Error updating announcement:", err);
       setError(err instanceof Error ? err.message : "Failed to update announcement");
     } finally {
       setIsUpdating(false);
@@ -118,8 +179,8 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       setIsDeleting(true);
       setError(null);
 
-      const { error: deleteError } = await supabase
-        .from('announcements')
+      const { error: deleteError } = await (supabase
+        .from('announcements') as any)
         .delete()
         .eq('id', announcement.id);
 
@@ -130,7 +191,7 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       onDelete();
       onClose();
     } catch (err) {
-      console.error("Error deleting announcement:", err);
+      log.error("Error deleting announcement:", err);
       setError(err instanceof Error ? err.message : "Failed to delete announcement");
     } finally {
       setIsDeleting(false);
@@ -144,9 +205,9 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
           <DialogTitle className="text-2xl font-semibold">
             Edit Announcement
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <DialogDescription>
             Update the announcement details below
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -170,21 +231,51 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
             />
           </div>
 
-          {/* Type Selection */}
+          {/* Tag Selection */}
           <div className="space-y-2">
-            <Label htmlFor="type" className="text-sm font-medium">Type</Label>
-            <select
-              id="type"
-              value={type}
-              onChange={(e) => setType(e.target.value as any)}
-              className="w-full p-2 border rounded-md"
-              disabled={isUpdating || isDeleting}
-            >
-              <option value="opportunity">Opportunity</option>
-              <option value="news">News</option>
-              <option value="lecture">Guest Lecture</option>
-              <option value="program">Program</option>
-            </select>
+            <Label className="text-sm font-medium flex items-center gap-2">
+              Tags
+            </Label>
+            <div className="space-y-2">
+              {/* Available tags */}
+              <div className="flex flex-wrap gap-2">
+                {getEventTagOptions().map((tag) => {
+                  const isSelected = selectedTags.includes(tag.value);
+                  return (
+                    <button
+                      key={tag.value}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedTags(selectedTags.filter(t => t !== tag.value));
+                        } else {
+                          setSelectedTags([...selectedTags, tag.value]);
+                        }
+                      }}
+                      disabled={isUpdating || isDeleting}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        isSelected
+                          ? 'text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      style={{
+                        backgroundColor: isSelected ? tag.color : undefined,
+                      }}
+                    >
+                      {tag.label}
+                      {isSelected && (
+                        <X className="w-3 h-3 ml-1 inline" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedTags.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Select tags to categorize this announcement
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Deadline */}

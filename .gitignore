@@ -1,5 +1,10 @@
 .env
-sample_data.csv
+
+AGENTS.md
+*.csv
+
+*.ts.html
+coverage
 
 # Logs
 logs

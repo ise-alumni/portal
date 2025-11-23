@@ -1,19 +1,20 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Calendar, Newspaper } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Tables } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Profile, ProfileFormData } from '@/lib/types';
+import { getProfileByUserId, updateProfile } from '@/lib/domain/profiles';
+import { log } from '@/lib/utils/logger';
 
 const Index = () => {
   const { user, session, loading } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Tables<'profiles'> | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const isFetching = useRef(false);
@@ -23,6 +24,7 @@ const Index = () => {
     city: '',
     country: '',
     graduationYear: '',
+    msc: false,
     jobTitle: '',
     company: '',
     bio: '',
@@ -43,6 +45,7 @@ const Index = () => {
         city: '',
         country: '',
         graduationYear: '',
+        msc: false,
         jobTitle: '',
         company: '',
         bio: '',
@@ -65,44 +68,42 @@ const Index = () => {
     }
   }, [user, loading, navigate]);
 
-    useEffect(() => {
-      const fetchProfile = async () => {
-        if (!user || isFetching.current) return;
-        isFetching.current = true;
-        setProfileLoading(true);
-        try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('id, created_at, updated_at, user_id, full_name, email, city, country, graduation_year, job_title, company, bio, github_url, linkedin_url, twitter_url, website_url, avatar_url, email_visible, cohort, user_type, is_public')
-            .eq('user_id', user.id)
-            .maybeSingle();
-           setProfile(data as any ?? null);
-           if (data) {
-             setFormData({
-               fullName: data.full_name ?? '',
-               city: data.city ?? '',
-               country: data.country ?? '',
-               graduationYear: data.graduation_year?.toString() ?? '',
-               jobTitle: data.job_title ?? '',
-               company: data.company ?? '',
-               bio: data.bio ?? '',
-               githubUrl: (data as any).github_url ?? '',
-               linkedinUrl: (data as any).linkedin_url ?? '',
-               twitterUrl: (data as any).twitter_url ?? '',
-               websiteUrl: (data as any).website_url ?? '',
-               avatarUrl: data.avatar_url ?? '',
-               emailVisible: data.email_visible ?? true,
-             });
-           }
-        } catch (error) {
-          console.error("Error fetching profile:", error);
-        } finally {
-          setProfileLoading(false);
-          isFetching.current = false;
+    const fetchProfile = useCallback(async () => {
+      if (!user || isFetching.current) return;
+      isFetching.current = true;
+      setProfileLoading(true);
+      try {
+        const data = await getProfileByUserId(user.id);
+        setProfile(data);
+        if (data) {
+          setFormData({
+            fullName: data.full_name ?? '',
+            city: data.city ?? '',
+            country: data.country ?? '',
+            graduationYear: data.graduation_year?.toString() ?? '',
+            msc: data.msc ?? false,
+            jobTitle: data.job_title ?? '',
+            company: data.company ?? '',
+            bio: data.bio ?? '',
+            githubUrl: data.github_url ?? '',
+            linkedinUrl: data.linkedin_url ?? '',
+            twitterUrl: data.twitter_url ?? '',
+            websiteUrl: data.website_url ?? '',
+            avatarUrl: data.avatar_url ?? '',
+            emailVisible: data.email_visible ?? true,
+          });
         }
-      };
-      fetchProfile();
+      } catch (error) {
+        log.error("Error fetching profile:", error);
+      } finally {
+        setProfileLoading(false);
+        isFetching.current = false;
+      }
     }, [user]);
+
+    useEffect(() => {
+      fetchProfile();
+    }, [fetchProfile]);
 
    // Timeout to reset loading if stuck
    useEffect(() => {
@@ -134,7 +135,7 @@ const Index = () => {
       setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
       return publicUrl;
     } catch (error) {
-      console.error("Avatar upload error:", error);
+      log.error("Avatar upload error:", error);
       return null;
     }
   };
@@ -151,39 +152,19 @@ const Index = () => {
           setAvatarFile(null);
         } else {
           // If upload fails, don't update avatar_url
-          console.error("Avatar upload failed, keeping existing avatar");
+          log.error("Avatar upload failed, keeping existing avatar");
         }
       }
 
-      const payload: any = {
-        user_id: user.id,
-        full_name: formData.fullName || null,
-        email: user.email ?? null,
-        city: formData.city || null,
-        country: formData.country || null,
-        graduation_year: formData.graduationYear ? parseInt(formData.graduationYear, 10) : null,
-        job_title: formData.jobTitle || null,
-        company: formData.company || null,
-        bio: formData.bio || null,
-        github_url: formData.githubUrl || null,
-        linkedin_url: formData.linkedinUrl || null,
-        twitter_url: formData.twitterUrl || null,
-        website_url: formData.websiteUrl || null,
-        email_visible: formData.emailVisible,
+      // Create form data with avatar URL
+      const profileFormData: ProfileFormData = {
+        ...formData,
+        avatarUrl: avatarFile && avatarUrlToSave ? avatarUrlToSave : undefined,
       };
 
-      // Only include avatar_url if an avatar was uploaded and upload succeeded
-      if (avatarFile && avatarUrlToSave) {
-        payload.avatar_url = avatarUrlToSave;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert(payload, { onConflict: 'user_id' } as any)
-        .select('*')
-        .maybeSingle();
-      if (!error) {
-        setProfile(data as any);
+      const data = await updateProfile(user.id, profileFormData);
+      if (data) {
+        setProfile(data);
       }
     } finally {
       setSaving(false);
@@ -217,11 +198,10 @@ const Index = () => {
           {profileLoading ? (
             <div className="text-sm text-muted-foreground">Loading profile…</div>
           ) : profile ? (
-            (() => {
-               const displayFullName = profile.full_name || (user?.user_metadata as any)?.full_name || (user?.email?.split('@')[0] ?? '—');
-               const displayEmail = user?.email || profile.email || '—';
-               const lastSignedIn = user?.last_sign_in_at || '—';
-               const anyData = profile as any;
+             (() => {
+                const displayFullName = profile.full_name || user?.user_metadata?.full_name || (user?.email?.split('@')[0] ?? '—');
+                const displayEmail = user?.email || profile.email || '—';
+                const lastSignedIn = user?.last_sign_in_at || '—';
                return (
                  <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-sm">
@@ -264,15 +244,28 @@ const Index = () => {
                           />
                         </div>
                       </div>
-                       <div>
-                         <label className="text-xs opacity-70">Graduation Year</label>
-                         <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
-                       </div>
+                        <div>
+                          <label className="text-xs opacity-70">Graduation Year</label>
+                          <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
+                        </div>
 
-                       <div>
-                         <label className="text-xs opacity-70">City</label>
-                         <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
-                       </div>
+                        <div>
+                          <label className="text-xs opacity-70">Program</label>
+                          <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select program" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="bsc">BSc</SelectItem>
+                              <SelectItem value="msc">MSc</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs opacity-70">City</label>
+                          <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
+                        </div>
                        <div>
                          <label className="text-xs opacity-70">Country</label>
                          <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
@@ -306,19 +299,28 @@ const Index = () => {
                        <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
                      </div>
            </div>
-                  <div className="flex flex-col md:flex-row md:justify-end">
-                    <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
-                      {saving ? 'Saving…' : 'Save Profile'}
-            </Button>
-          </div>
+                   <div className="flex flex-col md:flex-row md:justify-end gap-2">
+                     <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
+                       {saving ? 'Saving…' : 'Save Profile'}
+             </Button>
+                     {profile && (
+                       <Button 
+                         variant="outline" 
+                         onClick={() => navigate(`/profile/${profile.id}`)}
+                         className="w-full md:w-auto border-2 border-foreground shadow-none"
+                       >
+                         See Profile
+                       </Button>
+                     )}
+           </div>
                 </div>
               );
             })()
           ) : (
-            (() => {
-              const displayFullName = (user?.user_metadata as any)?.full_name || (user?.email?.split('@')[0] ?? '—');
-              const displayEmail = user?.email || '—';
-               const lastSignedIn = user?.last_sign_in_at || '—';
+             (() => {
+               const displayFullName = user?.user_metadata?.full_name || (user?.email?.split('@')[0] ?? '—');
+               const displayEmail = user?.email || '—';
+                const lastSignedIn = user?.last_sign_in_at || '—';
               return (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-sm">
@@ -331,14 +333,26 @@ const Index = () => {
                        <label className="text-xs opacity-70">Full Name</label>
                        <Input value={formData.fullName} onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Your full name" />
                      </div>
-                     <div>
-                       <label className="text-xs opacity-70">Graduation Year</label>
-                       <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">City</label>
-                       <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
-                     </div>
+                      <div>
+                        <label className="text-xs opacity-70">Graduation Year</label>
+                        <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
+                      </div>
+                      <div>
+                        <label className="text-xs opacity-70">Program</label>
+                        <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select program" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bsc">BSc</SelectItem>
+                            <SelectItem value="msc">MSc</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs opacity-70">City</label>
+                        <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
+                      </div>
                      <div>
                        <label className="text-xs opacity-70">Country</label>
                        <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />

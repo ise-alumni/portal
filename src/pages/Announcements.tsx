@@ -1,33 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { CalendarDays, ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
+import { ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NewEventModal from '@/components/NewEventModal';
+import { Announcement, type Tag } from '@/lib/types';
+import { getAnnouncements } from '@/lib/domain/announcements';
+import { formatDateShort, isDateInPast, isDateWithinLastDays } from '@/lib/utils/date';
+import { filterAnnouncements, sortAnnouncements, type SortOption } from '@/lib/utils/data';
+import { log } from '@/lib/utils/logger';
+import { canUserCreateAnnouncements } from '@/lib/constants';
+import { getTags } from '@/lib/domain';
 
-type Announcement = {
-  id: string;
-  title: string;
-  content: string | null;
-  type: string;
-  external_url: string | null;
-  deadline: string | null;
-  image_url: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type NewAnnouncement = {
-  title: string;
-  content: string | null;
-  type: 'opportunity' | 'news' | 'lecture' | 'program';
-  external_url: string | null;
-  deadline: string | null;
-  image_url: string | null;
-};
 
 // Announcement Card Component
 const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
@@ -37,55 +24,20 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
     navigate(`/announcements/${announcement.id}`);
   };
 
-  // Generate random Behance image for fallback
-  const getRandomImage = () => {
-    const randomId = Math.floor(Math.random() * 1000);
-    return `https://picsum.photos/seed/announcement${randomId}/400/200.jpg`;
-  };
-
-  const imageUrl = announcement.image_url || getRandomImage();
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'news':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'lecture':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'program':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'Opportunity';
-      case 'news':
-        return 'News';
-      case 'lecture':
-        return 'Guest Lecture';
-      case 'program':
-        return 'Program';
-      default:
-        return type;
-    }
-  };
+  const imageUrl = announcement.image_url || `https://placehold.co/600x400?text=Announcement+${announcement.id}`;
 
   return (
-    <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden cursor-pointer" onClick={handleViewDetails}>
+    <Card className="w-full hover:shadow-lg transition-shadow duration-200 overflow-hidden">
       <div className="aspect-video w-full overflow-hidden">
         <img 
           src={imageUrl} 
           alt={announcement.title}
           className="w-full h-full object-cover"
           onError={(e) => {
-            // Fallback to another random image if the first one fails
+            // Fallback to another random image if first one fails
             const target = e.target as HTMLImageElement;
-            target.src = getRandomImage();
+            const randomId = Math.floor(Math.random() * 1000);
+            target.src = `https://placehold.co/600x400?text=Announcement+${randomId}`;
           }}
         />
       </div>
@@ -94,37 +46,47 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           <div className="flex-1">
             <CardTitle className="text-lg sm:text-xl leading-tight">{announcement.title}</CardTitle>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <Badge className={getTypeColor(announcement.type)}>
-                {getTypeLabel(announcement.type)}
-              </Badge>
+              {announcement.tags?.map((tag, index) => (
+                <Badge 
+                  key={index} 
+                  style={{ 
+                    backgroundColor: tag.color + '20',
+                    borderColor: tag.color,
+                    color: tag.color 
+                  }}
+                  className="text-xs"
+                >
+                  {tag.name}
+                </Badge>
+              ))}
               {announcement.deadline && (
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Clock className="w-4 h-4 mr-1" />
                   <span className="hidden sm:inline">Deadline: </span>
-                  {new Date(announcement.deadline).toLocaleDateString()}
+                  {formatDateShort(announcement.deadline)}
                 </div>
               )}
             </div>
           </div>
           <div className="text-sm text-muted-foreground whitespace-nowrap">
-            {new Date(announcement.created_at).toLocaleDateString()}
+            {formatDateShort(announcement.created_at)}
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <CardDescription className="text-base">
-          {announcement.content}
         </CardDescription>
-        {announcement.external_url && (
-          <div className="mt-4">
-            <Button variant="outline" asChild onClick={(e) => e.stopPropagation()}>
+        <div className="mt-4 space-y-2">
+          <Button className="w-full" onClick={handleViewDetails}>Details</Button>
+          {announcement.external_url && (
+            <Button variant="outline" className="w-full" asChild>
               <a href={announcement.external_url} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Learn More
               </a>
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -137,68 +99,81 @@ export const Announcements = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'created_at' | 'deadline' | 'title'>('created_at');
-  const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedTag, setSelectedTag] = useState<string>('');
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [announcementView, setAnnouncementView] = useState<'current' | 'past'>('current');
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<{ user_type: string } | null>(null);
   
    // Pagination state
    const [upcomingPage, setUpcomingPage] = useState(1);
    const [pastPage, setPastPage] = useState(1);
    const [itemsPerPage, setItemsPerPage] = useState(6);
 
+  const fetchUserProfile = useCallback(async () => {
+    if (!user) return;
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('user_id', user.id)
+      .single();
+    
+    setUserProfile(profile);
+  }, [user]);
+
   useEffect(() => {
     fetchAnnouncements();
     fetchUserProfile();
-  }, []);
+    fetchTags();
+  }, [fetchUserProfile]);
+
+  const fetchTags = async () => {
+    const tagsData = await getTags();
+    setAvailableTags(tagsData);
+  };
 
   useEffect(() => {
     // Apply filtering and sorting when dependencies change
-    const processedAnnouncements = announcements.filter(announcement => {
-      return !selectedType || announcement.type === selectedType;
-    });
+    const filters = {
+      // Add tag filter when selectedTag is not empty
+      ...(selectedTag && { tags: [selectedTag] })
+    };
 
-    const sortedAnnouncements = [...processedAnnouncements].sort((a, b) => {
-      if (sortBy === 'deadline') {
-        // Handle null deadlines - put them last
-        if (!a.deadline && !b.deadline) return 0;
-        if (!a.deadline) return 1;
-        if (!b.deadline) return -1;
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-      } else if (sortBy === 'title') {
-        return a.title.localeCompare(b.title);
-      } else {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-    });
+    const sortOption: SortOption = {
+      field: sortBy,
+      direction: sortBy === 'created_at' ? 'desc' : 'asc'
+    };
 
-    setFilteredAnnouncements(sortedAnnouncements);
-  }, [announcements, selectedType, sortBy]);
+    const filtered = filterAnnouncements(announcements, filters);
+    const sorted = sortAnnouncements(filtered, sortOption);
 
-  // Separate current/upcoming from past announcements
-  const now = new Date();
-  const currentAnnouncements = filteredAnnouncements.filter(announcement => {
-    // Consider announcements with deadlines in the future as current
-    if (announcement.deadline && new Date(announcement.deadline) >= now) {
-      return true;
-    }
-    // Consider announcements without deadlines as current if created within last 30 days
-    if (!announcement.deadline && new Date(announcement.created_at) >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)) {
-      return true;
-    }
-    return false;
-  });
-  
-  const pastAnnouncements = filteredAnnouncements.filter(announcement => {
-    // Consider announcements with past deadlines as past
-    if (announcement.deadline && new Date(announcement.deadline) < now) {
-      return true;
-    }
-    // Consider announcements without deadlines as past if created more than 30 days ago
-    if (!announcement.deadline && new Date(announcement.created_at) < new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)) {
-      return true;
-    }
-    return false;
-  });
+    setFilteredAnnouncements(sorted);
+  }, [announcements, selectedTag, sortBy]);
+
+   // Separate current/upcoming from past announcements
+   const currentAnnouncements = filteredAnnouncements.filter(announcement => {
+     // Consider announcements with deadlines in the future as current
+     if (announcement.deadline && !isDateInPast(announcement.deadline)) {
+       return true;
+     }
+     // Consider announcements without deadlines as current if created within last 30 days
+     if (!announcement.deadline && isDateWithinLastDays(announcement.created_at, 30)) {
+       return true;
+     }
+     return false;
+   });
+   
+   const pastAnnouncements = filteredAnnouncements.filter(announcement => {
+     // Consider announcements with past deadlines as past
+     if (announcement.deadline && isDateInPast(announcement.deadline)) {
+       return true;
+     }
+     // Consider announcements without deadlines as past if created more than 30 days ago
+     if (!announcement.deadline && !isDateWithinLastDays(announcement.created_at, 30)) {
+       return true;
+     }
+     return false;
+   });
 
    // Pagination calculations
    const upcomingTotalPages = Math.ceil(currentAnnouncements.length / itemsPerPage);
@@ -214,104 +189,46 @@ export const Announcements = () => {
      pastPage * itemsPerPage
    );
 
-   // Debug logging
-   console.log('Total announcements:', announcements.length);
-   console.log('Current announcements:', currentAnnouncements.length);
-   console.log('Past announcements:', pastAnnouncements.length);
-   console.log('Current page:', upcomingPage, 'Total pages:', upcomingTotalPages);
-   console.log('Past page:', pastPage, 'Total pages:', pastTotalPages);
+    // Debug logging
+    log.debug('Total announcements:', announcements.length);
+    log.debug('Current announcements:', currentAnnouncements.length);
+    log.debug('Past announcements:', pastAnnouncements.length);
+    log.debug('Current page:', upcomingPage, 'Total pages:', upcomingTotalPages);
+    log.debug('Past page:', pastPage, 'Total pages:', pastTotalPages);
 
    // Reset pagination when filters change
    useEffect(() => {
      setUpcomingPage(1);
      setPastPage(1);
-   }, [selectedType, sortBy]);
+   }, [selectedTag, sortBy]);
 
-  const fetchUserProfile = async () => {
-    if (!user) return;
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_type')
-      .eq('user_id', user.id)
-      .single();
-    
-    setUserProfile(profile);
-  };
-
-  const fetchAnnouncements = async () => {
-    const { data, error } = await supabase
-      .from('announcements')
-      .select('*'); 
-
-    if (error) {
-      console.error('Error fetching announcements:', error);
-    } else {
-      console.log('Fetched announcements:', data?.length, data);
-      setAnnouncements(data || []);
-    }
+   const fetchAnnouncements = async () => {
+    const data = await getAnnouncements();
+     log.debug('Fetched announcements:', data.length, data);
+    setAnnouncements(data);
     setLoading(false);
   };
 
-  const handleCreateAnnouncement = async (announcement: NewAnnouncement) => {
+  const handleCreateAnnouncement = async (data: unknown) => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('announcements')
-      .insert({
-        ...announcement,
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    // NewEventModal now handles everything properly, just refresh the list
+    log.info('Announcement created successfully');
+    setIsModalOpen(false);
+    fetchAnnouncements(); // Refresh announcements list
+   };
 
-    if (error) {
-      console.error('Error creating announcement:', error);
-    } else {
-      console.log('Announcement created:', data);
-      setIsModalOpen(false);
-      fetchAnnouncements(); // Refresh announcements list
-    }
-  };
-
-  const canCreateAnnouncement = userProfile?.user_type === 'Admin' || userProfile?.user_type === 'Staff';
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'news':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'lecture':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'program':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'opportunity':
-        return 'Opportunity';
-      case 'news':
-        return 'News';
-      case 'lecture':
-        return 'Guest Lecture';
-      case 'program':
-        return 'Program';
-      default:
-        return type;
-    }
-  };
+  const canCreateAnnouncement = canUserCreateAnnouncements(userProfile?.user_type || null);
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading announcements...</p>
+      <div className="container mx-auto py-8 px-4 sm:px-0">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Announcements</h1>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading announcements...</p>
+          </div>
         </div>
       </div>
     );
@@ -332,15 +249,14 @@ export const Announcements = () => {
              <option value="title">Sort by Title</option>
            </select>
            <select
-             value={selectedType}
-             onChange={(e) => setSelectedType(e.target.value)}
-             className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+           value={selectedTag}
+           onChange={(e) => setSelectedTag(e.target.value)}
+           className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
            >
-             <option value="">All Types</option>
-             <option value="opportunity">Opportunity</option>
-             <option value="news">News</option>
-             <option value="lecture">Guest Lecture</option>
-             <option value="program">Program</option>
+           <option value="">All Tags</option>
+           {availableTags.map(tag => (
+           <option key={tag.id} value={tag.name}>{tag.name}</option>
+           ))}
            </select>
            <select
              value={itemsPerPage}
