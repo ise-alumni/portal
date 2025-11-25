@@ -27,6 +27,8 @@ export interface ResidencyStats {
   partners: {
     name: string;
     count: number;
+    bscCount: number;
+    mscCount: number;
     percentage: number;
   }[];
 }

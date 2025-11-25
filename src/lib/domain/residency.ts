@@ -115,12 +115,17 @@ export async function getResidencyStats(profiles: Profile[]): Promise<ResidencyS
 
     // Group by partner for stats
     const partnerStats = partners.map(partner => {
-      const count = partnerMatches.filter(m => m.partnerName === partner.name).length;
+      const partnerProfiles = partnerMatches.filter(m => m.partnerName === partner.name);
+      const count = partnerProfiles.length;
+      const bscCount = partnerProfiles.filter(m => !m.profile.msc).length;
+      const mscCount = partnerProfiles.filter(m => m.profile.msc).length;
       const percentage = eligibleProfiles.length > 0 ? Math.round((count / eligibleProfiles.length) * 100) : 0;
       
       return {
         name: partner.name,
         count,
+        bscCount,
+        mscCount,
         percentage
       };
     }).filter(stat => stat.count > 0).sort((a, b) => b.count - a.count);

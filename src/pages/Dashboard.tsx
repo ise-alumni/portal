@@ -1109,9 +1109,20 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {(() => {
-                    const filteredPartners = filterData(residencyPartners, residencyFilter, ['name', 'website', 'description']);
-                    const sortedPartners = sortData(filteredPartners, residencySort);
+                   {(() => {
+                    // Get partner stats from residencyStats
+                    const partnersWithStats = residencyPartners.map(partner => {
+                      const partnerStat = residencyStats?.partners.find(p => p.name === partner.name);
+                      return {
+                        ...partner,
+                        bscCount: partnerStat?.bscCount || 0,
+                        mscCount: partnerStat?.mscCount || 0,
+                        totalCount: partnerStat?.count || 0
+                      };
+                    });
+                    
+                    const filteredPartners = filterData(partnersWithStats, residencyFilter, ['name', 'website', 'description']);
+                    const sortedPartners = filteredPartners.sort((a, b) => b.totalCount - a.totalCount);
                     const paginatedPartners = paginateData(sortedPartners, residencyPagination);
                     
                     return paginatedPartners.data.map((partner) => (
@@ -1143,6 +1154,16 @@ const Dashboard = () => {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
+                          {partner.bscCount > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              BSC: {partner.bscCount}
+                            </Badge>
+                          )}
+                          {partner.mscCount > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              MSC: {partner.mscCount}
+                            </Badge>
+                          )}
                           <Badge variant={partner.is_active ? "default" : "secondary"}>
                             {partner.is_active ? 'Active' : 'Inactive'}
                           </Badge>
