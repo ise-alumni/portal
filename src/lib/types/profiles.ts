@@ -21,6 +21,10 @@ export interface Profile {
   website_url: string | null;
   is_public: boolean | null;
   msc: boolean | null;
+  is_remote: boolean | null;
+  is_entrepreneur: boolean | null;
+  is_ise_champion: boolean | null;
+  employed: boolean | null;
   user_type: UserRole;
   created_at: string;
   updated_at: string;
@@ -41,6 +45,10 @@ export interface ProfileFormData {
   websiteUrl: string;
   avatarUrl: string;
   emailVisible: boolean;
+  isRemote: boolean;
+  isEntrepreneur: boolean;
+  isIseChampion: boolean;
+  employed: boolean;
 }
 
 

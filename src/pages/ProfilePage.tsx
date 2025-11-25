@@ -407,6 +407,32 @@ const ProfilePage = () => {
               </div>  
 
             )}
+
+            <div className="space-y-2">
+              <p className="font-bold text-foreground text-sm">Status:</p>
+              <div className="flex flex-wrap gap-2">
+                {profile.is_remote && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Remote
+                  </span>
+                )}
+                {profile.is_entrepreneur && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Entrepreneur
+                  </span>
+                )}
+                {profile.is_ise_champion && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    ISE Champion
+                  </span>
+                )}
+                {profile.employed && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    Employed
+                  </span>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
 

@@ -34,6 +34,10 @@ const Index = () => {
     websiteUrl: '',
     avatarUrl: '',
     emailVisible: true,
+    isRemote: false,
+    isEntrepreneur: false,
+    isIseChampion: false,
+    employed: true,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
@@ -55,6 +59,10 @@ const Index = () => {
         websiteUrl: '',
         avatarUrl: '',
         emailVisible: true,
+        isRemote: false,
+        isEntrepreneur: false,
+        isIseChampion: false,
+        employed: true,
       });
       setAvatarFile(null);
       setProfile(null);
@@ -91,6 +99,10 @@ const Index = () => {
             websiteUrl: data.website_url ?? '',
             avatarUrl: data.avatar_url ?? '',
             emailVisible: data.email_visible ?? true,
+            isRemote: data.is_remote ?? false,
+            isEntrepreneur: data.is_entrepreneur ?? false,
+            isIseChampion: data.is_ise_champion ?? false,
+            employed: data.employed ?? true,
           });
         }
       } catch (error) {
@@ -294,10 +306,55 @@ const Index = () => {
                        <label className="text-xs opacity-70">Twitter / X</label>
                        <Input value={formData.twitterUrl} onChange={(e) => setFormData(prev => ({ ...prev, twitterUrl: e.target.value }))} placeholder="https://twitter.com/username" />
                      </div>
-           <div>
-                       <label className="text-xs opacity-70">Website</label>
-                       <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
-                     </div>
+            <div>
+                        <label className="text-xs opacity-70">Website</label>
+                        <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
+                      </div>
+                      <div className="md:col-span-2 space-y-3">
+                        <div className="text-xs opacity-70 font-medium">Professional Status</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="isRemote"
+                              checked={formData.isRemote}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="isRemote" className="text-sm">Remote Worker</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="isEntrepreneur"
+                              checked={formData.isEntrepreneur}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isEntrepreneur: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="isEntrepreneur" className="text-sm">Entrepreneur</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="isIseChampion"
+                              checked={formData.isIseChampion}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="employed"
+                              checked={formData.employed}
+                              onChange={(e) => setFormData(prev => ({ ...prev, employed: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="employed" className="text-sm">Employed</label>
+                          </div>
+                        </div>
+                      </div>
            </div>
                    <div className="flex flex-col md:flex-row md:justify-end gap-2">
                      <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
@@ -381,11 +438,56 @@ const Index = () => {
                        <label className="text-xs opacity-70">Twitter / X</label>
                        <Input value={formData.twitterUrl} onChange={(e) => setFormData(prev => ({ ...prev, twitterUrl: e.target.value }))} placeholder="https://twitter.com/username" />
                  </div>
-                 <div>
-                       <label className="text-xs opacity-70">Website</label>
-                       <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
-                     </div>
-                   </div>
+                  <div>
+                        <label className="text-xs opacity-70">Website</label>
+                        <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
+                      </div>
+                      <div className="md:col-span-2 space-y-3">
+                        <div className="text-xs opacity-70 font-medium">Professional Status</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="isRemote-new"
+                              checked={formData.isRemote}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="isRemote-new" className="text-sm">Remote Worker</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="isEntrepreneur-new"
+                              checked={formData.isEntrepreneur}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isEntrepreneur: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="isEntrepreneur-new" className="text-sm">Entrepreneur</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="isIseChampion-new"
+                              checked={formData.isIseChampion}
+                              onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="isIseChampion-new" className="text-sm">ISE Champion</label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="employed-new"
+                              checked={formData.employed}
+                              onChange={(e) => setFormData(prev => ({ ...prev, employed: e.target.checked }))}
+                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                            />
+                            <label htmlFor="employed-new" className="text-sm">Employed</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   <div className="flex flex-col md:flex-row md:justify-end">
                     <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
                       {saving ? 'Saving…' : 'Save Profile'}
