@@ -6,6 +6,7 @@ import { LogOut  } from "lucide-react";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerClose, DrawerTitle } from "@/components/ui/drawer";
 import { supabase } from '@/integrations/supabase/client';
 import { ProfileRow } from '@/integrations/supabase/types';
+import { log } from '@/lib/utils/logger';
 
 interface LayoutProps {
   children: ReactNode;
@@ -30,7 +31,7 @@ const Layout = ({ children }: LayoutProps) => {
         if (error) throw error;
         setProfile(data);
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        log.error('Error fetching profile:', error);
       }
     };
 

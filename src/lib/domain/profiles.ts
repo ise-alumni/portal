@@ -17,6 +17,22 @@ export async function getProfiles(): Promise<Profile[]> {
   return data || [];
 }
 
+export async function getAlumniProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('is_public', true)
+    .in('user_type', ['Alum', 'Admin']) // Include alumni and admin, exclude Staff
+    .order('full_name', { ascending: true });
+
+  if (error) {
+    log.error('Error fetching alumni profiles:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 export async function getProfileByUserId(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
@@ -204,9 +220,17 @@ export async function getProfileHistoryStats(): Promise<{
 }> {
   try {
     const history = await getProfileHistory();
+    const profiles = await getProfiles();
+    
+    // Filter out staff members - only include alumni and admin
+    const eligibleProfiles = profiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
+    const eligibleProfileIds = new Set(eligibleProfiles.map(p => p.id));
+    
+    // Filter history to only include changes from eligible profiles
+    const filteredHistory = history.filter(change => eligibleProfileIds.has(change.profile_id));
     
     // Group by month
-    const changesByMonth = history.reduce((acc, change) => {
+    const changesByMonth = filteredHistory.reduce((acc, change) => {
       const month = new Date(change.changed_at).toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'short' 
@@ -221,7 +245,7 @@ export async function getProfileHistoryStats(): Promise<{
     }, [] as { month: string; count: number }[]);
 
     // Group by type
-    const changesByType = history.reduce((acc, change) => {
+    const changesByType = filteredHistory.reduce((acc, change) => {
       const existing = acc.find(item => item.type === change.change_type);
       if (existing) {
         existing.count++;
@@ -233,14 +257,14 @@ export async function getProfileHistoryStats(): Promise<{
 
     // Count field changes (simplified - in real implementation you'd track specific fields)
     const topChangedFields = [
-      { field: 'job_title', count: history.filter(h => h.job_title !== null).length },
-      { field: 'company', count: history.filter(h => h.company !== null).length },
-      { field: 'city', count: history.filter(h => h.city !== null).length },
-      { field: 'country', count: history.filter(h => h.country !== null).length },
+      { field: 'job_title', count: filteredHistory.filter(h => h.job_title !== null).length },
+      { field: 'company', count: filteredHistory.filter(h => h.company !== null).length },
+      { field: 'city', count: filteredHistory.filter(h => h.city !== null).length },
+      { field: 'country', count: filteredHistory.filter(h => h.country !== null).length },
     ].sort((a, b) => b.count - a.count);
 
     return {
-      totalChanges: history.length,
+      totalChanges: filteredHistory.length,
       changesByMonth: changesByMonth.slice(-12), // Last 12 months
       changesByType,
       topChangedFields
@@ -307,11 +331,14 @@ export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]
     const history = await getProfileHistory();
     const profiles = await getProfiles();
     
+    // Filter out staff members - only include alumni and admin
+    const eligibleProfiles = profiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
+    
     // Map history to field changes with user details
     const fieldChanges: FieldChange[] = [];
     
     for (const change of history) {
-      const profile = profiles.find(p => p.id === change.profile_id);
+      const profile = eligibleProfiles.find(p => p.id === change.profile_id);
       if (!profile) continue;
       
       // Add changes for each field that has a value
@@ -383,11 +410,14 @@ export async function getAllFieldChanges(): Promise<FieldChange[]> {
     const history = await getProfileHistory();
     const profiles = await getProfiles();
     
+    // Filter out staff members - only include alumni and admin
+    const eligibleProfiles = profiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
+    
     // Map history to field changes with user details
     const fieldChanges: FieldChange[] = [];
     
     for (const change of history) {
-      const profile = profiles.find(p => p.id === change.profile_id);
+      const profile = eligibleProfiles.find(p => p.id === change.profile_id);
       if (!profile) continue;
       
       // Add changes for each field that has a value

@@ -6,6 +6,7 @@ import { type ResidencyPartner, type ResidencyStats } from '@/lib/types/residenc
 import { type SignInData, type FieldChange } from '@/lib/domain/profiles';
 import { 
   getProfiles, 
+  getAlumniProfiles,
   getEvents, 
   getAnnouncements,
   getProfileHistory,
@@ -49,6 +50,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { log } from '@/lib/utils/logger';
 import { 
   LineChart, 
   Line, 
@@ -75,6 +77,25 @@ import {
   Filter
 } from 'lucide-react';
 
+// Helper function to render profile avatar or initials
+const renderProfileAvatar = (profile: Profile, size: string = "w-8 h-8") => {
+  if (profile.avatar_url) {
+    return (
+      <img
+        src={profile.avatar_url}
+        alt={`${profile.full_name || "User"} avatar`}
+        className={`${size} rounded-full object-cover flex-shrink-0`}
+      />
+    );
+  } else {
+    return (
+      <div className={`${size} bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-medium text-sm`}>
+        {profile.full_name ? profile.full_name.split(' ').map(word => word[0]).join('').toUpperCase() : 'U'}
+      </div>
+    );
+  }
+};
+
 const Dashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -83,6 +104,7 @@ const Dashboard = () => {
   
   // Data states
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [alumniProfiles, setAlumniProfiles] = useState<Profile[]>([]);
   const [events, setEvents] = useState<EventData[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -158,7 +180,7 @@ const Dashboard = () => {
         if (error) throw error;
         setProfile(data);
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        log.error('Error fetching profile:', error);
       } finally {
         setProfileLoading(false);
       }
@@ -174,17 +196,19 @@ const Dashboard = () => {
       
       try {
         setDataLoading(true);
-        const [profilesData, eventsData, announcementsData] = await Promise.all([
+        const [profilesData, alumniProfilesData, eventsData, announcementsData] = await Promise.all([
           getProfiles(),
+          getAlumniProfiles(),
           getEvents(),
           getAnnouncements()
         ]);
         
         setProfiles(profilesData);
+        setAlumniProfiles(alumniProfilesData);
         setEvents(eventsData);
         setAnnouncements(announcementsData);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        log.error('Error fetching dashboard data:', error);
       } finally {
         setDataLoading(false);
       }
@@ -195,12 +219,12 @@ const Dashboard = () => {
 
   // Calculate statistics
   const calculateStats = () => {
-    const totalUsers = profiles.length;
-    const completeProfiles = profiles.filter(isProfileComplete).length;
+    const totalUsers = profiles.length; // Use all profiles including staff for total count
+    const completeProfiles = alumniProfiles.filter(isProfileComplete).length;
     const upcomingEvents = events.filter(isEventUpcoming).length;
     const ongoingEvents = events.filter(isEventOngoing).length;
     const activeAnnouncements = announcements.filter(isAnnouncementActive).length;
-    const recentUsers = profiles.filter(p => isDateWithinLastDays(p.created_at, 30)).length;
+    const recentUsers = alumniProfiles.filter(p => isDateWithinLastDays(p.created_at, 30)).length;
     
     return {
       totalUsers,
@@ -219,8 +243,8 @@ const Dashboard = () => {
   const getRecentActivity = () => {
     const activities = [];
     
-    // Recent users (last 7 days)
-    const recentUsers = profiles
+    // Recent users (last 7 days) - use alumni profiles
+    const recentUsers = alumniProfiles
       .filter(p => isDateWithinLastDays(p.created_at, 7))
       .slice(0, 3)
       .map(p => ({
@@ -285,7 +309,7 @@ const Dashboard = () => {
         setSignInsData(signIns);
         setFieldChanges(changes);
       } catch (error) {
-        console.error('Error fetching analytics data:', error);
+        log.error('Error fetching analytics data:', error);
       } finally {
         setAnalyticsLoading(false);
       }
@@ -303,13 +327,13 @@ const Dashboard = () => {
         setResidencyLoading(true);
         const [partners, stats] = await Promise.all([
           getResidencyPartners(),
-          getResidencyStats(profiles)
+          getResidencyStats(profiles) // Pass all profiles, function will filter internally
         ]);
         
         setResidencyPartners(partners);
         setResidencyStats(stats);
       } catch (error) {
-        console.error('Error fetching residency data:', error);
+        log.error('Error fetching residency data:', error);
       } finally {
         setResidencyLoading(false);
       }
@@ -328,7 +352,7 @@ const Dashboard = () => {
         const tagsData = await getTags();
         setTags(tagsData);
       } catch (error) {
-        console.error('Error fetching tags data:', error);
+        log.error('Error fetching tags data:', error);
       } finally {
         setTagsLoading(false);
       }
@@ -360,7 +384,7 @@ const Dashboard = () => {
         });
       }
     } catch (error) {
-      console.error('Error creating partner:', error);
+      log.error('Error creating partner:', error);
     }
   };
 
@@ -389,7 +413,7 @@ const Dashboard = () => {
         });
       }
     } catch (error) {
-      console.error('Error updating partner:', error);
+      log.error('Error updating partner:', error);
     }
   };
 
@@ -402,7 +426,7 @@ const Dashboard = () => {
         setResidencyPartners(residencyPartners.filter(p => p.id !== partnerId));
       }
     } catch (error) {
-      console.error('Error deleting partner:', error);
+      log.error('Error deleting partner:', error);
     }
   };
 
@@ -571,11 +595,7 @@ const Dashboard = () => {
                       .map((profile) => (
                         <div key={profile.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-medium">
-                                {profile.full_name?.charAt(0) || 'A'}
-                              </span>
-                            </div>
+                            {renderProfileAvatar(profile, "w-8 h-8")}
                             <div>
                               <p className="font-medium">{profile.full_name || 'Unknown User'}</p>
                               <p className="text-sm text-muted-foreground">{profile.email}</p>
@@ -621,7 +641,6 @@ const Dashboard = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{activity.title}</p>
-                            <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
                             <p className="text-xs text-muted-foreground mt-1">
                               {formatDate(activity.timestamp)}
                             </p>
@@ -671,33 +690,30 @@ const Dashboard = () => {
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {(() => {
-                    const filteredProfiles = filterData(profiles, usersFilter, ['full_name', 'email', 'company']);
-                    const sortedProfiles = sortData(filteredProfiles, usersSort);
-                    const paginatedProfiles = paginateData(sortedProfiles, usersPagination);
-                    
-                    return paginatedProfiles.data.map((profile) => (
-                      <div key={profile.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-xs font-medium">
-                              {profile.full_name?.charAt(0) || 'U'}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{profile.full_name || 'Unknown User'}</p>
-                            <p className="text-sm text-muted-foreground">{profile.email}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">Last active</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDateShort(profile.updated_at)}
-                          </p>
-                        </div>
-                      </div>
-                    ));
+                 <div className="space-y-4">
+                   {(() => {
+                     // For recent sign-ins, use all profiles (including staff)
+                     const filteredProfiles = filterData(profiles, usersFilter, ['full_name', 'email', 'company']);
+                     const sortedProfiles = sortData(filteredProfiles, usersSort);
+                     const paginatedProfiles = paginateData(sortedProfiles, usersPagination);
+                     
+                      return paginatedProfiles.data.map((profile) => (
+                       <div key={profile.id} className="flex items-center justify-between p-3 border rounded-lg">
+                         <div className="flex items-center space-x-3">
+                           {renderProfileAvatar(profile, "w-8 h-8")}
+                           <div>
+                             <p className="font-medium">{profile.full_name || 'Unknown User'}</p>
+                             <p className="text-sm text-muted-foreground">{profile.email}</p>
+                           </div>
+                         </div>
+                         <div className="text-right">
+                           <p className="text-sm font-medium">Last active</p>
+                           <p className="text-xs text-muted-foreground">
+                             {formatDateShort(profile.updated_at)}
+                           </p>
+                         </div>
+                       </div>
+                     ));
                   })()}
                   {profiles.filter(p => isDateWithinLastDays(p.updated_at, 7)).length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
@@ -719,14 +735,14 @@ const Dashboard = () => {
                        >
                          Previous
                        </Button>
-                       <Button 
-                         variant="outline" 
-                         size="sm"
-                         onClick={() => setUsersPagination({ ...usersPagination, page: usersPagination.page + 1 })}
-                         disabled={usersPagination.page >= Math.ceil(profiles.length / usersPagination.limit)}
-                       >
-                         Next
-                       </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setUsersPagination({ ...usersPagination, page: usersPagination.page + 1 })}
+                          disabled={usersPagination.page >= Math.ceil(profiles.length / usersPagination.limit)}
+                        >
+                          Next
+                        </Button>
                      </div>
                    </div>
                 </div>
@@ -865,8 +881,7 @@ const Dashboard = () => {
                      Filter
                    </Button>
                  </div>
-                 <div className="flex space-x-2">
-                 </div>
+
               </div>
             </CardHeader>
             <CardContent>
@@ -954,22 +969,7 @@ const Dashboard = () => {
 
         <TabsContent value="residency" className="space-y-4">
           {/* Residency Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Profiles</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {residencyLoading ? '--' : residencyStats?.totalProfiles || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  All registered users
-                </p>
-              </CardContent>
-            </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">At Residency Partner</CardTitle>
