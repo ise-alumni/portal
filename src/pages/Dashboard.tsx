@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Profile, EventData, Announcement } from '@/lib/types';
+import { type ResidencyPartner, type ResidencyStats } from '@/lib/types/residency';
+import { type SignInData, type FieldChange } from '@/lib/domain/profiles';
 import { 
   getProfiles, 
   getEvents, 
@@ -86,25 +88,30 @@ const Dashboard = () => {
   const [dataLoading, setDataLoading] = useState(true);
   
   // Analytics states
-  const [profileHistoryStats, setProfileHistoryStats] = useState<any>(null);
-  const [signInsData, setSignInsData] = useState<any[]>([]);
-  const [fieldChanges, setFieldChanges] = useState<any[]>([]);
+  const [profileHistoryStats, setProfileHistoryStats] = useState<{
+    totalChanges: number;
+    changesByMonth: { month: string; count: number }[];
+    changesByType: { type: string; count: number }[];
+    topChangedFields: { field: string; count: number }[];
+  } | null>(null);
+  const [signInsData, setSignInsData] = useState<SignInData[]>([]);
+  const [fieldChanges, setFieldChanges] = useState<FieldChange[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   
   // Residency states
-  const [residencyPartners, setResidencyPartners] = useState<any[]>([]);
-  const [residencyStats, setResidencyStats] = useState<any>(null);
+  const [residencyPartners, setResidencyPartners] = useState<ResidencyPartner[]>([]);
+  const [residencyStats, setResidencyStats] = useState<ResidencyStats | null>(null);
   const [residencyLoading, setResidencyLoading] = useState(true);
   
   // Tags states
-  const [tags, setTags] = useState<any[]>([]);
+  const [tags, setTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [tagsLoading, setTagsLoading] = useState(true);
   const [newTag, setNewTag] = useState({ name: '', color: '#3B82F6' });
   
   // Residency partner modal states
   const [isCreatePartnerModalOpen, setIsCreatePartnerModalOpen] = useState(false);
   const [isEditPartnerModalOpen, setIsEditPartnerModalOpen] = useState(false);
-  const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [selectedPartner, setSelectedPartner] = useState<ResidencyPartner | null>(null);
   const [partnerForm, setPartnerForm] = useState({
     name: '',
     website: '',
@@ -114,17 +121,22 @@ const Dashboard = () => {
   });
   
   // Pagination and filtering states
-  const [usersPagination, setUsersPagination] = useState(DEFAULT_PAGINATION);
-  const [eventsPagination, setEventsPagination] = useState(DEFAULT_PAGINATION);
-  const [residencyPagination, setResidencyPagination] = useState(DEFAULT_PAGINATION);
+  const [usersPagination, setUsersPagination] = useState<PaginationOptions>(DEFAULT_PAGINATION);
+  const [eventsPagination, setEventsPagination] = useState<PaginationOptions>(DEFAULT_PAGINATION);
+  const [announcementsPagination, setAnnouncementsPagination] = useState<PaginationOptions>(DEFAULT_PAGINATION);
+  const [residencyPagination, setResidencyPagination] = useState<PaginationOptions>(DEFAULT_PAGINATION);
   
   const [usersFilter, setUsersFilter] = useState<FilterOptions>({});
   const [eventsFilter, setEventsFilter] = useState<FilterOptions>({});
+  const [announcementsFilter, setAnnouncementsFilter] = useState<FilterOptions>({});
   const [residencyFilter, setResidencyFilter] = useState<FilterOptions>({});
   
   const [usersSort, setUsersSort] = useState<SortOption>({ field: 'full_name', direction: 'asc' });
   const [eventsSort, setEventsSort] = useState<SortOption>({ field: 'start_at', direction: 'desc' });
+  const [announcementsSort, setAnnouncementsSort] = useState<SortOption>({ field: 'created_at', direction: 'desc' });
   const [residencySort, setResidencySort] = useState<SortOption>({ field: 'name', direction: 'asc' });
+
+
 
   useEffect(() => {
     if (!loading && !user) {
@@ -394,7 +406,7 @@ const Dashboard = () => {
     }
   };
 
-  const openEditModal = (partner: any) => {
+  const openEditModal = (partner: ResidencyPartner) => {
     setSelectedPartner(partner);
     setPartnerForm({
       name: partner.name,
@@ -573,9 +585,6 @@ const Dashboard = () => {
                             <Badge variant="outline" className="mb-1">
                               {profile.user_type}
                             </Badge>
-                            <p className="text-xs text-muted-foreground">
-                              {profile.user_type}
-                            </p>
                           </div>
                         </div>
                       ))}
@@ -696,30 +705,30 @@ const Dashboard = () => {
                     </div>
                   )}
                   
-                  {/* Pagination */}
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-muted-foreground">
-                      Showing {usersPagination.page} of {Math.ceil(profiles.length / usersPagination.limit)} pages
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setUsersPagination({ ...usersPagination, page: Math.max(1, usersPagination.page - 1) })}
-                        disabled={usersPagination.page <= 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setUsersPagination({ ...usersPagination, page: usersPagination.page + 1 })}
-                        disabled={usersPagination.page >= Math.ceil(profiles.length / usersPagination.limit)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
+                   {/* Pagination */}
+                   <div className="flex items-center justify-between mt-4">
+                     <div className="text-sm text-muted-foreground">
+                       Showing {usersPagination.page} of {Math.ceil(profiles.length / usersPagination.limit)} pages
+                     </div>
+                     <div className="flex space-x-2">
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => setUsersPagination({ ...usersPagination, page: Math.max(1, usersPagination.page - 1) })}
+                         disabled={usersPagination.page <= 1}
+                       >
+                         Previous
+                       </Button>
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => setUsersPagination({ ...usersPagination, page: usersPagination.page + 1 })}
+                         disabled={usersPagination.page >= Math.ceil(profiles.length / usersPagination.limit)}
+                       >
+                         Next
+                       </Button>
+                     </div>
+                   </div>
                 </div>
               )}
             </CardContent>
@@ -730,18 +739,24 @@ const Dashboard = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Event Management</CardTitle>
-                  <CardDescription>
-                    Create and manage events
-                  </CardDescription>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" onClick={() => navigate('/events?action=new')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Event
-                  </Button>
-                </div>
+                 <div>
+                   <CardTitle>Event Management</CardTitle>
+                   <CardDescription>
+                     Create and manage events
+                   </CardDescription>
+                 </div>
+                 <div className="flex space-x-2">
+                   <Input
+                     placeholder="Search events..."
+                     value={eventsFilter.search || ''}
+                     onChange={(e) => setEventsFilter({ ...eventsFilter, search: e.target.value })}
+                     className="w-64"
+                   />
+                   <Button variant="outline" size="sm">
+                     <Filter className="h-4 w-4 mr-2" />
+                     Filter
+                   </Button>
+                 </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -757,39 +772,38 @@ const Dashboard = () => {
                     const paginatedEvents = paginateData(sortedEvents, eventsPagination);
                     
                     return paginatedEvents.data.map((event) => {
-                    const isPast = isEventInPast(event);
-                    const isUpcoming = isEventUpcoming(event);
-                    const isOngoing = isEventOngoing(event);
-                    
-                    return (
-                      <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Calendar className="h-4 w-4 text-blue-600" />
+                      const isPast = isEventInPast(event);
+                      const isOngoing = isEventOngoing(event);
+                      
+                      return (
+                        <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Calendar className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{event.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {event.location || 'No location'} • {formatDateShort(event.start_at)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{event.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {event.location || 'No location'} • {formatDateShort(event.start_at)}
-                            </p>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant={isPast ? "secondary" : isOngoing ? "default" : "outline"}>
+                              {isPast ? 'Past' : isOngoing ? 'Ongoing' : 'Upcoming'}
+                            </Badge>
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}`)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=edit`)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=delete`)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={isPast ? "secondary" : isOngoing ? "default" : "outline"}>
-                            {isPast ? 'Past' : isOngoing ? 'Ongoing' : 'Upcoming'}
-                          </Badge>
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}`)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=edit`)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=delete`)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
+                      );
                     });
                   })()}
 
@@ -808,13 +822,15 @@ const Dashboard = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setEventsPagination({ ...eventsPagination, page: eventsPagination.page - 1 })}
+                        disabled={eventsPagination.page === 1}
+                        onClick={() => setEventsPagination({ ...eventsPagination, page: Math.max(1, eventsPagination.page - 1) })}
                       >
                         Previous
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
+                        disabled={eventsPagination.page >= Math.ceil(events.length / eventsPagination.limit)}
                         onClick={() => setEventsPagination({ ...eventsPagination, page: eventsPagination.page + 1 })}
                       >
                         Next
@@ -831,18 +847,26 @@ const Dashboard = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Announcement Management</CardTitle>
-                  <CardDescription>
-                    Create and manage announcements
-                  </CardDescription>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" onClick={() => navigate('/announcements?action=new')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Announcement
-                  </Button>
-                </div>
+                 <div>
+                   <CardTitle>Announcement Management</CardTitle>
+                   <CardDescription>
+                     Create and manage announcements
+                   </CardDescription>
+                 </div>
+                 <div className="flex space-x-2">
+                   <Input
+                     placeholder="Search announcements..."
+                     value={announcementsFilter.search || ''}
+                     onChange={(e) => setAnnouncementsFilter({ ...announcementsFilter, search: e.target.value })}
+                     className="w-64"
+                   />
+                   <Button variant="outline" size="sm">
+                     <Filter className="h-4 w-4 mr-2" />
+                     Filter
+                   </Button>
+                 </div>
+                 <div className="flex space-x-2">
+                 </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -852,7 +876,12 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {announcements.slice(0, 10).map((announcement) => {
+                  {(() => {
+                    const filteredAnnouncements = filterData(announcements, announcementsFilter, ['title', 'content']);
+                    const sortedAnnouncements = sortData(filteredAnnouncements, announcementsSort);
+                    const paginatedAnnouncements = paginateData(sortedAnnouncements, announcementsPagination);
+                    
+                    return paginatedAnnouncements.data.map((announcement) => {
                     const isExpired = isAnnouncementExpired(announcement);
                     const isActive = isAnnouncementActive(announcement);
                     
@@ -885,12 +914,38 @@ const Dashboard = () => {
                         </div>
                       </div>
                     );
-                  })}
+                    });
+                  })()}
                   {announcements.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>No announcements to display</p>
                     </div>
                   )}
+                  
+                  {/* Pagination */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {announcementsPagination.page} of {Math.ceil(announcements.length / announcementsPagination.limit)} pages
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        disabled={announcementsPagination.page <= 1}
+                        onClick={() => setAnnouncementsPagination({ ...announcementsPagination, page: Math.max(1, announcementsPagination.page - 1) })}
+                      >
+                        Previous
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        disabled={announcementsPagination.page >= Math.ceil(announcements.length / announcementsPagination.limit)}
+                        onClick={() => setAnnouncementsPagination({ ...announcementsPagination, page: announcementsPagination.page + 1 })}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -939,9 +994,6 @@ const Dashboard = () => {
                 <div className="text-2xl font-bold">
                   {residencyLoading ? '--' : residencyStats?.notAtResidencyPartner || 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Could be matched
-                </p>
               </CardContent>
             </Card>
 
