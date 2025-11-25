@@ -4,3 +4,4 @@ export * from './events';
 export * from './announcements';
 export * from './profiles';
 export * from './residency';
+export * from './reminders';

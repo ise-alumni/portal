@@ -47,6 +47,10 @@ export interface ProfileRow {
   is_public: boolean | null;
   msc: boolean | null;
   user_type: 'Admin' | 'Staff' | 'Alumni' | 'Student';
+  is_remote: boolean | null;
+  is_entrepreneur: boolean | null;
+  is_ise_champion: boolean | null;
+  employed: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +94,29 @@ export interface ProfileHistoryRow {
   change_type: 'INSERT' | 'UPDATE';
 }
 
+export interface RemindersRow {
+  id: string;
+  user_id: string;
+  target_type: 'event' | 'announcement';
+  target_id: string;
+  reminder_at: string;
+  status: 'pending' | 'sent' | 'failed' | 'cancelled';
+  sent_at: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResidencyPartnerRow {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  website_url: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Legacy Database interface for compatibility
 export interface Database {
   public: {
@@ -128,6 +155,41 @@ export interface Database {
         Row: ProfileHistoryRow;
         Insert: Omit<ProfileHistoryRow, 'id' | 'changed_at'>;
         Update: Partial<ProfileHistoryRow>;
+      }
+      reminders: {
+        Row: {
+          id: string;
+          user_id: string;
+          target_type: 'event' | 'announcement';
+          target_id: string;
+          reminder_at: string;
+          status: 'pending' | 'sent' | 'failed' | 'cancelled';
+          sent_at: string | null;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          target_type: 'event' | 'announcement';
+          target_id: string;
+          reminder_at: string;
+          status: 'pending' | 'sent' | 'failed' | 'cancelled';
+        };
+        Update: Partial<RemindersRow>;
+      }
+      residency_partners: {
+        Row: {
+          id: string;
+          name: string;
+          logo_url: string | null;
+          website_url: string | null;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<ResidencyPartnerRow, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<ResidencyPartnerRow>;
       }
     }
     Views: {

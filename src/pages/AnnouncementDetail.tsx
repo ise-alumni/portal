@@ -18,6 +18,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditAnnouncementModal from "@/components/EditAnnouncementModal";
+import ReminderButton from "@/components/ReminderButton";
 // import { getAnnouncementById } from '@/lib/domain/announcements';
 import { log } from '@/lib/utils/logger';
 import type { ProfileRow, AnnouncementRow } from '@/integrations/supabase/types';
@@ -354,6 +355,16 @@ const AnnouncementDetail = () => {
                     Learn More
                   </a>
                 </Button>
+              )}
+              
+              {announcement.deadline && (
+                <ReminderButton
+                  targetId={announcement.id}
+                  targetType="announcement"
+                  targetDate={announcement.deadline}
+                  title={announcement.title}
+                  description={announcement.content}
+                />
               )}
             </CardContent>
           </Card>

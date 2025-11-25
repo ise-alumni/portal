@@ -1,6 +1,6 @@
 import { Database } from '@/integrations/supabase/types';
 
-export interface Tag {
+export interface EventTagType {
   id: string;
   name: string;
   color: string;
@@ -8,7 +8,7 @@ export interface Tag {
 
 export interface EventTag {
   tag_id: string;
-  tags: Tag;
+  tags: EventTagType;
 }
 
 export interface EventOrganiser {

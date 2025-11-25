@@ -22,6 +22,7 @@ import {
   createTag,
   updateTag,
   deleteTag,
+  getReminderCounts,
   isProfileComplete,
   isEventInPast,
   isEventUpcoming,
@@ -129,6 +130,13 @@ const Dashboard = () => {
   const [tags, setTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [tagsLoading, setTagsLoading] = useState(true);
   const [newTag, setNewTag] = useState({ name: '', color: '#3B82F6' });
+  
+  // Reminder counts states
+  const [reminderCounts, setReminderCounts] = useState<{
+    events: { [eventId: string]: number };
+    announcements: { [announcementId: string]: number };
+  }>({ events: {}, announcements: {} });
+  const [reminderCountsLoading, setReminderCountsLoading] = useState(true);
   
   // Residency partner modal states
   const [isCreatePartnerModalOpen, setIsCreatePartnerModalOpen] = useState(false);
@@ -342,24 +350,43 @@ const Dashboard = () => {
     fetchResidencyData();
   }, [user, profile, profiles]);
 
-  // Fetch tags data
-  useEffect(() => {
-    const fetchTagsData = async () => {
-      if (!user || !profile) return;
-      
-      try {
-        setTagsLoading(true);
-        const tagsData = await getTags();
-        setTags(tagsData);
-      } catch (error) {
-        log.error('Error fetching tags data:', error);
-      } finally {
-        setTagsLoading(false);
-      }
-    };
+   // Fetch tags data
+   useEffect(() => {
+     const fetchTagsData = async () => {
+       if (!user || !profile) return;
+       
+       try {
+         setTagsLoading(true);
+         const tagsData = await getTags();
+         setTags(tagsData);
+       } catch (error) {
+         log.error('Error fetching tags data:', error);
+       } finally {
+         setTagsLoading(false);
+       }
+     };
 
-    fetchTagsData();
-  }, [user, profile]);
+     fetchTagsData();
+   }, [user, profile]);
+
+   // Fetch reminder counts
+   useEffect(() => {
+     const fetchReminderCountsData = async () => {
+       if (!user || !profile) return;
+       
+       try {
+         setReminderCountsLoading(true);
+         const counts = await getReminderCounts();
+         setReminderCounts(counts);
+       } catch (error) {
+         log.error('Error fetching reminder counts:', error);
+       } finally {
+         setReminderCountsLoading(false);
+       }
+     };
+
+     fetchReminderCountsData();
+   }, [user, profile]);
 
   // Residency partner handlers
   const handleCreatePartner = async () => {
@@ -787,40 +814,46 @@ const Dashboard = () => {
                     const sortedEvents = sortData(filteredEvents, eventsSort);
                     const paginatedEvents = paginateData(sortedEvents, eventsPagination);
                     
-                    return paginatedEvents.data.map((event) => {
-                      const isPast = isEventInPast(event);
-                      const isOngoing = isEventOngoing(event);
-                      
-                      return (
-                        <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Calendar className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{event.title}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {event.location || 'No location'} • {formatDateShort(event.start_at)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant={isPast ? "secondary" : isOngoing ? "default" : "outline"}>
-                              {isPast ? 'Past' : isOngoing ? 'Ongoing' : 'Upcoming'}
-                            </Badge>
-                            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}`)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=edit`)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=delete`)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    });
+                     return paginatedEvents.data.map((event) => {
+                       const isPast = isEventInPast(event);
+                       const isOngoing = isEventOngoing(event);
+                       const reminderCount = reminderCounts.events[event.id] || 0;
+                       
+                       return (
+                         <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
+                           <div className="flex items-center space-x-3">
+                             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                               <Calendar className="h-4 w-4 text-blue-600" />
+                             </div>
+                             <div>
+                               <p className="font-medium">{event.title}</p>
+                               <p className="text-sm text-muted-foreground">
+                                 {event.location || 'No location'} • {formatDateShort(event.start_at)}
+                               </p>
+                             </div>
+                           </div>
+                           <div className="flex items-center space-x-2">
+                             {reminderCount > 0 && (
+                               <Badge variant="secondary" className="text-xs">
+                                 {reminderCount} reminder{reminderCount !== 1 ? 's' : ''}
+                               </Badge>
+                             )}
+                             <Badge variant={isPast ? "secondary" : isOngoing ? "default" : "outline"}>
+                               {isPast ? 'Past' : isOngoing ? 'Ongoing' : 'Upcoming'}
+                             </Badge>
+                             <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}`)}>
+                               <Eye className="h-4 w-4" />
+                             </Button>
+                             <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=edit`)}>
+                               <Edit className="h-4 w-4" />
+                             </Button>
+                             <Button variant="ghost" size="sm" onClick={() => navigate(`/events/${event.id}?action=delete`)}>
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </div>
+                       );
+                     });
                   })()}
 
                   {events.length === 0 && (
@@ -896,40 +929,46 @@ const Dashboard = () => {
                     const sortedAnnouncements = sortData(filteredAnnouncements, announcementsSort);
                     const paginatedAnnouncements = paginateData(sortedAnnouncements, announcementsPagination);
                     
-                    return paginatedAnnouncements.data.map((announcement) => {
-                    const isExpired = isAnnouncementExpired(announcement);
-                    const isActive = isAnnouncementActive(announcement);
-                    
-                    return (
-                      <div key={announcement.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                            <Megaphone className="h-4 w-4 text-purple-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{announcement.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {announcement.deadline ? `Deadline: ${formatDateShort(announcement.deadline)}` : 'No deadline'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={isExpired ? "destructive" : isActive ? "default" : "secondary"}>
-                            {isExpired ? 'Expired' : isActive ? 'Active' : 'Draft'}
-                          </Badge>
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/announcements/${announcement.id}`)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/announcements/${announcement.id}?action=edit`)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/announcements/${announcement.id}?action=delete`)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                    });
+                     return paginatedAnnouncements.data.map((announcement) => {
+                     const isExpired = isAnnouncementExpired(announcement);
+                     const isActive = isAnnouncementActive(announcement);
+                     const reminderCount = reminderCounts.announcements[announcement.id] || 0;
+                     
+                     return (
+                       <div key={announcement.id} className="flex items-center justify-between p-3 border rounded-lg">
+                         <div className="flex items-center space-x-3">
+                           <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                             <Megaphone className="h-4 w-4 text-purple-600" />
+                           </div>
+                           <div>
+                             <p className="font-medium">{announcement.title}</p>
+                             <p className="text-sm text-muted-foreground">
+                               {announcement.deadline ? `Deadline: ${formatDateShort(announcement.deadline)}` : 'No deadline'}
+                             </p>
+                           </div>
+                         </div>
+                         <div className="flex items-center space-x-2">
+                           {reminderCount > 0 && (
+                             <Badge variant="secondary" className="text-xs">
+                               {reminderCount} reminder{reminderCount !== 1 ? 's' : ''}
+                             </Badge>
+                           )}
+                           <Badge variant={isExpired ? "destructive" : isActive ? "default" : "secondary"}>
+                             {isExpired ? 'Expired' : isActive ? 'Active' : 'Draft'}
+                           </Badge>
+                           <Button variant="ghost" size="sm" onClick={() => navigate(`/announcements/${announcement.id}`)}>
+                             <Eye className="h-4 w-4" />
+                           </Button>
+                           <Button variant="ghost" size="sm" onClick={() => navigate(`/announcements/${announcement.id}?action=edit`)}>
+                             <Edit className="h-4 w-4" />
+                           </Button>
+                           <Button variant="ghost" size="sm" onClick={() => navigate(`/announcements/${announcement.id}?action=delete`)}>
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       </div>
+                     );
+                     });
                   })()}
                   {announcements.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">

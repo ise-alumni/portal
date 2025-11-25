@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Profile, ProfileFormData } from '@/lib/types';
 import { getProfileByUserId, updateProfile } from '@/lib/domain/profiles';
 import { log } from '@/lib/utils/logger';
+import RemindersAccordion from '@/components/RemindersAccordion';
 
 const Index = () => {
   const { user, session, loading } = useAuth();
@@ -200,6 +201,7 @@ const Index = () => {
 
   return (
     <div>
+      <RemindersAccordion />
 
       <Card className="mb-6 border-2 border-foreground shadow-none">
         <CardHeader className="pb-2">

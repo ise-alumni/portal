@@ -18,6 +18,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 import EditEventModal from "@/components/EditEventModal";
+import ReminderButton from "@/components/ReminderButton";
 import { log } from '@/lib/utils/logger';
 import { SupabaseClient } from '@/integrations/supabase/types';
 
@@ -414,6 +415,16 @@ const EventDetail = () => {
                   </a>
                 </Button>
               )}
+              
+              <ReminderButton
+                targetId={event.id}
+                targetType="event"
+                targetDate={event.start_at}
+                title={event.title}
+                description={event.description}
+                location={event.location}
+                registrationUrl={event.registration_url}
+              />
               
               {event.location_url && (
                 <Button variant="outline" className="w-full" asChild>

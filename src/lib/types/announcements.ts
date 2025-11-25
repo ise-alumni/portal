@@ -1,6 +1,6 @@
 import { Database } from '@/integrations/supabase/types';
 
-export interface Tag {
+export interface AnnouncementTag {
   id: string;
   name: string;
   color: string;
@@ -17,7 +17,7 @@ export interface Announcement {
   updated_at: string;
   created_by: string;
   organiser_profile_id: string | null;
-  tags?: Tag[];
+  tags?: AnnouncementTag[];
   organiser?: {
     id: string;
     full_name: string | null;
