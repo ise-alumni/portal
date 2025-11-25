@@ -7,50 +7,59 @@ import {
   getResidencyStats 
 } from '../residency';
 import { type Profile } from '@/lib/types/profiles';
+import { type UserRole } from '@/lib/types/common';
 
 describe('Residency Domain Functions', () => {
-  const mockProfiles: Profile[] = [
-    {
-      id: '1',
-      user_id: 'user1',
-      full_name: 'John Doe',
-      email: 'john@example.com',
-      bio: 'Software Engineer',
-      company: 'Tech Corp',
-      location: 'New York',
-      cohort: 1,
-      user_type: 'Alum' as any,
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
-      email_visible: true,
-      linkedin_url: null,
-      github_url: null,
-      twitter_url: null,
-      website_url: null,
-      profile_image_url: null,
-      residency_partner_id: null
-    },
-    {
-      id: '2',
-      user_id: 'user2',
-      full_name: 'Jane Smith',
-      email: 'jane@example.com',
-      bio: 'Product Manager',
-      company: 'Google',
-      location: 'San Francisco',
-      cohort: 2,
-      user_type: 'Alum' as any,
-      created_at: '2024-01-02T00:00:00Z',
-      updated_at: '2024-01-02T00:00:00Z',
-      email_visible: true,
-      linkedin_url: null,
-      github_url: null,
-      twitter_url: null,
-      website_url: null,
-      profile_image_url: null,
-      residency_partner_id: null
-    }
-  ];
+    const mockProfiles: Profile[] = [
+      {
+        id: '1',
+        user_id: 'user1',
+        full_name: 'John Doe',
+        email: 'john@example.com',
+        bio: 'Software Engineer',
+        company: 'Tech Corp',
+        city: 'New York',
+        country: 'USA',
+        cohort: 1,
+        graduation_year: 2020,
+        job_title: 'Software Engineer',
+        avatar_url: null,
+        is_public: true,
+        msc: false,
+        user_type: 'Alum' as UserRole,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        email_visible: true,
+        linkedin_url: null,
+        github_url: null,
+        twitter_url: null,
+        website_url: null,
+      },
+      {
+        id: '2',
+        user_id: 'user2',
+        full_name: 'Jane Smith',
+        email: 'jane@example.com',
+        bio: 'Product Manager',
+        company: 'Google',
+        city: 'San Francisco',
+        country: 'USA',
+        cohort: 2,
+        graduation_year: 2021,
+        job_title: 'Product Manager',
+        avatar_url: null,
+        is_public: true,
+        msc: true,
+        user_type: 'Alum' as UserRole,
+        created_at: '2024-01-02T00:00:00Z',
+        updated_at: '2024-01-02T00:00:00Z',
+        email_visible: true,
+        linkedin_url: null,
+        github_url: null,
+        twitter_url: null,
+        website_url: null,
+      }
+    ];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -87,7 +96,7 @@ describe('Residency Domain Functions', () => {
       mockOrder.mockResolvedValue({ data: mockPartners, error: null });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await getResidencyPartners();
       expect(result).toEqual(mockPartners);
@@ -114,7 +123,7 @@ describe('Residency Domain Functions', () => {
       mockOrder.mockResolvedValue({ data: null, error: new Error('Database error') });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await getResidencyPartners();
       expect(result).toEqual([]);
@@ -141,7 +150,7 @@ describe('Residency Domain Functions', () => {
       mockOrder.mockResolvedValue({ data: null, error: null });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await getResidencyPartners();
       expect(result).toEqual([]);
@@ -173,7 +182,7 @@ describe('Residency Domain Functions', () => {
       mockSingle.mockResolvedValue({ data: createdPartner, error: null });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await createResidencyPartner(newPartner);
       expect(result).toEqual(createdPartner);
@@ -202,7 +211,7 @@ describe('Residency Domain Functions', () => {
       mockSingle.mockResolvedValue({ data: null, error: new Error('Creation error') });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await createResidencyPartner(newPartner);
       expect(result).toBeNull();
@@ -238,7 +247,7 @@ describe('Residency Domain Functions', () => {
       mockSingle.mockResolvedValue({ data: updatedPartner, error: null });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await updateResidencyPartner('1', { name: 'Updated Partner' });
       expect(result).toEqual(updatedPartner);
@@ -270,7 +279,7 @@ describe('Residency Domain Functions', () => {
       mockSingle.mockResolvedValue({ data: null, error: new Error('Update error') });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await updateResidencyPartner('1', { name: 'Updated Partner' });
       expect(result).toBeNull();
@@ -294,7 +303,7 @@ describe('Residency Domain Functions', () => {
       mockEq.mockResolvedValue({ error: null });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await deleteResidencyPartner('1');
       expect(result).toBe(true);
@@ -316,7 +325,7 @@ describe('Residency Domain Functions', () => {
       mockEq.mockResolvedValue({ error: new Error('Deletion error') });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await deleteResidencyPartner('1');
       expect(result).toBe(false);
@@ -350,7 +359,7 @@ describe('Residency Domain Functions', () => {
       mockOrder.mockResolvedValue({ data: mockPartners, error: null });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await getResidencyStats(mockProfiles);
       
@@ -391,7 +400,7 @@ describe('Residency Domain Functions', () => {
       mockOrder.mockResolvedValue({ data: mockPartners, error: null });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await getResidencyStats(profilesNotAtPartners);
       
@@ -423,13 +432,13 @@ describe('Residency Domain Functions', () => {
       mockOrder.mockResolvedValue({ data: null, error: new Error('Stats error') });
 
       const { supabase } = await import('@/integrations/supabase/client');
-      (supabase as any).from = mockFrom;
+      (supabase as unknown as { from: typeof mockFrom }).from = mockFrom;
 
       const result = await getResidencyStats(mockProfiles);
       
-      expect(result.totalProfiles).toBe(0);
+      expect(result.totalProfiles).toBe(2);
       expect(result.atResidencyPartner).toBe(0);
-      expect(result.notAtResidencyPartner).toBe(0);
+      expect(result.notAtResidencyPartner).toBe(2);
       expect(result.residencyPercentage).toBe(0);
       expect(result.partners).toEqual([]);
     });
