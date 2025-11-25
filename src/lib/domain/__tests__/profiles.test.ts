@@ -35,11 +35,10 @@ describe('Profiles domain functions', () => {
   describe('getProfiles', () => {
     it('should fetch profiles successfully', async () => {
       const mockProfiles = [
-        {
+{
           id: '1',
           user_id: '1',
           full_name: 'John Doe',
-
           bio: 'React developer',
           company: 'Tech Corp',
           cohort: 2020,
@@ -57,33 +56,12 @@ describe('Profiles domain functions', () => {
           website_url: null,
           is_public: true,
           msc: false,
+          is_remote: false,
+          is_entrepreneur: false,
+          is_ise_champion: false,
+          employed: true,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: '2',
-          user_id: '2',
-          full_name: 'Jane Smith',
-
-          bio: 'Product enthusiast',
-          company: 'StartupCo',
-          cohort: 2021,
-          user_type: 'Alum' as UserRole,
-          email: 'jane@example.com',
-          email_visible: false,
-          avatar_url: null,
-          city: null,
-          country: null,
-          graduation_year: null,
-          job_title: null,
-          github_url: null,
-          linkedin_url: null,
-          twitter_url: null,
-          website_url: null,
-          is_public: true,
-          msc: true,
-          created_at: '2024-01-02T00:00:00Z',
-          updated_at: '2024-01-02T00:00:00Z'
         }
       ]
 
@@ -99,7 +77,7 @@ describe('Profiles domain functions', () => {
       const result = await getProfiles()
 
       expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(result).toHaveLength(2)
+      expect(result).toHaveLength(1)
       expect(result[0]).toEqual(mockProfiles[0])
     })
 
@@ -160,6 +138,10 @@ describe('Profiles domain functions', () => {
         website_url: null,
         is_public: true,
         msc: false,
+        is_remote: false,
+        is_entrepreneur: false,
+        is_ise_champion: false,
+        employed: true,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z'
       }
@@ -206,6 +188,7 @@ describe('Profiles domain functions', () => {
         city: 'New York',
         country: 'USA',
         graduationYear: '2020',
+        msc: false,
         jobTitle: 'Senior Software Engineer',
         company: 'Tech Corp',
         bio: 'Updated bio',
@@ -214,7 +197,11 @@ describe('Profiles domain functions', () => {
         twitterUrl: 'https://twitter.com/john',
         websiteUrl: 'https://john.com',
         avatarUrl: 'https://example.com/avatar.jpg',
-        emailVisible: true
+        emailVisible: true,
+        isRemote: false,
+        isEntrepreneur: false,
+        isIseChampion: false,
+        employed: true
       }
 
       const updatedProfile = {
@@ -238,6 +225,10 @@ describe('Profiles domain functions', () => {
         email: 'john@example.com',
         is_public: true,
         msc: false,
+        is_remote: false,
+        is_entrepreneur: false,
+        is_ise_champion: false,
+        employed: true,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-15T00:00:00Z'
       }
@@ -276,6 +267,7 @@ describe('Profiles domain functions', () => {
         city: '',
         country: '',
         graduationYear: '',
+        msc: false,
         jobTitle: '',
         company: '',
         bio: '',
@@ -284,7 +276,11 @@ describe('Profiles domain functions', () => {
         twitterUrl: '',
         websiteUrl: '',
         avatarUrl: '',
-        emailVisible: false
+        emailVisible: false,
+        isRemote: false,
+        isEntrepreneur: false,
+        isIseChampion: false,
+        employed: false
       }
 
       const result = await updateProfile('1', formData)
@@ -297,7 +293,7 @@ describe('Profiles domain functions', () => {
   describe('searchProfiles', () => {
     it('should search profiles successfully', async () => {
       const mockProfiles = [
-        {
+{
           id: '1',
           user_id: '1',
           full_name: 'John Doe',
@@ -319,6 +315,10 @@ describe('Profiles domain functions', () => {
           website_url: null,
           is_public: true,
           msc: false,
+          is_remote: false,
+          is_entrepreneur: false,
+          is_ise_champion: false,
+          employed: true,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z'
         }
@@ -400,6 +400,10 @@ describe('Profiles domain functions', () => {
         website_url: null,
         is_public: true,
         msc: false,
+        is_remote: false,
+        is_entrepreneur: false,
+        is_ise_champion: false,
+        employed: true,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z'
       }
@@ -430,6 +434,10 @@ describe('Profiles domain functions', () => {
         website_url: null,
         is_public: true,
         msc: false,
+        is_remote: false,
+        is_entrepreneur: false,
+        is_ise_champion: false,
+        employed: false,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z'
       }
@@ -459,6 +467,10 @@ describe('Profiles domain functions', () => {
         website_url: null,
         is_public: true,
         msc: false,
+        is_remote: false,
+        is_entrepreneur: false,
+        is_ise_champion: false,
+        employed: true,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z'
       }

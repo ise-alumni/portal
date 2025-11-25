@@ -65,6 +65,10 @@ export async function updateProfile(userId: string, formData: ProfileFormData): 
       twitter_url: formData.twitterUrl || null,
       website_url: formData.websiteUrl || null,
       email_visible: formData.emailVisible,
+      is_remote: formData.isRemote,
+      is_entrepreneur: formData.isEntrepreneur,
+      is_ise_champion: formData.isIseChampion,
+      employed: formData.employed,
       avatar_url: formData.avatarUrl || undefined,
     };
 
