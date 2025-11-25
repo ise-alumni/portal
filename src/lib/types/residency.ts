@@ -1,0 +1,35 @@
+import { Database } from '@/integrations/supabase/types';
+
+export interface ResidencyPartner {
+  id: string;
+  name: string;
+  website: string | null;
+  logo_url: string | null;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewResidencyPartner {
+  name: string;
+  website: string | null;
+  logo_url: string | null;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface ResidencyStats {
+  totalProfiles: number;
+  atResidencyPartner: number;
+  notAtResidencyPartner: number;
+  residencyPercentage: number;
+  partners: {
+    name: string;
+    count: number;
+    percentage: number;
+  }[];
+}
+
+// Re-export Supabase types for compatibility
+export type ResidencyPartnerTable = Database['public']['Tables']['residency_partners']['Row'];

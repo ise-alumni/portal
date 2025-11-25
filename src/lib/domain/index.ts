@@ -8,3 +8,6 @@ export * from './announcements';
 
 // Profile services
 export * from './profiles';
+
+// Residency services
+export * from './residency';

@@ -85,6 +85,86 @@ export async function getTags(): Promise<Tag[]> {
   }
 }
 
+export async function createTag(name: string, color: string): Promise<Tag | null> {
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .insert({ name, color })
+      .select()
+      .single();
+
+    if (error) {
+      log.error('Error creating tag:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    log.error('Error in createTag:', error);
+    return null;
+  }
+}
+
+export async function updateTag(id: string, name: string, color: string): Promise<Tag | null> {
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .update({ name, color })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      log.error('Error updating tag:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    log.error('Error in updateTag:', error);
+    return null;
+  }
+}
+
+export async function deleteTag(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('tags')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      log.error('Error deleting tag:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    log.error('Error in deleteTag:', error);
+    return false;
+  }
+}
+
+export async function getTagById(id: string): Promise<Tag | null> {
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      log.error('Error fetching tag:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    log.error('Error in getTagById:', error);
+    return null;
+  }
+}
+
 export function isEventInPast(event: EventData): boolean {
   return new Date(event.end_at || event.start_at) < new Date();
 }
