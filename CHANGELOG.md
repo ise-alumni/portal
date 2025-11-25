@@ -1,3 +1,13 @@
+## [1.2.0](https://github.com/bxrne/ise-alumni/compare/v1.1.2...v1.2.0) (2025-11-25)
+
+### Features
+
+* **supabase:** create reminders table ([d7763b5](https://github.com/bxrne/ise-alumni/commit/d7763b5bfbd9466827fb0c70349c053e5e7c29fe))
+
+### Bug Fixes
+
+* **profile:** Add gawk related attributes to profile ([2e97464](https://github.com/bxrne/ise-alumni/commit/2e974641b73dbb0e6aa84fcc2ee253d1962a6ce8))
+
 ## [1.1.2](https://github.com/bxrne/ise-alumni/compare/v1.1.1...v1.1.2) (2025-11-25)
 
 ### Bug Fixes
