@@ -1,9 +1,11 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut  } from "lucide-react";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerClose, DrawerTitle } from "@/components/ui/drawer";
+import { supabase } from '@/integrations/supabase/client';
+import { ProfileRow } from '@/integrations/supabase/types';
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,6 +14,28 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) throw error;
+        setProfile(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -43,28 +67,37 @@ const Layout = ({ children }: LayoutProps) => {
                <DrawerContent className="bg-card border-2 border-foreground rounded-none">
                  <DrawerTitle className="sr-only">Navigation Menu</DrawerTitle>
                  <div className="p-4">
-                  <nav className="flex flex-col gap-4 text-sm justify-center items-center">
-                    <DrawerClose asChild>
-                      <Button asChild variant="outline" className="w-full max-w-xs">
-                        <Link to="/events">Events</Link>
-                      </Button>
-                    </DrawerClose>
-                    <DrawerClose asChild>
-                      <Button asChild variant="outline" className="w-full max-w-xs">
-                        <Link to="/map">Map</Link>
-                      </Button>
-                    </DrawerClose>
+                   <nav className="flex flex-col gap-4 text-sm justify-center items-center">
+                     {profile && ['Admin', 'Staff'].includes(profile.user_type) && (
+                       <DrawerClose asChild>
+                         <Button asChild variant="outline" className="w-full max-w-xs">
+                           <Link to="/dashboard">
+                             Dashboard
+                           </Link>
+                         </Button>
+                       </DrawerClose>
+                     )}
                      <DrawerClose asChild>
                        <Button asChild variant="outline" className="w-full max-w-xs">
-                         <Link to="/announcements">Announcements</Link>
+                         <Link to="/events">Events</Link>
                        </Button>
                      </DrawerClose>
-                    <DrawerClose asChild>
-                      <Button asChild variant="outline" className="w-full max-w-xs">
-                        <Link to="/directory">Directory</Link>
-                      </Button>
-                    </DrawerClose>
-                  </nav>
+                     <DrawerClose asChild>
+                       <Button asChild variant="outline" className="w-full max-w-xs">
+                         <Link to="/map">Map</Link>
+                       </Button>
+                     </DrawerClose>
+                      <DrawerClose asChild>
+                        <Button asChild variant="outline" className="w-full max-w-xs">
+                          <Link to="/announcements">Announcements</Link>
+                        </Button>
+                      </DrawerClose>
+                     <DrawerClose asChild>
+                       <Button asChild variant="outline" className="w-full max-w-xs">
+                         <Link to="/directory">Directory</Link>
+                       </Button>
+                     </DrawerClose>
+                   </nav>
                   <div className="flex flex-col gap-4 mt-4 items-center">
                     {!loading && user && (
                       <DrawerClose asChild>
@@ -80,22 +113,29 @@ const Layout = ({ children }: LayoutProps) => {
              </Drawer>
             </div>
 
-            {/* Desktop - Inline Navbar */}
-            <div className="hidden lg:flex items-center gap-4">
-              <nav className="flex items-center gap-4">
-                <Button asChild variant="outline">
-                  <Link to="/events">Events</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/map">Map</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/announcements">Announcements</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/directory">Directory</Link>
-                </Button>
-              </nav>
+             {/* Desktop - Inline Navbar */}
+             <div className="hidden lg:flex items-center gap-4">
+               <nav className="flex items-center gap-4">
+                 {profile && ['Admin', 'Staff'].includes(profile.user_type) && (
+                   <Button asChild variant="outline">
+                     <Link to="/dashboard">
+                       Dashboard
+                     </Link>
+                   </Button>
+                 )}
+                 <Button asChild variant="outline">
+                   <Link to="/events">Events</Link>
+                 </Button>
+                 <Button asChild variant="outline">
+                   <Link to="/map">Map</Link>
+                 </Button>
+                 <Button asChild variant="outline">
+                   <Link to="/announcements">Announcements</Link>
+                 </Button>
+                 <Button asChild variant="outline">
+                   <Link to="/directory">Directory</Link>
+                 </Button>
+               </nav>
               {!loading && user && (
                 <Button variant="outline" size="sm" className="border-foreground hover:bg-foreground hover:text-background" onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />

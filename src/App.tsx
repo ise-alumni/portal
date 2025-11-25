@@ -14,6 +14,7 @@ import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Directory from "./pages/Directory";
 import ProfilePage from "./pages/ProfilePage";
+import Dashboard from "./pages/Dashboard";
 import Layout from "@/components/Layout";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/events/:id" element={<Layout><EventDetail /></Layout>} />
             <Route path="/directory" element={<Layout><Directory /></Layout>} />
             <Route path="/profile/:id" element={<Layout><ProfilePage /></Layout>} />
+            <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
