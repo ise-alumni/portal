@@ -1,4 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock Supabase client before importing residency functions
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    from: vi.fn(),
+  },
+}));
+
 import { 
   getResidencyPartners, 
   createResidencyPartner, 
