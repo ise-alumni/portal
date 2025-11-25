@@ -1,3 +1,12 @@
+## [1.1.1](https://github.com/bxrne/ise-alumni/compare/v1.1.0...v1.1.1) (2025-11-25)
+
+### Bug Fixes
+
+* Add better favicon (tbf) and dash page ([6f55859](https://github.com/bxrne/ise-alumni/commit/6f55859319f0b34bbe30c886c6b849ef76648188))
+* **dashboard:** Added basic dashboard tabs with domain funcs ([94c6954](https://github.com/bxrne/ise-alumni/commit/94c6954bd222238499d7a21e235ac04f3d08effb))
+* Fix tests and linting for dashboard ([c4c9b49](https://github.com/bxrne/ise-alumni/commit/c4c9b4934b7210059c5994ade27358bda3fbc54d))
+* **test:** fix mocking in residency tests for domain ([bb878e5](https://github.com/bxrne/ise-alumni/commit/bb878e5fab343fd567af55f256ffd08603e4158b))
+
 ## [1.1.0](https://github.com/bxrne/ise-alumni/compare/v1.0.1...v1.1.0) (2025-11-22)
 
 ### Features
