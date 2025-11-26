@@ -9,9 +9,11 @@ import { formatDate } from '@/lib/utils/date';
 import { log } from '@/lib/utils/logger';
 import { Profile, ProfessionalStatus } from '@/lib/types';
 import { EventData } from '@/lib/types/events';
+import { getUserResidencies, type Residency, type ResidencyPartner } from '@/lib/domain/residency';
 import { getCohortLabel } from '@/lib/utils/ui';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Building2Icon, FileTextIcon } from 'lucide-react';
 
 interface Announcement {
   id: string;
@@ -96,10 +98,12 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userAnnouncements, setUserAnnouncements] = useState<Announcement[]>([]);
   const [userEvents, setUserEvents] = useState<EventData[]>([]);
+  const [userResidencies, setUserResidencies] = useState<Residency[]>([]);
+  const [residencyPartners, setResidencyPartners] = useState<ResidencyPartner[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfileAndAnnouncements = async () => {
+    const fetchProfileAndData = async () => {
       try {
         // Fetch profile
         const { data: profileData } = await supabase
@@ -127,8 +131,8 @@ const ProfilePage = () => {
               tag_id,
               tags!inner(
                 id,
-                name,
-                color
+                  name,
+                  color
               )
             )
           `)
@@ -170,8 +174,8 @@ const ProfilePage = () => {
               tag_id,
               tags!inner(
                 id,
-                name,
-                color
+                  name,
+                  color
               )
             )
           `)
@@ -206,6 +210,20 @@ const ProfilePage = () => {
 
           setUserEvents(transformedEvents);
         }
+
+        // Fetch user's residencies with company details
+        const [residencies, partners] = await Promise.all([
+          getUserResidencies(profileData?.user_id || ''),
+          supabase.from('residency_partners').select('*').eq('is_active', true).order('name')
+        ]);
+
+        if (residencies) {
+          setUserResidencies(residencies);
+        }
+
+        if (partners.data) {
+          setResidencyPartners(partners.data);
+        }
       } catch (err) {
         log.error('Error fetching profile:', err);
       } finally {
@@ -213,7 +231,7 @@ const ProfilePage = () => {
       }
     };
 
-    fetchProfileAndAnnouncements();
+    fetchProfileAndData();
   }, [id]);
 
   if (loading) {
@@ -263,248 +281,271 @@ const ProfilePage = () => {
         )}
       </div>
 
-      {/* Bento Grid Layout */}
-      <div className="grid-bento md:grid md:grid-cols-4 md:grid-rows-2 md:gap-6 space-y-6 md:space-y-0">
+      {/* Modern Profile Layout */}
+      <div className="space-y-6">
         
-        {/* Profile Card - 2x2 */}
-        <Card className="grid-profile md:col-span-2 md:row-span-2">
+        {/* Main Profile Section */}
+        <Card className="border-2 border-foreground shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-start gap-4">
+            <div className="flex items-start gap-4">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
                   alt={`${profile.full_name || "User"} avatar`}
-                  className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0"
+                  className="w-20 h-20 rounded-full object-cover flex-shrink-0 border-2 border-border"
                 />
               ) : (
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-medium text-sm">
+                <div className="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-medium text-xl border-2 border-border">
                   {profile.full_name ? profile.full_name.split(' ').map(word => word[0]).join('').toUpperCase() : 'U'}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="text-2xl font-bold break-words">{profile.full_name || 'No Name'}</h2>
-{profile.user_type && (
-                        <Badge
-                          variant={
-                            profile.user_type === "Admin"
-                              ? "destructive"
-                              : profile.user_type === "Staff"
-                              ? "secondary"
-                              : "default"
-                          }
-                          className="text-xs"
-                        >
-                          {profile.user_type}
-                        </Badge>
-                      )}
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-bold break-words">{profile.full_name || 'No Name'}</h1>
+                  {profile.user_type && (
+                    <Badge
+                      variant={
+                        profile.user_type === "Admin"
+                          ? "destructive"
+                          : profile.user_type === "Staff"
+                          ? "secondary"
+                          : "default"
+                      }
+                      className="text-sm"
+                    >
+                      {profile.user_type}
+                    </Badge>
+                  )}
+                  
+                  {/* Academic Badges */}
+                  {profile.user_type !== 'Staff' && (
+                    <div className="flex gap-2">
+               {profile.cohort && (
+                  <Badge variant="secondary" className="text-xs">
+                    {getCohortLabel(profile.cohort)}
+                  </Badge>
+                )}
+                
+                {profile.graduation_year && (
+                  <Badge variant="outline" className="text-xs">
+                    {profile.graduation_year}
+                  </Badge>
+                )}
+                
+                {profile.msc !== undefined && (
+                  <Badge variant="outline" className="text-xs">
+                    {profile.msc ? 'MSc' : 'BSc'}
+                  </Badge>
+                )}                    </div>
+                  )}
+                </div>
+                
+                {/* Bio */}
+                {profile.bio && (
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap mb-4">{profile.bio}</p>
+                )}
+
+                {/* Social Links */}
+                <div className="flex flex-wrap gap-2">
+                  {profile.github_url && (
+                    <a 
+                      href={profile.github_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
+                    >
+                      <GithubIcon className="w-4 h-4" />
+                      <span>GitHub</span>
+                    </a>
+                  )}
+                  
+                  {profile.linkedin_url && (
+                    <a 
+                      href={profile.linkedin_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
+                    >
+                      <LinkedinIcon className="w-4 h-4" />
+                      <span>LinkedIn</span>
+                    </a>
+                  )}
+                  
+                  {profile.twitter_url && (
+                    <a 
+                      href={profile.twitter_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
+                    >
+                      <TwitterIcon className="w-4 h-4" />
+                      <span>Twitter</span>
+                    </a>
+                  )}
+                  
+                  {profile.website_url && (
+                    <a 
+                      href={profile.website_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
+                    >
+                      <GlobeIcon className="w-4 h-4" />
+                      <span>Website</span>
+                    </a>
+                  )}
+                </div>
               </div>
-            </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Bio */}
-            {profile.bio && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Bio</h3>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
-              </div>
-            )}
-          </CardContent>
         </Card>
 
-        {/* Contact Information - 1x1 */}
-        <Card className="grid-contact">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-            <PaperclipIcon className="w-5 h-5" />
-              Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {profile.email_visible && profile.email && (
-              <div className="flex items-center gap-2">
-                <MailIcon className="w-4 h-4 text-muted-foreground" />
-                <a 
-                  href={`mailto:${profile.email}`} 
-                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm break-all"
-                >
-                  {profile.email}
-                </a>
-              </div>
-            )}
-
-            {!profile.email_visible && (
-              <div className="flex items-center gap-2">
-                <MailIcon className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">(email hidden)</span>
-              </div>
-            )}
-
-            {profile.city && profile.country && (
-              <div className="flex items-center gap-2">
-                <MapPinIcon className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{profile.city}, {profile.country}</span>
-              </div>
-            )}
-
-            
-          </CardContent>
-        </Card>
-
-        {/* Academic Information - 1x1 */}
-        {profile.user_type !== 'Staff' && (
-          <Card className="grid-academic">
+        {/* Information Grid */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* Professional & Contact Information */}
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <GraduationCapIcon className="w-5 h-5" />
-                Academic
+                <BriefcaseIcon className="w-5 h-5" />
+                Professional 
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {profile.cohort && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-sm">Cohort:</span>
-                  <span className="text-sm">#{getCohortLabel(profile.cohort).split("Cohort")[1].trim()}</span>
+            <CardContent className="space-y-4">
+<div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {profile.professional_status && (
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          profile.professional_status === 'employed' 
+                            ? 'bg-gray-100 text-gray-800'
+                            : profile.professional_status === 'entrepreneur'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {profile.professional_status === 'employed' && 'Employed'}
+                          {profile.professional_status === 'entrepreneur' && 'Entrepreneur'}
+                          {profile.professional_status === 'open_to_work' && 'Open to Work'}
+                        </span>
+                      )}
+                      {profile.is_remote && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Remote
+                        </span>
+                      )}
+                      {profile.is_ise_champion && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          ISE Champion
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+              {/* Contact Section */}
+              <div className="pb-4">
+                <div className="space-y-3">
+                  {profile.email_visible && profile.email && (
+                    <div className="flex items-center gap-2">
+                      <MailIcon className="w-4 h-4 text-muted-foreground" />
+                      <a 
+                        href={`mailto:${profile.email}`} 
+                        className="text-blue-600 hover:text-blue-800 hover:underline text-sm break-all"
+                      >
+                        {profile.email}
+                      </a>
+                    </div>
+                  )}
+
+                  {!profile.email_visible && (
+                    <div className="flex items-center gap-2">
+                      <MailIcon className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">(email hidden)</span>
+                    </div>
+                  )}
+
+                  {profile.city && profile.country && (
+                    <div className="flex items-center gap-2">
+                      <MapPinIcon className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">{profile.city}, {profile.country}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              
-              {profile.graduation_year && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-sm">Graduation:</span>
-                  <span className="text-sm">{profile.graduation_year}</span>
-                </div>
-              )}
-              
-              {profile.msc !== undefined && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-sm">Program:</span>
-                  <span className="text-sm">{profile.msc ? 'MSc' : 'BSc'}</span>
-                </div>
-              )}
+              </div>
+
+              {/* Professional Section */}
+              <div>
+                <div className="space-y-3">
+                  {profile.company && (
+                    <div>
+                      <p className="font-medium text-foreground text-sm mb-1">Company: <span className="text-sm font-normal">{profile.company}</span></p>
+                    </div>
+                  )}
+                  
+                  {profile.job_title && (
+                    <div>
+                      <p className="font-medium text-foreground text-sm mb-1">Job Title: <span className="text-sm font-normal"> {profile.job_title}</span></p>
+                    </div>  
+                  )}
+
+                                  </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Residencies Section */}
+        {userResidencies.length > 0 && (
+          <Card className="border-2 border-foreground shadow-none">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Building2Icon className="w-6 h-6" />
+                Residencies
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {userResidencies.map((residency) => {
+                  const company = residencyPartners.find(p => p.id === residency.company_id);
+                  return (
+                    <div key={residency.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary" className="text-sm">
+                            {residency.phase}
+                          </Badge>
+                          <h3 className="font-semibold text-lg">
+                            {company?.name || 'Unknown Company'}
+                          </h3>
+                        </div>
+                        {company?.website && (
+                          <a 
+                            href={company.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                          >
+                            <ExternalLinkIcon className="w-4 h-4" />
+                            Visit
+                          </a>
+                        )}
+                      </div>
+                      
+                      {residency.description && (
+                        <div className="text-sm text-muted-foreground">
+                          <p className="whitespace-pre-wrap leading-relaxed">
+                            {residency.description}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-muted-foreground pt-3 border-t">
+                        Added: {new Date(residency.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         )}
-
-        {/* Professional Information - 1x1 */}
-        <Card className="grid-professional">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BriefcaseIcon className="w-5 h-5" />
-              Professional
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {profile.company && (
-              <div className="">
-                <p className="font-bold text-foreground text-sm">Company:</p>
-                <p className="text-sm">{profile.company}</p>
-              </div>
-            )}
-            
-            {profile.job_title && (
-              <div className="">
-                <p className="font-bold text-foreground text-sm">Job Title:</p>
-                <p className="text-sm">{profile.job_title}</p>
-              </div>  
-
-            )}
-
-            <div className="space-y-2">
-              <p className="font-bold text-foreground text-sm">Status:</p>
-              <div className="flex flex-wrap gap-2">
-                {profile.professional_status && (
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    profile.professional_status === 'employed' 
-                      ? 'bg-gray-100 text-gray-800'
-                      : profile.professional_status === 'entrepreneur'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-orange-100 text-orange-800'
-                  }`}>
-                    {profile.professional_status === 'employed' && 'Employed'}
-                    {profile.professional_status === 'entrepreneur' && 'Entrepreneur'}
-                    {profile.professional_status === 'open_to_work' && 'Open to Work'}
-                  </span>
-                )}
-                {profile.is_remote && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    Remote
-                  </span>
-                )}
-                {profile.is_ise_champion && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                    ISE Champion
-                  </span>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Social Links - 1x1 */}
-        <Card className="grid-social">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <GlobeIcon className="w-5 h-5" />
-              Social
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {profile.github_url && (
-              <div className="flex items-center gap-2">
-                <GithubIcon className="w-4 h-4 text-muted-foreground" />
-                <a 
-                  href={profile.github_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                >
-                  GitHub
-                </a>
-              </div>
-            )}
-            
-            {profile.linkedin_url && (
-              <div className="flex items-center gap-2">
-                <LinkedinIcon className="w-4 h-4 text-muted-foreground" />
-                <a 
-                  href={profile.linkedin_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                >
-                  LinkedIn
-                </a>
-              </div>
-            )}
-            
-            {profile.twitter_url && (
-              <div className="flex items-center gap-2">
-                <TwitterIcon className="w-4 h-4 text-muted-foreground" />
-                <a 
-                  href={profile.twitter_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                >
-                  Twitter
-                </a>
-              </div>
-            )}
-            
-            {profile.website_url && (
-              <div className="flex items-center gap-2">
-                <GlobeIcon className="w-4 h-4 text-muted-foreground" />
-                <a 
-                  href={profile.website_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                >
-                  Website
-                </a>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* User's Announcements - Full Width */}
