@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Profile, ProfileFormData, ProfessionalStatus } from '@/lib/types';
-import { getProfileByUserId, updateProfile } from '@/lib/domain/profiles';
+import { getProfileByUserId, updateProfile, isProfileComplete } from '@/lib/domain/profiles';
 import { log } from '@/lib/utils/logger';
 
 const Index = () => {
@@ -202,199 +203,313 @@ const Index = () => {
     return null; // Will redirect to auth
   }
 
-  const displayEmail = user?.email || profile?.email || '—';
-  const lastSignedIn = user?.last_sign_in_at || '—';
+   const displayEmail = user?.email || profile?.email || '—';
+   const lastSignedIn = user?.last_sign_in_at || '—';
 
-  return (
-    <div>
-      <Card className="mb-6 border-2 border-foreground shadow-none">
-        <CardHeader className="pb-2">
-          <CardTitle className="tracking-tight">Profile</CardTitle>
-          <CardDescription className="mt-1"></CardDescription>
-        </CardHeader>
-        <CardContent>
-          {profileLoading ? (
-            <div className="text-sm text-muted-foreground">Loading profile…</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 text-sm">
-                <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
-                <div className="flex items-center gap-2">
-                  <span className="opacity-70">Email:</span> 
-                  <span>{formData.emailVisible ? displayEmail : 'Hidden'}</span>
-                  <Button 
-                    onClick={() => setFormData(prev => ({ ...prev, emailVisible: !prev.emailVisible }))} 
-                    size="sm"
-                    variant="outline"
-                    className="text-xs h-6 px-2"
-                  >
-                    {formData.emailVisible ? 'Hide' : 'Make Public'}
-                  </Button>
-                </div>
-              </div>
+   // Calculate profile completion
+   const calculateProfileCompletion = () => {
+     if (!profile) return 0;
+     
+     const requiredFields = [
+       profile.full_name,
+       profile.bio,
+       profile.company,
+       profile.job_title
+     ];
+     
+     const completedFields = requiredFields.filter(field => field && field.trim() !== '').length;
+     return Math.round((completedFields / requiredFields.length) * 100);
+   };
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                <div>
-                  <label className="text-xs opacity-70">Full Name</label>
-                  <Input value={formData.fullName} onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Your full name" />
-                  <div className="mt-2">
-                    <label className="text-xs opacity-70">Avatar</label>
-                    <div className="flex items-center gap-2">
-                      {formData.avatarUrl && (
-                        <img src={formData.avatarUrl} alt="Avatar preview" className="w-16 h-16 rounded-full object-cover" />
-                      )}
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setAvatarFile(file);
-                            setFormData(prev => ({ ...prev, avatarUrl: URL.createObjectURL(file) }));
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-5">
+   const profileCompletion = calculateProfileCompletion();
+   const isComplete = profile ? isProfileComplete(profile) : false;
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                    <div>
-                      <label className="text-xs opacity-70">Graduation Year</label>
-                      <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
-                    </div>
-                    <div>
-                      <label className="text-xs opacity-70">Program</label>
-                      <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select program" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bsc">BSc</SelectItem>
-                          <SelectItem value="msc">MSc</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs opacity-70">City</label>
-                      <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
-                    </div>
-                    <div>
-                      <label className="text-xs opacity-70">Country</label>
-                      <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs opacity-70">Role</label>
-                  <Input value={formData.jobTitle} onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))} placeholder="Job title" />
-                </div>
-                <div>
-                  <label className="text-xs opacity-70">Company</label>
-                  <Input value={formData.company} onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))} placeholder="Company" />
-                </div>
-              </div>
+   return (
+     <>
+       <Card className="mb-6 border-2 border-foreground shadow-none">
+         <CardHeader className="pb-2">
+           <div className="flex items-center justify-between">
+             <div>
+               <CardTitle className="tracking-tight">Profile</CardTitle>
+               <CardDescription className="mt-1"></CardDescription>
+             </div>
+             <div className="text-right">
+               <div className="flex items-center space-x-2">
+                 <span className="text-sm font-medium">Profile Completion</span>
+                 <Badge variant={isComplete ? "default" : "secondary"} className="ml-2">
+                   {profileCompletion}%
+                 </Badge>
+               </div>
+               <p className="text-xs text-muted-foreground mt-1">
+                 {isComplete ? 'Complete' : 'More fields needed'}
+               </p>
+             </div>
+           </div>
+         </CardHeader>
+         <CardContent>
+           {profileLoading ? (
+             <div className="text-sm text-muted-foreground">Loading profile…</div>
+           ) : (
+             <div className="space-y-4">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 text-sm">
+                 <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
+                 <div className="flex items-center gap-2">
+                   <span className="opacity-70">Email:</span> 
+                   <span>{formData.emailVisible ? displayEmail : 'Hidden'}</span>
+                   <Button 
+                     onClick={() => setFormData(prev => ({ ...prev, emailVisible: !prev.emailVisible }))} 
+                     size="sm"
+                     variant="outline"
+                     className="text-xs h-6 px-2"
+                   >
+                     {formData.emailVisible ? 'Hide' : 'Make Public'}
+                   </Button>
+                 </div>
+               </div>
 
-              <div className="md:col-span-2 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs opacity-70">Status</label>
-                    <Select 
-                      value={formData.professionalStatus || ''} 
-                      onValueChange={(value) => setFormData(prev => ({ 
-                        ...prev, 
-                        professionalStatus: value as ProfessionalStatus || null 
-                      }))}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select professional status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="employed">Employed</SelectItem>
-                        <SelectItem value="entrepreneur">Entrepreneur</SelectItem>
-                        <SelectItem value="open_to_work">Open to Work</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className='flex flex-col justify-end'>
-                  <div className="flex items-center space-x-2 ">
-                    <input
-                      type="checkbox"
-                      id="isRemote"
-                      checked={formData.isRemote}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
-                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                    />
-                    <label htmlFor="isRemote" className="text-sm">Remote Worker</label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isIseChampion"
-                      checked={formData.isIseChampion}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
-                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                    />
-                    <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
-                  </div>
-                </div>
-                </div>
-              </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                 <div>
+                   <label className="text-xs opacity-70">Full Name</label>
+                   <Input value={formData.fullName} onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Your full name" />
+                   <div className="mt-2">
+                     <label className="text-xs opacity-70">Avatar</label>
+                     <div className="flex items-center gap-2">
+                       {formData.avatarUrl && (
+                         <img src={formData.avatarUrl} alt="Avatar preview" className="w-16 h-16 rounded-full object-cover" />
+                       )}
+                       <Input
+                         type="file"
+                         accept="image/*"
+                         onChange={(e) => {
+                           const file = e.target.files?.[0];
+                           if (file) {
+                             setAvatarFile(file);
+                             setFormData(prev => ({ ...prev, avatarUrl: URL.createObjectURL(file) }));
+                           }
+                         }}
+                       />
+                     </div>
+                   </div>
+                 </div>
+                 <div className="space-y-5">
 
-              <div className="md:col-span-2">
-                <label className="text-xs opacity-70">Bio</label>
-                <Textarea value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} placeholder="Short bio" rows={3} />
-              </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                     <div>
+                       <label className="text-xs opacity-70">Graduation Year</label>
+                       <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
+                     </div>
+                     <div>
+                       <label className="text-xs opacity-70">Program</label>
+                       <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
+                         <SelectTrigger className="w-full">
+                           <SelectValue placeholder="Select program" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="bsc">BSc</SelectItem>
+                           <SelectItem value="msc">MSc</SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-2">
+                     <div>
+                       <label className="text-xs opacity-70">City</label>
+                       <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
+                     </div>
+                     <div>
+                       <label className="text-xs opacity-70">Country</label>
+                       <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
+                     </div>
+                   </div>
+                 </div>
+                 <div>
+                   <label className="text-xs opacity-70">Role</label>
+                   <Input value={formData.jobTitle} onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))} placeholder="Job title" />
+                 </div>
+                 <div>
+                   <label className="text-xs opacity-70">Company</label>
+                   <Input value={formData.company} onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))} placeholder="Company" />
+                 </div>
+               </div>
 
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="socials">
-                  <AccordionTrigger className="text-sm font-medium hover:no-underline">Socials</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                      <div>
-                        <label className="text-xs opacity-70">GitHub</label>
-                        <Input value={formData.githubUrl} onChange={(e) => setFormData(prev => ({ ...prev, githubUrl: e.target.value }))} placeholder="https://github.com/username" />
-                      </div>
-                      <div>
-                        <label className="text-xs opacity-70">LinkedIn</label>
-                        <Input value={formData.linkedinUrl} onChange={(e) => setFormData(prev => ({ ...prev, linkedinUrl: e.target.value }))} placeholder="https://www.linkedin.com/in/username" />
-                      </div>
-                      <div>
-                        <label className="text-xs opacity-70">Twitter / X</label>
-                        <Input value={formData.twitterUrl} onChange={(e) => setFormData(prev => ({ ...prev, twitterUrl: e.target.value }))} placeholder="https://twitter.com/username" />
-                      </div>
-                      <div>
-                        <label className="text-xs opacity-70">Website</label>
-                        <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+               <div className="md:col-span-2 space-y-3">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                   <div>
+                     <label className="text-xs opacity-70">Status</label>
+                     <Select 
+                       value={formData.professionalStatus || ''} 
+                       onValueChange={(value) => setFormData(prev => ({ 
+                         ...prev, 
+                         professionalStatus: value as ProfessionalStatus || null 
+                       }))}
+                     >
+                       <SelectTrigger className="w-full">
+                         <SelectValue placeholder="Select professional status" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="employed">Employed</SelectItem>
+                         <SelectItem value="entrepreneur">Entrepreneur</SelectItem>
+                         <SelectItem value="open_to_work">Open to Work</SelectItem>
+                       </SelectContent>
+                     </Select>
+                   </div>
+                   <div className='flex flex-col justify-end'>
+                   <div className="flex items-center space-x-2 ">
+                     <input
+                       type="checkbox"
+                       id="isRemote"
+                       checked={formData.isRemote}
+                       onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
+                       className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                     />
+                     <label htmlFor="isRemote" className="text-sm">Remote Worker</label>
+                   </div>
+                   <div className="flex items-center space-x-2">
+                     <input
+                       type="checkbox"
+                       id="isIseChampion"
+                       checked={formData.isIseChampion}
+                       onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
+                       className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                     />
+                     <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
+                   </div>
+                 </div>
+                 </div>
+               </div>
 
-              <div className="flex flex-col md:flex-row md:justify-end gap-2">
-                <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
-                  {saving ? 'Saving…' : 'Save Profile'}
-                </Button>
-                {profile && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => navigate(`/profile/${profile.id}`)}
-                    className="w-full md:w-auto border-2 border-foreground shadow-none"
-                  >
-                    See Profile
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+               <div className="md:col-span-2">
+                 <label className="text-xs opacity-70">Bio</label>
+                 <Textarea value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} placeholder="Short bio" rows={3} />
+               </div>
+
+               <Accordion type="single" collapsible className="w-full">
+                 <AccordionItem value="socials">
+                   <AccordionTrigger className="text-sm font-medium hover:no-underline">Socials</AccordionTrigger>
+                   <AccordionContent>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                       <div>
+                         <label className="text-xs opacity-70">GitHub</label>
+                         <Input value={formData.githubUrl} onChange={(e) => setFormData(prev => ({ ...prev, githubUrl: e.target.value }))} placeholder="https://github.com/username" />
+                       </div>
+                       <div>
+                         <label className="text-xs opacity-70">LinkedIn</label>
+                         <Input value={formData.linkedinUrl} onChange={(e) => setFormData(prev => ({ ...prev, linkedinUrl: e.target.value }))} placeholder="https://www.linkedin.com/in/username" />
+                       </div>
+                       <div>
+                         <label className="text-xs opacity-70">Twitter / X</label>
+                         <Input value={formData.twitterUrl} onChange={(e) => setFormData(prev => ({ ...prev, twitterUrl: e.target.value }))} placeholder="https://twitter.com/username" />
+                       </div>
+                       <div>
+                         <label className="text-xs opacity-70">Website</label>
+                         <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
+                       </div>
+                     </div>
+                   </AccordionContent>
+                 </AccordionItem>
+               </Accordion>
+
+               <div className="flex flex-col md:flex-row md:justify-end gap-2">
+                 <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
+                   {saving ? 'Saving…' : 'Save Profile'}
+                 </Button>
+                 {profile && (
+                   <Button 
+                     variant="outline" 
+                     onClick={() => navigate(`/profile/${profile.id}`)}
+                     className="w-full md:w-auto border-2 border-foreground shadow-none"
+                   >
+                     See Profile
+                   </Button>
+                 )}
+               </div>
+             </div>
+           )}
+         </CardContent>
+       </Card>
+
+       {/* Profile Completion Guide */}
+       {!isComplete && profile && (
+         <Card className="border-2 border-foreground shadow-none">
+           <CardHeader>
+             <CardTitle className="tracking-tight">Complete Your Profile</CardTitle>
+             <CardDescription>
+               Add these details to complete your profile ({profileCompletion}% complete)
+             </CardDescription>
+           </CardHeader>
+           <CardContent>
+             <div className="space-y-3">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                 <div className={`p-3 rounded-lg border ${profile.full_name ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                   <div className="flex items-center space-x-2">
+                     <span className={`font-medium ${profile.full_name ? 'text-green-700' : 'text-red-700'}`}>
+                       Full Name
+                     </span>
+                     {profile.full_name ? (
+                       <span className="text-green-600">✓</span>
+                     ) : (
+                       <span className="text-red-600">✗</span>
+                     )}
+                   </div>
+                 </div>
+                 
+                 <div className={`p-3 rounded-lg border ${profile.bio ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                   <div className="flex items-center space-x-2">
+                     <span className={`font-medium ${profile.bio ? 'text-green-700' : 'text-red-700'}`}>
+                       Bio
+                     </span>
+                     {profile.bio ? (
+                       <span className="text-green-600">✓</span>
+                     ) : (
+                       <span className="text-red-600">✗</span>
+                     )}
+                   </div>
+                 </div>
+                 
+                 <div className={`p-3 rounded-lg border ${profile.company ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                   <div className="flex items-center space-x-2">
+                     <span className={`font-medium ${profile.company ? 'text-green-700' : 'text-red-700'}`}>
+                       Company
+                     </span>
+                     {profile.company ? (
+                       <span className="text-green-600">✓</span>
+                     ) : (
+                       <span className="text-red-600">✗</span>
+                     )}
+                   </div>
+                 </div>
+                 
+                 <div className={`p-3 rounded-lg border ${profile.job_title ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                   <div className="flex items-center space-x-2">
+                     <span className={`font-medium ${profile.job_title ? 'text-green-700' : 'text-red-700'}`}>
+                       Job Title
+                     </span>
+                     {profile.job_title ? (
+                       <span className="text-green-600">✓</span>
+                     ) : (
+                       <span className="text-red-600">✗</span>
+                     )}
+                   </div>
+                 </div>
+               </div>
+               
+               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                 <p className="text-sm text-blue-700">
+                   <strong>Why complete your profile?</strong>
+                 </p>
+                 <ul className="text-sm text-blue-600 mt-2 space-y-1 list-disc list-inside">
+                   <li>Help other alumni find and connect with you</li>
+                   <li>Show up in directory searches</li>
+                   <li>Increase networking opportunities</li>
+                   <li>Stay updated with ISE community news</li>
+                 </ul>
+               </div>
+             </div>
+           </CardContent>
+         </Card>
+       )}
+     </>
+   );
+ };
 
 export default Index;

@@ -787,8 +787,22 @@ const Dashboard = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-medium">
-                              {change.fieldName}: {change.newValue}
+                            <div className="flex items-center space-x-2 mb-1">
+                              <Badge variant="outline" className="text-xs">
+                                {change.fieldName}
+                              </Badge>
+                              {change.changeType === 'INSERT' ? (
+                                <Badge variant="default" className="text-xs">
+                                  Added
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs">
+                                  Updated
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-green-600">
+                              {change.newValue}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {formatDateShort(change.changedAt)}
