@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Github, Linkedin, Twitter, ExternalLink, Search, ChevronRight, Filter } from "lucide-react";
+import { Github, Linkedin, Twitter, ExternalLink, Search, ChevronRight } from "lucide-react";
 import { Profile, ProfessionalStatus } from "@/lib/types";
 import { getProfiles, searchProfiles } from '@/lib/domain/profiles';
 import { filterProfiles, sortProfiles, paginateData, type FilterOptions, type SortOption } from '@/lib/utils/data';
@@ -25,6 +25,7 @@ const Directory = () => {
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [professionalStatusFilter, setProfessionalStatusFilter] = useState<ProfessionalStatus | "all">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -53,17 +54,28 @@ const Directory = () => {
     loadProfiles();
   }, []);
 
-  // Filter profiles when search term changes
+  // Filter profiles when search term or professional status filter changes
   useEffect(() => {
-    const filters: FilterOptions = searchTerm ? { search: searchTerm } : {};
+    const filters: FilterOptions = {};
+    
+    // Add search filter if there's a search term
+    if (searchTerm) {
+      filters.search = searchTerm;
+    }
+    
+    // Add professional status filter if not "all"
+    if (professionalStatusFilter !== "all") {
+      filters.professionalStatus = professionalStatusFilter;
+    }
+    
     const sortOption: SortOption = { field: 'full_name', direction: 'asc' };
     
     const filtered = filterProfiles(allProfiles, filters);
     const sorted = sortProfiles(filtered, sortOption);
     
     setFilteredProfiles(sorted);
-    setCurrentPage(1); // Reset to first page when search changes
-  }, [searchTerm, allProfiles]);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [searchTerm, professionalStatusFilter, allProfiles]);
 
   // Pagination calculations
   const paginationResult = paginateData(filteredProfiles, {
@@ -120,28 +132,56 @@ const Directory = () => {
         shown.
       </p>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          placeholder="Search by name, company, cohort, job title, location, or professional status..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 h-12 text-base"
-        />
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search by name, company, cohort, job title, or location..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-12 text-base"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select 
+            value={professionalStatusFilter} 
+            onValueChange={(value) => setProfessionalStatusFilter(value as ProfessionalStatus | "all")}
+          >
+            <SelectTrigger className="w-48 h-12">
+              <SelectValue placeholder="Professional Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="employed">Employed</SelectItem>
+              <SelectItem value="entrepreneur">Entrepreneur</SelectItem>
+              <SelectItem value="open_to_work">Open to Work</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Results count */}
       <div className="mb-6">
         <p className="text-sm text-muted-foreground">
-          Showing {Math.min(itemsPerPage, (paginationResult.page - 1) * paginationResult.limit + paginationResult.data.length)} of {paginationResult.total} alumni {searchTerm && `matching "${searchTerm}"`}
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              className="ml-2 text-primary hover:underline"
-            >
-              Clear
-            </button>
+          Showing {Math.min(itemsPerPage, (paginationResult.page - 1) * paginationResult.limit + paginationResult.data.length)} of {paginationResult.total} alumni
+          {(searchTerm || professionalStatusFilter !== "all") && (
+            <>
+              {" "}matching
+              {searchTerm && ` "${searchTerm}"`}
+              {searchTerm && professionalStatusFilter !== "all" && " and "}
+              {professionalStatusFilter !== "all" && `professional status: ${professionalStatusFilter.replace('_', ' ')}`}
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setProfessionalStatusFilter("all");
+                }}
+                className="ml-2 text-primary hover:underline"
+              >
+                Clear filters
+              </button>
+            </>
           )}
         </p>
       </div>
