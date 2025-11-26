@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Profile, EventData, Announcement } from '@/lib/types';
+import { toast } from 'sonner';
 import { type ResidencyPartner, type ResidencyStats } from '@/lib/types/residency';
-import { type SignInData, type FieldChange } from '@/lib/domain/profiles';
+import { type SignInData, type FieldChange, type UserActivity, getUserActivity } from '@/lib/domain/profiles';
 import { 
   getProfiles, 
   getAlumniProfiles,
@@ -75,7 +76,6 @@ import {
   Edit,
   Trash2,
   Eye,
-  Filter
 } from 'lucide-react';
 
 // Helper function to render profile avatar or initials
@@ -119,6 +119,7 @@ const Dashboard = () => {
   } | null>(null);
   const [signInsData, setSignInsData] = useState<SignInData[]>([]);
   const [fieldChanges, setFieldChanges] = useState<FieldChange[]>([]);
+  const [userActivity, setUserActivity] = useState<UserActivity[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   
   // Residency states
@@ -142,6 +143,27 @@ const Dashboard = () => {
     description: '',
     is_active: true
   });
+
+  // User management modal states
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [isRemoveUserModalOpen, setIsRemoveUserModalOpen] = useState(false);
+  const [selectedUserForRemoval, setSelectedUserForRemoval] = useState<UserActivity | null>(null);
+  const [addUserForm, setAddUserForm] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    graduationYear: '',
+    userType: 'Alum' as 'Alum' | 'Admin' | 'Staff',
+    msc: false
+  });
+
+  // CSV import states
+  const [isCsvImportModalOpen, setIsCsvImportModalOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [isProcessingCsv, setIsProcessingCsv] = useState(false);
   
   // Pagination and filtering states
   const [usersPagination, setUsersPagination] = useState<PaginationOptions>(DEFAULT_PAGINATION);
@@ -300,15 +322,17 @@ const Dashboard = () => {
       
       try {
         setAnalyticsLoading(true);
-        const [stats, signIns, changes] = await Promise.all([
+        const [stats, signIns, changes, userActivityData] = await Promise.all([
           getProfileHistoryStats(),
           getSignInsOverTime(30),
-          getAllFieldChanges()
+          getAllFieldChanges(),
+          getUserActivity()
         ]);
         
         setProfileHistoryStats(stats);
         setSignInsData(signIns);
         setFieldChanges(changes);
+        setUserActivity(userActivityData);
       } catch (error) {
         log.error('Error fetching analytics data:', error);
       } finally {
@@ -441,6 +465,282 @@ const Dashboard = () => {
       is_active: partner.is_active
     });
     setIsEditPartnerModalOpen(true);
+  };
+
+  // User management handlers
+  const handleAddUser = async () => {
+    try {
+      // Create auth user
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: addUserForm.email,
+        password: addUserForm.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: addUserForm.fullName,
+          }
+        }
+      });
+
+      if (signUpError) {
+        throw new Error(signUpError.message);
+      }
+      
+      // Wait a moment for the profile to be created by the trigger
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Get created user's profile and update it
+      const { data: profileData, error: profileFetchError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', addUserForm.email)
+        .single();
+      
+      if (profileFetchError || !profileData) {
+        console.error('Profile fetch error:', profileFetchError);
+        throw new Error('User created but profile not found. Please try again.');
+      }
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          user_type: addUserForm.userType,
+          graduation_year: addUserForm.graduationYear ? parseInt(addUserForm.graduationYear) : null,
+          msc: addUserForm.msc,
+          is_public: true
+        })
+        .eq('id', profileData.id);
+      
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw new Error(`Profile update failed: ${profileError.message}`);
+      }
+
+      // Refresh data
+      const [updatedProfiles, updatedUserActivity] = await Promise.all([
+        getProfiles(),
+        getUserActivity()
+      ]);
+      setProfiles(updatedProfiles);
+      setUserActivity(updatedUserActivity);
+
+      // Reset form and close modal
+      setAddUserForm({
+        email: '',
+        password: '',
+        fullName: '',
+        graduationYear: '',
+        userType: 'Alum',
+        msc: false
+      });
+      setIsAddUserModalOpen(false);
+    } catch (error) {
+      log.error('Error adding user:', error);
+      toast.error(`Error adding user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
+  const handleRemoveUser = async () => {
+    if (!selectedUserForRemoval) return;
+
+    try {
+      // Soft delete by marking as removed
+      if (selectedUserForRemoval.profile) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ removed: true })
+          .eq('id', selectedUserForRemoval.profile.id);
+
+        if (profileError) {
+          throw new Error(profileError.message);
+        }
+      }
+
+      // Refresh data
+      const [updatedProfiles, updatedUserActivity] = await Promise.all([
+        getProfiles(),
+        getUserActivity()
+      ]);
+      setProfiles(updatedProfiles);
+      setUserActivity(updatedUserActivity);
+
+      // Reset and close modal
+      setSelectedUserForRemoval(null);
+      setIsRemoveUserModalOpen(false);
+      
+      toast.success('User removed successfully. They will no longer appear in the application and cannot sign in.');
+    } catch (error) {
+      log.error('Error removing user:', error);
+      alert(`Error removing user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // CSV import handlers
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'text/csv') {
+      setCsvFile(file);
+      parseCsvFile(file);
+    } else {
+      toast.error('Please upload a valid CSV file');
+    }
+  };
+
+  const parseCsvFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length > 0) {
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        setCsvHeaders(headers);
+        
+        const data = lines.slice(1).map((line, index) => {
+          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+          const row: Record<string, string> = { index: index.toString() };
+          headers.forEach((header, i) => {
+            row[header] = values[i] || '';
+          });
+          return row;
+        }).filter(row => Object.values(row).some(v => String(v).trim() !== ''));
+        
+        setCsvData(data);
+        
+        // Auto-map common column names
+        const autoMapping: Record<string, string> = {};
+        headers.forEach(header => {
+          const lowerHeader = header.toLowerCase();
+          if (lowerHeader.includes('email')) autoMapping.email = header;
+          if (lowerHeader.includes('name') || lowerHeader.includes('full')) autoMapping.fullName = header;
+          if (lowerHeader.includes('grad') || lowerHeader.includes('year')) autoMapping.graduationYear = header;
+          if (lowerHeader.includes('type') || lowerHeader.includes('role')) autoMapping.userType = header;
+          if (lowerHeader.includes('msc') || lowerHeader.includes('master')) autoMapping.msc = header;
+        });
+        setColumnMapping(autoMapping);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCsvImport = async () => {
+    if (!csvData.length || Object.keys(columnMapping).length === 0) {
+      toast.error('Please map at least the email field');
+      return;
+    }
+
+    setIsProcessingCsv(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      // Process users in batches of 3 to avoid rate limiting
+      const batchSize = 3;
+      for (let i = 0; i < csvData.length; i += batchSize) {
+        const batch = csvData.slice(i, i + batchSize);
+        
+        // Process each user in the current batch
+        for (const row of batch) {
+          try {
+            const email = row[columnMapping.email]?.trim();
+            const fullName = row[columnMapping.fullName]?.trim() || email.split('@')[0];
+            const graduationYear = row[columnMapping.graduationYear]?.trim();
+            const userType = row[columnMapping.userType]?.trim() || 'Alum';
+            const msc = row[columnMapping.msc]?.trim().toLowerCase() === 'true' || row[columnMapping.msc]?.trim().toLowerCase() === 'yes';
+
+            if (!email) {
+              errorCount++;
+              continue;
+            }
+
+            // Generate random password for CSV imports
+            const password = Math.random().toString(36).slice(-8);
+
+            // Create auth user with delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+            
+            const { error: signUpError } = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: `${window.location.origin}/`,
+                data: {
+                  full_name: fullName,
+                }
+              }
+            });
+
+            if (signUpError) {
+              log.error(`Error creating user ${email}:`, signUpError);
+              errorCount++;
+              continue;
+            }
+
+            // Wait for profile to be created by trigger, then update it
+            await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second wait
+            
+            const { data: profileData, error: profileFetchError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', email)
+              .single();
+            
+            if (profileFetchError || !profileData) {
+              log.error(`Profile fetch error for ${email}:`, profileFetchError);
+              errorCount++;
+            } else {
+              const { error: profileError } = await supabase
+                .from('profiles')
+                .update({
+                  user_type: userType as 'Alum' | 'Admin' | 'Staff',
+                  graduation_year: graduationYear ? parseInt(graduationYear) : null,
+                  msc: msc,
+                  is_public: true
+                })
+                .eq('id', profileData.id);
+
+              if (profileError) {
+                log.error(`Error updating profile for ${email}:`, profileError);
+                errorCount++;
+              } else {
+                successCount++;
+              }
+            }
+          } catch (error) {
+            log.error('Error processing CSV row:', error);
+            errorCount++;
+          }
+        }
+        
+        // Wait a moment for the last user in batch to be processed
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay between batches
+      }
+
+      // Refresh data
+      const [updatedProfiles, updatedUserActivity] = await Promise.all([
+        getProfiles(),
+        getUserActivity()
+      ]);
+      setProfiles(updatedProfiles);
+      setUserActivity(updatedUserActivity);
+
+      // Reset and close modal
+      setCsvFile(null);
+      setCsvData([]);
+      setCsvHeaders([]);
+      setColumnMapping({});
+      setIsCsvImportModalOpen(false);
+      setIsProcessingCsv(false);
+
+      toast.success(`CSV Import Complete!\n\nSuccessfully imported: ${successCount} users\nFailed: ${errorCount} users`);
+    } catch (error) {
+      log.error('Error during CSV import:', error);
+      toast.error(`Error during CSV import: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessingCsv(false);
+    }
   };
 
   if (loading || profileLoading) {
@@ -661,6 +961,376 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
+          {/* Manage Users */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Add User Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Add User
+                </CardTitle>
+                <CardDescription>
+                  Create a new user account and profile
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New User
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Create New User</DialogTitle>
+                      <DialogDescription>
+                        Add a new user to the system with their profile information.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={addUserForm.email}
+                          onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })}
+                          placeholder="user@example.com"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={addUserForm.password}
+                          onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
+                          placeholder="Enter password"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="fullName">Full Name</Label>
+                        <Input
+                          id="fullName"
+                          value={addUserForm.fullName}
+                          onChange={(e) => setAddUserForm({ ...addUserForm, fullName: e.target.value })}
+                          placeholder="John Doe"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="graduationYear">Graduation Year</Label>
+                        <Input
+                          id="graduationYear"
+                          type="number"
+                          value={addUserForm.graduationYear}
+                          onChange={(e) => setAddUserForm({ ...addUserForm, graduationYear: e.target.value })}
+                          placeholder="2023"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="userType">User Type</Label>
+                        <select
+                          id="userType"
+                          value={addUserForm.userType}
+                          onChange={(e) => setAddUserForm({ ...addUserForm, userType: e.target.value as 'Alum' | 'Admin' | 'Staff' })}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="Alum">Alum</option>
+                          <option value="Admin">Admin</option>
+                          <option value="Staff">Staff</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          id="msc"
+                          type="checkbox"
+                          checked={addUserForm.msc}
+                          onChange={(e) => setAddUserForm({ ...addUserForm, msc: e.target.checked })}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <Label htmlFor="msc">MSC Program</Label>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" onClick={handleAddUser}>
+                        Create User
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+
+            {/* Remove User Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5" />
+                  Remove User
+                </CardTitle>
+                <CardDescription>
+                  Remove a user account and their profile
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={isRemoveUserModalOpen} onOpenChange={setIsRemoveUserModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove User
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Remove User</DialogTitle>
+                      <DialogDescription>
+                        Select a user to remove from the system. This action cannot be undone.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="userSelect">Select User</Label>
+                        <select
+                          id="userSelect"
+                          value={selectedUserForRemoval?.id || ''}
+                          onChange={(e) => {
+                            const user = userActivity.find(u => u.id === e.target.value);
+                            setSelectedUserForRemoval(user || null);
+                          }}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="">Select a user...</option>
+                          {userActivity.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.profile?.full_name || user.email} ({user.email})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {selectedUserForRemoval && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-sm text-red-800">
+                            <strong>Warning:</strong> You are about to remove <strong>{selectedUserForRemoval.profile?.full_name || selectedUserForRemoval.email}</strong> from the system. This will permanently delete their account and all associated data.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIsRemoveUserModalOpen(false);
+                          setSelectedUserForRemoval(null);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={handleRemoveUser}
+                        disabled={!selectedUserForRemoval}
+                      >
+                        Remove User
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+
+            {/* CSV Import Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Import CSV
+                </CardTitle>
+                <CardDescription>
+                  Bulk import users from a CSV file
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={isCsvImportModalOpen} onOpenChange={setIsCsvImportModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Import CSV
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Import Users from CSV</DialogTitle>
+                      <DialogDescription>
+                        Upload a CSV file and map columns to user fields.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      {/* File Upload */}
+                      <div className="grid gap-2">
+                        <Label htmlFor="csvFile">CSV File</Label>
+                        <Input
+                          id="csvFile"
+                          type="file"
+                          accept=".csv"
+                          onChange={handleFileUpload}
+                          className="file:mr-4 file:py-2 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                        />
+                      </div>
+
+                      {/* CSV Preview */}
+                      {csvHeaders.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>CSV Preview (First 5 rows)</Label>
+                          <div className="border rounded-lg overflow-hidden">
+                            <div className="bg-gray-50 p-2 border-b">
+                              <div className="text-xs font-medium text-gray-600">
+                                Found {csvHeaders.length} columns: {csvHeaders.join(', ')}
+                              </div>
+                            </div>
+                            <div className="max-h-32 overflow-y-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    {csvHeaders.map(header => (
+                                      <th key={header} className="p-2 text-left font-medium border-b">
+                                        {header}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {csvData.slice(0, 5).map((row, index) => (
+                                    <tr key={index}>
+                                      {csvHeaders.map(header => (
+                                        <td key={header} className="p-2 border-b">
+                                          {row[header] || ''}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Column Mapping */}
+                      {csvHeaders.length > 0 && (
+                        <div className="space-y-3">
+                          <Label>Map CSV Columns to User Fields</Label>
+                          <div className="grid gap-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-sm">Email *</Label>
+                                <select
+                                  value={columnMapping.email || ''}
+                                  onChange={(e) => setColumnMapping({ ...columnMapping, email: e.target.value })}
+                                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                                >
+                                  <option value="">Select column...</option>
+                                  {csvHeaders.map(header => (
+                                    <option key={header} value={header}>{header}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label className="text-sm">Full Name</Label>
+                                <select
+                                  value={columnMapping.fullName || ''}
+                                  onChange={(e) => setColumnMapping({ ...columnMapping, fullName: e.target.value })}
+                                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                                >
+                                  <option value="">Select column...</option>
+                                  {csvHeaders.map(header => (
+                                    <option key={header} value={header}>{header}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-sm">Graduation Year</Label>
+                                <select
+                                  value={columnMapping.graduationYear || ''}
+                                  onChange={(e) => setColumnMapping({ ...columnMapping, graduationYear: e.target.value })}
+                                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                                >
+                                  <option value="">Select column...</option>
+                                  {csvHeaders.map(header => (
+                                    <option key={header} value={header}>{header}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label className="text-sm">User Type</Label>
+                                <select
+                                  value={columnMapping.userType || ''}
+                                  onChange={(e) => setColumnMapping({ ...columnMapping, userType: e.target.value })}
+                                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                                >
+                                  <option value="">Select column...</option>
+                                  {csvHeaders.map(header => (
+                                    <option key={header} value={header}>{header}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm">MSC Program</Label>
+                              <select
+                                value={columnMapping.msc || ''}
+                                onChange={(e) => setColumnMapping({ ...columnMapping, msc: e.target.value })}
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                              >
+                                <option value="">Select column...</option>
+                                {csvHeaders.map(header => (
+                                  <option key={header} value={header}>{header}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIsCsvImportModalOpen(false);
+                          setCsvFile(null);
+                          setCsvData([]);
+                          setCsvHeaders([]);
+                          setColumnMapping({});
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleCsvImport}
+                        disabled={!csvData.length || !columnMapping.email || isProcessingCsv}
+                      >
+                        {isProcessingCsv ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Importing...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Import {csvData.length} Users
+                          </>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Recent Sign-ins */}
           <Card>
             <CardHeader>
@@ -678,74 +1348,90 @@ const Dashboard = () => {
                     onChange={(e) => setUsersFilter({ ...usersFilter, search: e.target.value })}
                     className="w-64"
                   />
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                  </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               {dataLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : (
-                 <div className="space-y-4">
-                   {(() => {
-                     // For recent sign-ins, use all profiles (including staff)
-                     const filteredProfiles = filterData(profiles, usersFilter, ['full_name', 'email', 'company']);
-                     const sortedProfiles = sortData(filteredProfiles, usersSort);
-                     const paginatedProfiles = paginateData(sortedProfiles, usersPagination);
-                     
-                      return paginatedProfiles.data.map((profile) => (
-                       <div key={profile.id} className="flex items-center justify-between p-3 border rounded-lg">
-                         <div className="flex items-center space-x-3">
-                           {renderProfileAvatar(profile, "w-8 h-8")}
-                           <div>
-                             <p className="font-medium">{profile.full_name || 'Unknown User'}</p>
-                             <p className="text-sm text-muted-foreground">{profile.email}</p>
-                           </div>
-                         </div>
-                         <div className="text-right">
-                           <p className="text-sm font-medium">Last active</p>
-                           <p className="text-xs text-muted-foreground">
-                             {formatDateShort(profile.updated_at)}
-                           </p>
-                         </div>
-                       </div>
-                     ));
-                  })()}
-                  {profiles.filter(p => isDateWithinLastDays(p.updated_at, 7)).length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No recent sign-ins to display</p>
-                    </div>
-                  )}
-                  
-                   {/* Pagination */}
-                   <div className="flex items-center justify-between mt-4">
-                     <div className="text-sm text-muted-foreground">
-                       Showing {usersPagination.page} of {Math.ceil(profiles.length / usersPagination.limit)} pages
+                 <div className="flex items-center justify-center py-8">
+                   <Loader2 className="h-6 w-6 animate-spin" />
+                 </div>
+               ) : (
+                  <div className="space-y-4">
+                    {(() => {
+                      // Filter user activity for recent sign-ins (last 7 days)
+                      const recentSignIns = userActivity.filter(user => 
+                        user.lastSignInAt && isDateWithinLastDays(user.lastSignInAt, 7)
+                      );
+                      
+                      // Apply search filter
+                      const filteredUsers = usersFilter.search 
+                        ? recentSignIns.filter(user => 
+                            user.profile?.full_name?.toLowerCase().includes(usersFilter.search!.toLowerCase()) ||
+                            user.email.toLowerCase().includes(usersFilter.search!.toLowerCase())
+                          )
+                        : recentSignIns;
+                      
+                      // Sort by last sign-in
+                      const sortedUsers = filteredUsers.sort((a, b) => {
+                        const aDate = a.lastSignInAt || a.createdAt;
+                        const bDate = b.lastSignInAt || b.createdAt;
+                        return new Date(bDate).getTime() - new Date(aDate).getTime();
+                      });
+                      
+                      // Paginate
+                      const startIndex = (usersPagination.page - 1) * usersPagination.limit;
+                      const endIndex = startIndex + usersPagination.limit;
+                      const paginatedUsers = sortedUsers.slice(startIndex, endIndex);
+                      
+                       return paginatedUsers.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            {renderProfileAvatar(user.profile || { full_name: user.email.split('@')[0], avatar_url: null }, "w-8 h-8")}
+                            <div>
+                              <p className="font-medium">{user.profile?.full_name || user.email.split('@')[0]}</p>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">Last sign-in</p>
+                            <p className="text-xs text-muted-foreground">
+                              {user.lastSignInAt ? formatDateShort(user.lastSignInAt) : 'Never'}
+                            </p>
+                          </div>
+                        </div>
+                      ));
+                   })()}
+                   {userActivity.filter(user => user.lastSignInAt && isDateWithinLastDays(user.lastSignInAt, 7)).length === 0 && (
+                     <div className="text-center py-8 text-muted-foreground">
+                       <p>No recent sign-ins to display</p>
                      </div>
-                     <div className="flex space-x-2">
-                       <Button 
-                         variant="outline" 
-                         size="sm"
-                         onClick={() => setUsersPagination({ ...usersPagination, page: Math.max(1, usersPagination.page - 1) })}
-                         disabled={usersPagination.page <= 1}
-                       >
-                         Previous
-                       </Button>
+                   )}
+                  
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {usersPagination.page} of {Math.ceil(userActivity.filter(user => user.lastSignInAt && isDateWithinLastDays(user.lastSignInAt, 7)).length / usersPagination.limit)} pages
+                      </div>
+                      <div className="flex space-x-2">
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => setUsersPagination({ ...usersPagination, page: usersPagination.page + 1 })}
-                          disabled={usersPagination.page >= Math.ceil(profiles.length / usersPagination.limit)}
+                          onClick={() => setUsersPagination({ ...usersPagination, page: Math.max(1, usersPagination.page - 1) })}
+                          disabled={usersPagination.page <= 1}
                         >
-                          Next
+                          Previous
                         </Button>
-                     </div>
-                   </div>
+                         <Button 
+                           variant="outline" 
+                           size="sm"
+                           onClick={() => setUsersPagination({ ...usersPagination, page: usersPagination.page + 1 })}
+                           disabled={usersPagination.page >= Math.ceil(userActivity.filter(user => user.lastSignInAt && isDateWithinLastDays(user.lastSignInAt, 7)).length / usersPagination.limit)}
+                         >
+                           Next
+                         </Button>
+                      </div>
+                    </div>
                 </div>
               )}
             </CardContent>
@@ -839,10 +1525,6 @@ const Dashboard = () => {
                      onChange={(e) => setEventsFilter({ ...eventsFilter, search: e.target.value })}
                      className="w-64"
                    />
-                   <Button variant="outline" size="sm">
-                     <Filter className="h-4 w-4 mr-2" />
-                     Filter
-                   </Button>
                  </div>
               </div>
             </CardHeader>
@@ -947,10 +1629,6 @@ const Dashboard = () => {
                      onChange={(e) => setAnnouncementsFilter({ ...announcementsFilter, search: e.target.value })}
                      className="w-64"
                    />
-                   <Button variant="outline" size="sm">
-                     <Filter className="h-4 w-4 mr-2" />
-                     Filter
-                   </Button>
                  </div>
 
               </div>

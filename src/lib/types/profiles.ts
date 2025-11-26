@@ -29,6 +29,7 @@ export interface Profile {
   employed: boolean | null;
   professional_status: ProfessionalStatus | null;
   user_type: UserRole;
+  removed: boolean;
   created_at: string;
   updated_at: string;
 }

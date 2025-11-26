@@ -9,6 +9,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +36,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!activeSession) return;
       const u = activeSession.user;
       if (!u) return;
+      
+      // Check if user is removed
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('removed')
+        .eq('user_id', u.id)
+        .single();
+      
+      if (!profileError && profile?.removed) {
+        // Sign out removed user
+        await supabase.auth.signOut();
+        return;
+      }
+      
       const fullName = (u.user_metadata as Record<string, unknown>)?.full_name as string | null ?? null;
       await supabase
         .from('profiles')
@@ -43,6 +58,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             user_id: u.id,
             email: u.email ?? null,
             full_name: fullName,
+            removed: false, // Ensure removed is false for new/upserted profiles
           },
           { onConflict: 'user_id' }
         );
@@ -68,11 +84,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    return { error: error?.message };
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    // Check if user is removed
+    if (data.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('removed')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (profileError) {
+        // Sign out user if profile check fails
+        await supabase.auth.signOut();
+        return { error: 'Failed to verify user status' };
+      }
+
+      if (profile?.removed) {
+        // Sign out removed user
+        await supabase.auth.signOut();
+        return { error: 'Account has been deactivated' };
+      }
+    }
+
+    return { error: undefined };
   };
 
   const signUp = async (email: string, password: string, fullName?: string): Promise<{ error?: string }> => {
@@ -94,6 +136,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string): Promise<{ error?: string }> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    return { error: error?.message };
+  };
+
   const value = {
     user,
     session,
@@ -101,6 +150,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signIn,
     signUp,
     signOut,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

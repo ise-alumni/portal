@@ -6,7 +6,7 @@ export async function getProfiles(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('is_public', true)
+    .eq('removed', false)
     .order('full_name', { ascending: true });
 
   if (error) {
@@ -22,6 +22,7 @@ export async function getAlumniProfiles(): Promise<Profile[]> {
     .from('profiles')
     .select('*')
     .eq('is_public', true)
+    .eq('removed', false)
     .in('user_type', ['Alum', 'Admin']) // Include alumni and admin, exclude Staff
     .order('full_name', { ascending: true });
 
@@ -38,10 +39,11 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
     .from('profiles')
     .select('*')
     .eq('user_id', userId)
+    .eq('removed', false)
     .single();
 
   if (error) {
-    log.error('Error fetching profile:', error);
+    log.error('Error fetching profile by user ID:', error);
     return null;
   }
 
@@ -99,6 +101,7 @@ export async function searchProfiles(query: string): Promise<Profile[]> {
     .from('profiles')
     .select('*')
     .eq('is_public', true)
+    .eq('removed', false)
     .or(`full_name.ilike.%${query}%,bio.ilike.%${query}%,company.ilike.%${query}%`)
     .order('full_name', { ascending: true });
 
@@ -130,29 +133,18 @@ export interface UserActivity {
 
 export async function getUserActivity(): Promise<UserActivity[]> {
   try {
-    // Get all users from auth.users and join with profiles
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
-      log.error('Error fetching auth users:', authError);
-      return [];
-    }
-
-    // Get all profiles
+    // Get all profiles - use profile data as primary source
     const profiles = await getProfiles();
     
-    // Combine auth data with profile data
-    const userActivity: UserActivity[] = authUsers.users.map(user => {
-      const profile = profiles.find(p => p.user_id === user.id);
-      return {
-        id: user.id,
-        userId: user.id,
-        email: user.email || '',
-        lastSignInAt: user.last_sign_in_at,
-        createdAt: user.created_at,
-        profile: profile || null
-      };
-    });
+    // Create user activity from profile data
+    const userActivity: UserActivity[] = profiles.map(profile => ({
+      id: profile.id,
+      userId: profile.user_id,
+      email: profile.email || '',
+      lastSignInAt: profile.updated_at, // Use updated_at as proxy for last activity
+      createdAt: profile.created_at,
+      profile: profile
+    }));
 
     return userActivity.sort((a, b) => {
       const aDate = a.lastSignInAt || a.createdAt;
@@ -230,8 +222,8 @@ export async function getProfileHistoryStats(): Promise<{
     const history = await getProfileHistory();
     const profiles = await getProfiles();
     
-    // Filter out staff members - only include alumni and admin
-    const eligibleProfiles = profiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
+    // Include all profiles for comprehensive stats
+    const eligibleProfiles = profiles;
     const eligibleProfileIds = new Set(eligibleProfiles.map(p => p.id));
     
     // Filter history to only include changes from eligible profiles
@@ -460,8 +452,8 @@ export async function getAllFieldChanges(): Promise<FieldChange[]> {
     const history = await getProfileHistory();
     const profiles = await getProfiles();
     
-    // Filter out staff members - only include alumni and admin
-    const eligibleProfiles = profiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
+    // Include all profiles (including staff) for dashboard display
+    const eligibleProfiles = profiles;
     
     // Map history to field changes with user details
     const fieldChanges: FieldChange[] = [];

@@ -16,7 +16,7 @@ import { type ResidencyPartner } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
 
 const Index = () => {
-  const { user, session, loading } = useAuth();
+  const { user, session, loading, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -221,6 +221,20 @@ const Index = () => {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!user?.email) {
+      alert('No email address found');
+      return;
+    }
+    
+    const result = await resetPassword(user.email);
+    if (result.error) {
+      alert(`Error sending password reset: ${result.error}`);
+    } else {
+      alert('Password reset email sent! Please check your inbox.');
     }
   };
 
@@ -642,19 +656,26 @@ const Index = () => {
                 </Accordion>
 
                 <div className="flex flex-col md:flex-row md:justify-end gap-2">
-                 <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
-                   {saving ? 'Saving…' : 'Save Profile'}
-                 </Button>
-                 {profile && (
-                   <Button 
-                     variant="outline" 
-                     onClick={() => navigate(`/profile/${profile.id}`)}
-                     className="w-full md:w-auto border-2 border-foreground shadow-none"
-                   >
-                     See Profile
-                   </Button>
-                 )}
-               </div>
+                <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
+                {saving ? 'Saving…' : 'Save Profile'}
+                </Button>
+                <Button 
+                variant="outline" 
+                onClick={handleForgotPassword}
+                className="w-full md:w-auto border-2 border-orange-500 text-orange-500 hover:bg-orange-50 shadow-none"
+                >
+                Forgot Password
+                </Button>
+                {profile && (
+                  <Button 
+                      variant="outline" 
+                      onClick={() => navigate(`/profile/${profile.id}`)}
+                      className="w-full md:w-auto border-2 border-foreground shadow-none"
+                    >
+                      See Profile
+                    </Button>
+                  )}
+                </div>
              </div>
            )}
          </CardContent>
