@@ -188,6 +188,9 @@ export interface ProfileHistory {
   company: string | null;
   city: string | null;
   country: string | null;
+  professional_status: 'employed' | 'entrepreneur' | 'open_to_work' | null;
+  is_remote: boolean | null;
+  is_ise_champion: boolean | null;
   changed_at: string;
   change_type: 'INSERT' | 'UPDATE';
 }
@@ -266,6 +269,9 @@ export async function getProfileHistoryStats(): Promise<{
       { field: 'company', count: filteredHistory.filter(h => h.company !== null).length },
       { field: 'city', count: filteredHistory.filter(h => h.city !== null).length },
       { field: 'country', count: filteredHistory.filter(h => h.country !== null).length },
+      { field: 'professional_status', count: filteredHistory.filter(h => h.professional_status !== null).length },
+      { field: 'is_remote', count: filteredHistory.filter(h => h.is_remote !== null).length },
+      { field: 'is_ise_champion', count: filteredHistory.filter(h => h.is_ise_champion !== null).length },
     ].sort((a, b) => b.count - a.count);
 
     return {
@@ -398,6 +404,45 @@ export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]
           changeType: change.change_type
         });
       }
+      
+      if (change.professional_status) {
+        fieldChanges.push({
+          id: `${change.id}_professional_status`,
+          userName: profile.full_name || 'Unknown',
+          userEmail: profile.email || 'Unknown',
+          fieldName: 'Professional Status',
+          oldValue: null,
+          newValue: change.professional_status,
+          changedAt: change.changed_at,
+          changeType: change.change_type
+        });
+      }
+      
+      if (change.is_remote !== null) {
+        fieldChanges.push({
+          id: `${change.id}_is_remote`,
+          userName: profile.full_name || 'Unknown',
+          userEmail: profile.email || 'Unknown',
+          fieldName: 'Remote Work',
+          oldValue: null,
+          newValue: change.is_remote ? 'Yes' : 'No',
+          changedAt: change.changed_at,
+          changeType: change.change_type
+        });
+      }
+      
+      if (change.is_ise_champion !== null) {
+        fieldChanges.push({
+          id: `${change.id}_is_ise_champion`,
+          userName: profile.full_name || 'Unknown',
+          userEmail: profile.email || 'Unknown',
+          fieldName: 'ISE Champion',
+          oldValue: null,
+          newValue: change.is_ise_champion ? 'Yes' : 'No',
+          changedAt: change.changed_at,
+          changeType: change.change_type
+        });
+      }
     }
     
     // Sort by most recent and limit
@@ -477,6 +522,45 @@ export async function getAllFieldChanges(): Promise<FieldChange[]> {
           changeType: change.change_type
         });
       }
+      
+      if (change.professional_status) {
+        fieldChanges.push({
+          id: `${change.id}_professional_status`,
+          userName: profile.full_name || 'Unknown',
+          userEmail: profile.email || 'Unknown',
+          fieldName: 'Professional Status',
+          oldValue: null,
+          newValue: change.professional_status,
+          changedAt: change.changed_at,
+          changeType: change.change_type
+        });
+      }
+      
+      if (change.is_remote !== null) {
+        fieldChanges.push({
+          id: `${change.id}_is_remote`,
+          userName: profile.full_name || 'Unknown',
+          userEmail: profile.email || 'Unknown',
+          fieldName: 'Remote Work',
+          oldValue: null,
+          newValue: change.is_remote ? 'Yes' : 'No',
+          changedAt: change.changed_at,
+          changeType: change.change_type
+        });
+      }
+      
+      if (change.is_ise_champion !== null) {
+        fieldChanges.push({
+          id: `${change.id}_is_ise_champion`,
+          userName: profile.full_name || 'Unknown',
+          userEmail: profile.email || 'Unknown',
+          fieldName: 'ISE Champion',
+          oldValue: null,
+          newValue: change.is_ise_champion ? 'Yes' : 'No',
+          changedAt: change.changed_at,
+          changeType: change.change_type
+        });
+      }
     }
     
     // Sort by most recent (no limit)
@@ -484,6 +568,20 @@ export async function getAllFieldChanges(): Promise<FieldChange[]> {
       .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
   } catch (error) {
     log.error('Error in getAllFieldChanges:', error);
+    return [];
+  }
+}
+
+export async function getRecentFieldChanges(days: number = 7, limit: number = 10): Promise<FieldChange[]> {
+  try {
+    const allChanges = await getAllFieldChanges();
+    const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    
+    return allChanges
+      .filter(change => new Date(change.changedAt) >= cutoffDate)
+      .slice(0, limit);
+  } catch (error) {
+    log.error('Error in getRecentFieldChanges:', error);
     return [];
   }
 }

@@ -13,6 +13,7 @@ import {
   getProfileHistoryStats,
   getSignInsOverTime,
   getAllFieldChanges,
+  getRecentFieldChanges,
   getResidencyPartners,
   getResidencyStats,
   createResidencyPartner,
@@ -747,6 +748,62 @@ const Dashboard = () => {
                    </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Updates */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Recent Updates</CardTitle>
+                  <CardDescription>
+                    Profile changes recorded in the last 7 days
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {analyticsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : (() => {
+                const recentUpdates = fieldChanges
+                  .filter(change => isDateWithinLastDays(change.changedAt, 7))
+                  .slice(0, 10);
+
+                return recentUpdates.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentUpdates.map((change) => {
+                      const profile = profiles.find(p => p.email === change.userEmail);
+                      return (
+                        <div key={change.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            {renderProfileAvatar(profile || { full_name: change.userName, avatar_url: null }, "w-8 h-8")}
+                            <div>
+                              <p className="font-medium">{change.userName}</p>
+                              <p className="text-sm text-muted-foreground">{change.userEmail}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">
+                              {change.fieldName}: {change.newValue}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDateShort(change.changedAt)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No recent profile updates to display</p>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
