@@ -139,6 +139,7 @@ export function filterProfiles(profiles: Profile[], filters: FilterOptions): Pro
         item.city,
         item.country,
         item.cohort?.toString(),
+        item.professional_status,
       ];
       
       const matchesSearch = searchableFields.some(value => 

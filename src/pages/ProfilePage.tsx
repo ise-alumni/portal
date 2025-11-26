@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate } from '@/lib/utils/date';
 import { log } from '@/lib/utils/logger';
-import { Profile } from '@/lib/types';
+import { Profile, ProfessionalStatus } from '@/lib/types';
 import { EventData } from '@/lib/types/events';
 import { getCohortLabel } from '@/lib/utils/ui';
 import { Badge } from '@/components/ui/badge';
@@ -411,24 +411,27 @@ const ProfilePage = () => {
             <div className="space-y-2">
               <p className="font-bold text-foreground text-sm">Status:</p>
               <div className="flex flex-wrap gap-2">
+                {profile.professional_status && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    profile.professional_status === 'employed' 
+                      ? 'bg-gray-100 text-gray-800'
+                      : profile.professional_status === 'entrepreneur'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800'
+                  }`}>
+                    {profile.professional_status === 'employed' && 'Employed'}
+                    {profile.professional_status === 'entrepreneur' && 'Entrepreneur'}
+                    {profile.professional_status === 'open_to_work' && 'Open to Work'}
+                  </span>
+                )}
                 {profile.is_remote && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     Remote
                   </span>
                 )}
-                {profile.is_entrepreneur && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Entrepreneur
-                  </span>
-                )}
                 {profile.is_ise_champion && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                     ISE Champion
-                  </span>
-                )}
-                {profile.employed && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    Employed
                   </span>
                 )}
               </div>

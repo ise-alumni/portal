@@ -9,8 +9,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Github, Linkedin, Twitter, ExternalLink, Search, ChevronRight } from "lucide-react";
-import { Profile } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Github, Linkedin, Twitter, ExternalLink, Search, ChevronRight, Filter } from "lucide-react";
+import { Profile, ProfessionalStatus } from "@/lib/types";
 import { getProfiles, searchProfiles } from '@/lib/domain/profiles';
 import { filterProfiles, sortProfiles, paginateData, type FilterOptions, type SortOption } from '@/lib/utils/data';
 import { getCohortLabel } from '@/lib/utils/ui';
@@ -123,7 +124,7 @@ const Directory = () => {
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
-          placeholder="Search by name, company, cohort, job title, or location..."
+          placeholder="Search by name, company, cohort, job title, location, or professional status..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 h-12 text-base"

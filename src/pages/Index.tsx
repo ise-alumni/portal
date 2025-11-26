@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Profile, ProfileFormData } from '@/lib/types';
+import { Profile, ProfileFormData, ProfessionalStatus } from '@/lib/types';
 import { getProfileByUserId, updateProfile } from '@/lib/domain/profiles';
 import { log } from '@/lib/utils/logger';
 
@@ -39,6 +39,7 @@ const Index = () => {
     isEntrepreneur: false,
     isIseChampion: false,
     employed: true,
+    professionalStatus: null as ProfessionalStatus | null,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
@@ -64,6 +65,7 @@ const Index = () => {
         isEntrepreneur: false,
         isIseChampion: false,
         employed: true,
+        professionalStatus: null,
       });
       setAvatarFile(null);
       setProfile(null);
@@ -104,6 +106,7 @@ const Index = () => {
             isEntrepreneur: data.is_entrepreneur ?? false,
             isIseChampion: data.is_ise_champion ?? false,
             employed: data.employed ?? true,
+            professionalStatus: data.professional_status ?? null,
           });
         }
       } catch (error) {
@@ -328,6 +331,25 @@ const Index = () => {
               <div className="md:col-span-2 space-y-3">
                 <div className="text-xs opacity-70 font-medium">Professional Status</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs opacity-70">Status</label>
+                    <Select 
+                      value={formData.professionalStatus || ''} 
+                      onValueChange={(value) => setFormData(prev => ({ 
+                        ...prev, 
+                        professionalStatus: value as ProfessionalStatus || null 
+                      }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select professional status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="employed">Employed</SelectItem>
+                        <SelectItem value="entrepreneur">Entrepreneur</SelectItem>
+                        <SelectItem value="open_to_work">Open to Work</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -341,32 +363,12 @@ const Index = () => {
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      id="isEntrepreneur"
-                      checked={formData.isEntrepreneur}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isEntrepreneur: e.target.checked }))}
-                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                    />
-                    <label htmlFor="isEntrepreneur" className="text-sm">Entrepreneur</label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
                       id="isIseChampion"
                       checked={formData.isIseChampion}
                       onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
                       className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
                     />
                     <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="employed"
-                      checked={formData.employed}
-                      onChange={(e) => setFormData(prev => ({ ...prev, employed: e.target.checked }))}
-                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                    />
-                    <label htmlFor="employed" className="text-sm">Employed</label>
                   </div>
                 </div>
               </div>

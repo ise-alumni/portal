@@ -1,6 +1,8 @@
 import { Database } from '@/integrations/supabase/types';
 import { UserRole } from './common';
 
+export type ProfessionalStatus = 'employed' | 'entrepreneur' | 'open_to_work';
+
 export interface Profile {
   id: string;
   user_id: string;
@@ -25,6 +27,7 @@ export interface Profile {
   is_entrepreneur: boolean | null;
   is_ise_champion: boolean | null;
   employed: boolean | null;
+  professional_status: ProfessionalStatus | null;
   user_type: UserRole;
   created_at: string;
   updated_at: string;
@@ -49,6 +52,7 @@ export interface ProfileFormData {
   isEntrepreneur: boolean;
   isIseChampion: boolean;
   employed: boolean;
+  professionalStatus: ProfessionalStatus | null;
 }
 
 

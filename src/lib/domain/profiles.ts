@@ -69,6 +69,7 @@ export async function updateProfile(userId: string, formData: ProfileFormData): 
       is_entrepreneur: formData.isEntrepreneur,
       is_ise_champion: formData.isIseChampion,
       employed: formData.employed,
+      professional_status: formData.professionalStatus,
       avatar_url: formData.avatarUrl || undefined,
     };
 
