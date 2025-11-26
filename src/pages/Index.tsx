@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Profile, ProfileFormData } from '@/lib/types';
 import { getProfileByUserId, updateProfile } from '@/lib/domain/profiles';
 import { log } from '@/lib/utils/logger';
@@ -198,9 +199,11 @@ const Index = () => {
     return null; // Will redirect to auth
   }
 
+  const displayEmail = user?.email || profile?.email || '—';
+  const lastSignedIn = user?.last_sign_in_at || '—';
+
   return (
     <div>
-
       <Card className="mb-6 border-2 border-foreground shadow-none">
         <CardHeader className="pb-2">
           <CardTitle className="tracking-tight">Profile</CardTitle>
@@ -209,299 +212,183 @@ const Index = () => {
         <CardContent>
           {profileLoading ? (
             <div className="text-sm text-muted-foreground">Loading profile…</div>
-          ) : profile ? (
-             (() => {
-                const displayFullName = profile.full_name || user?.user_metadata?.full_name || (user?.email?.split('@')[0] ?? '—');
-                const displayEmail = user?.email || profile.email || '—';
-                const lastSignedIn = user?.last_sign_in_at || '—';
-               return (
-                 <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-sm">
-                      <div><span className="opacity-70">Name:</span> {displayFullName}</div>
-                       <div className="flex items-center gap-2">
-                         <span className="opacity-70">Email:</span> 
-                         <span>{formData.emailVisible ? displayEmail : 'Hidden'}</span>
-                         <Button 
-                           onClick={() => setFormData(prev => ({ ...prev, emailVisible: !prev.emailVisible }))} 
-                           size="sm"
-                           variant="outline"
-                           className="text-xs h-6 px-2"
-                         >
-                           {formData.emailVisible ? 'Hide' : 'Make Public'}
-                         </Button>
-                       </div>
-                      <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 text-sm">
+                <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
+                <div className="flex items-center gap-2">
+                  <span className="opacity-70">Email:</span> 
+                  <span>{formData.emailVisible ? displayEmail : 'Hidden'}</span>
+                  <Button 
+                    onClick={() => setFormData(prev => ({ ...prev, emailVisible: !prev.emailVisible }))} 
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-6 px-2"
+                  >
+                    {formData.emailVisible ? 'Hide' : 'Make Public'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                <div>
+                  <label className="text-xs opacity-70">Full Name</label>
+                  <Input value={formData.fullName} onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Your full name" />
+                  <div className="mt-2">
+                    <label className="text-xs opacity-70">Avatar</label>
+                    <div className="flex items-center gap-2">
+                      {formData.avatarUrl && (
+                        <img src={formData.avatarUrl} alt="Avatar preview" className="w-16 h-16 rounded-full object-cover" />
+                      )}
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setAvatarFile(file);
+                            setFormData(prev => ({ ...prev, avatarUrl: URL.createObjectURL(file) }));
+                          }
+                        }}
+                      />
                     </div>
+                  </div>
+                </div>
+                <div className="space-y-5">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                    <div>
+                      <label className="text-xs opacity-70">Graduation Year</label>
+                      <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
+                    </div>
+                    <div>
+                      <label className="text-xs opacity-70">Program</label>
+                      <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select program" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bsc">BSc</SelectItem>
+                          <SelectItem value="msc">MSc</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs opacity-70">City</label>
+                      <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
+                    </div>
+                    <div>
+                      <label className="text-xs opacity-70">Country</label>
+                      <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs opacity-70">Role</label>
+                  <Input value={formData.jobTitle} onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))} placeholder="Job title" />
+                </div>
+                <div>
+                  <label className="text-xs opacity-70">Company</label>
+                  <Input value={formData.company} onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))} placeholder="Company" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs opacity-70">Bio</label>
+                  <Textarea value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} placeholder="Short bio" rows={3} />
+                </div>
+              </div>
+
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="socials">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline">Socials</AccordionTrigger>
+                  <AccordionContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                       <div>
-                        <label className="text-xs opacity-70">Full Name</label>
-                        <Input value={formData.fullName} onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Your full name" />
+                        <label className="text-xs opacity-70">GitHub</label>
+                        <Input value={formData.githubUrl} onChange={(e) => setFormData(prev => ({ ...prev, githubUrl: e.target.value }))} placeholder="https://github.com/username" />
                       </div>
                       <div>
-                        <label className="text-xs opacity-70">Avatar</label>
-                        <div className="flex items-center gap-2">
-                          {formData.avatarUrl && (
-                            <img src={formData.avatarUrl} alt="Avatar preview" className="w-16 h-16 rounded-full object-cover" />
-                          )}
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setAvatarFile(file);
-                                setFormData(prev => ({ ...prev, avatarUrl: URL.createObjectURL(file) }));
-                              }
-                            }}
-                          />
-                        </div>
+                        <label className="text-xs opacity-70">LinkedIn</label>
+                        <Input value={formData.linkedinUrl} onChange={(e) => setFormData(prev => ({ ...prev, linkedinUrl: e.target.value }))} placeholder="https://www.linkedin.com/in/username" />
                       </div>
-                        <div>
-                          <label className="text-xs opacity-70">Graduation Year</label>
-                          <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
-                        </div>
-
-                        <div>
-                          <label className="text-xs opacity-70">Program</label>
-                          <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select program" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="bsc">BSc</SelectItem>
-                              <SelectItem value="msc">MSc</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <label className="text-xs opacity-70">City</label>
-                          <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
-                        </div>
-                       <div>
-                         <label className="text-xs opacity-70">Country</label>
-                         <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
-                       </div>
-                       <div>
-                         <label className="text-xs opacity-70">Role</label>
-                         <Input value={formData.jobTitle} onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))} placeholder="Job title" />
-                       </div>
-                     <div>
-                       <label className="text-xs opacity-70">Company</label>
-                       <Input value={formData.company} onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))} placeholder="Company" />
-                     </div>
-                     <div className="md:col-span-2">
-                       <label className="text-xs opacity-70">Bio</label>
-                       <Textarea value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} placeholder="Short bio" rows={3} />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">GitHub</label>
-                       <Input value={formData.githubUrl} onChange={(e) => setFormData(prev => ({ ...prev, githubUrl: e.target.value }))} placeholder="https://github.com/username" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">LinkedIn</label>
-                       <Input value={formData.linkedinUrl} onChange={(e) => setFormData(prev => ({ ...prev, linkedinUrl: e.target.value }))} placeholder="https://www.linkedin.com/in/username" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">Twitter / X</label>
-                       <Input value={formData.twitterUrl} onChange={(e) => setFormData(prev => ({ ...prev, twitterUrl: e.target.value }))} placeholder="https://twitter.com/username" />
-                     </div>
-            <div>
+                      <div>
+                        <label className="text-xs opacity-70">Twitter / X</label>
+                        <Input value={formData.twitterUrl} onChange={(e) => setFormData(prev => ({ ...prev, twitterUrl: e.target.value }))} placeholder="https://twitter.com/username" />
+                      </div>
+                      <div>
                         <label className="text-xs opacity-70">Website</label>
                         <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
-                      </div>
-                      <div className="md:col-span-2 space-y-3">
-                        <div className="text-xs opacity-70 font-medium">Professional Status</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="isRemote"
-                              checked={formData.isRemote}
-                              onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="isRemote" className="text-sm">Remote Worker</label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="isEntrepreneur"
-                              checked={formData.isEntrepreneur}
-                              onChange={(e) => setFormData(prev => ({ ...prev, isEntrepreneur: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="isEntrepreneur" className="text-sm">Entrepreneur</label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="isIseChampion"
-                              checked={formData.isIseChampion}
-                              onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="employed"
-                              checked={formData.employed}
-                              onChange={(e) => setFormData(prev => ({ ...prev, employed: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="employed" className="text-sm">Employed</label>
-                          </div>
-                        </div>
-                      </div>
-           </div>
-                   <div className="flex flex-col md:flex-row md:justify-end gap-2">
-                     <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
-                       {saving ? 'Saving…' : 'Save Profile'}
-             </Button>
-                     {profile && (
-                       <Button 
-                         variant="outline" 
-                         onClick={() => navigate(`/profile/${profile.id}`)}
-                         className="w-full md:w-auto border-2 border-foreground shadow-none"
-                       >
-                         See Profile
-                       </Button>
-                     )}
-           </div>
-                </div>
-              );
-            })()
-          ) : (
-             (() => {
-               const displayFullName = user?.user_metadata?.full_name || (user?.email?.split('@')[0] ?? '—');
-               const displayEmail = user?.email || '—';
-                const lastSignedIn = user?.last_sign_in_at || '—';
-              return (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-sm">
-                    <div><span className="opacity-70">Name:</span> {displayFullName}</div>
-                    <div><span className="opacity-70">Email:</span> {displayEmail}</div>
-                    <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                     <div>
-                       <label className="text-xs opacity-70">Full Name</label>
-                       <Input value={formData.fullName} onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))} placeholder="Your full name" />
-                     </div>
-                      <div>
-                        <label className="text-xs opacity-70">Graduation Year</label>
-                        <Input value={formData.graduationYear} onChange={(e) => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))} placeholder="2020" inputMode="numeric" />
-                      </div>
-                      <div>
-                        <label className="text-xs opacity-70">Program</label>
-                        <Select value={formData.msc ? 'msc' : 'bsc'} onValueChange={(value) => setFormData(prev => ({ ...prev, msc: value === 'msc' }))}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select program" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="bsc">BSc</SelectItem>
-                            <SelectItem value="msc">MSc</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-xs opacity-70">City</label>
-                        <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
-                      </div>
-                     <div>
-                       <label className="text-xs opacity-70">Country</label>
-                       <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">Role</label>
-                       <Input value={formData.jobTitle} onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))} placeholder="Job title" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">Company</label>
-                       <Input value={formData.company} onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))} placeholder="Company" />
-                     </div>
-                     <div className="md:col-span-2">
-                       <label className="text-xs opacity-70">Bio</label>
-                       <Textarea value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} placeholder="Short bio" rows={3} />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">GitHub</label>
-                       <Input value={formData.githubUrl} onChange={(e) => setFormData(prev => ({ ...prev, githubUrl: e.target.value }))} placeholder="https://github.com/username" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">LinkedIn</label>
-                       <Input value={formData.linkedinUrl} onChange={(e) => setFormData(prev => ({ ...prev, linkedinUrl: e.target.value }))} placeholder="https://www.linkedin.com/in/username" />
-                     </div>
-                     <div>
-                       <label className="text-xs opacity-70">Twitter / X</label>
-                       <Input value={formData.twitterUrl} onChange={(e) => setFormData(prev => ({ ...prev, twitterUrl: e.target.value }))} placeholder="https://twitter.com/username" />
-                 </div>
-                  <div>
-                        <label className="text-xs opacity-70">Website</label>
-                        <Input value={formData.websiteUrl} onChange={(e) => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))} placeholder="https://your-site.com" />
-                      </div>
-                      <div className="md:col-span-2 space-y-3">
-                        <div className="text-xs opacity-70 font-medium">Professional Status</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="isRemote-new"
-                              checked={formData.isRemote}
-                              onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="isRemote-new" className="text-sm">Remote Worker</label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="isEntrepreneur-new"
-                              checked={formData.isEntrepreneur}
-                              onChange={(e) => setFormData(prev => ({ ...prev, isEntrepreneur: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="isEntrepreneur-new" className="text-sm">Entrepreneur</label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="isIseChampion-new"
-                              checked={formData.isIseChampion}
-                              onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="isIseChampion-new" className="text-sm">ISE Champion</label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="employed-new"
-                              checked={formData.employed}
-                              onChange={(e) => setFormData(prev => ({ ...prev, employed: e.target.checked }))}
-                              className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                            />
-                            <label htmlFor="employed-new" className="text-sm">Employed</label>
-                          </div>
-                        </div>
                       </div>
                     </div>
-                  <div className="flex flex-col md:flex-row md:justify-end">
-                    <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
-                      {saving ? 'Saving…' : 'Save Profile'}
-                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              <div className="md:col-span-2 space-y-3">
+                <div className="text-xs opacity-70 font-medium">Professional Status</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isRemote"
+                      checked={formData.isRemote}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
+                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                    />
+                    <label htmlFor="isRemote" className="text-sm">Remote Worker</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isEntrepreneur"
+                      checked={formData.isEntrepreneur}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isEntrepreneur: e.target.checked }))}
+                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                    />
+                    <label htmlFor="isEntrepreneur" className="text-sm">Entrepreneur</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isIseChampion"
+                      checked={formData.isIseChampion}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
+                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                    />
+                    <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="employed"
+                      checked={formData.employed}
+                      onChange={(e) => setFormData(prev => ({ ...prev, employed: e.target.checked }))}
+                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                    />
+                    <label htmlFor="employed" className="text-sm">Employed</label>
                   </div>
                 </div>
-              );
-            })()
+              </div>
+
+              <div className="flex flex-col md:flex-row md:justify-end gap-2">
+                <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
+                  {saving ? 'Saving…' : 'Save Profile'}
+                </Button>
+                {profile && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate(`/profile/${profile.id}`)}
+                    className="w-full md:w-auto border-2 border-foreground shadow-none"
+                  >
+                    See Profile
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
-
-   
-
     </div>
   );
 };
