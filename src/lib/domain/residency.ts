@@ -1,7 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
-import { type ResidencyPartner, type ResidencyStats, type NewResidencyPartner } from '@/lib/types';
+import { type ResidencyPartner, type ResidencyStats, type NewResidencyPartner, type Residency, type NewResidency, type ResidencyPhase } from '@/lib/types';
 import { type Profile } from '@/lib/types/profiles';
 import { log } from '@/lib/utils/logger';
+
+// Type assertion helper to bypass Supabase typing issues
+type SupabaseInsert = Record<string, unknown>;
+type SupabaseUpdate = Record<string, unknown>;
 
 export async function getResidencyPartners(): Promise<ResidencyPartner[]> {
   try {
@@ -27,7 +31,7 @@ export async function createResidencyPartner(partner: NewResidencyPartner): Prom
   try {
     const { data, error } = await supabase
       .from('residency_partners')
-      .insert(partner)
+      .insert(partner as SupabaseInsert)
       .select()
       .single();
 
@@ -47,7 +51,7 @@ export async function updateResidencyPartner(id: string, partner: Partial<NewRes
   try {
     const { data, error } = await supabase
       .from('residency_partners')
-      .update(partner)
+      .update(partner as SupabaseUpdate)
       .eq('id', id)
       .select()
       .single();
@@ -147,4 +151,102 @@ export async function getResidencyStats(profiles: Profile[]): Promise<ResidencyS
       partners: []
     };
   }
+}
+
+// Residency CRUD functions
+export async function getUserResidencies(userId: string): Promise<Residency[]> {
+  try {
+    const { data, error } = await supabase
+      .from('residencies')
+      .select(`
+        *,
+        residency_partners (
+          id,
+          name,
+          website,
+          logo_url,
+          description
+        )
+      `)
+      .eq('user_id', userId)
+      .order('phase');
+
+    if (error) {
+      log.error('Error fetching user residencies:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    log.error('Error in getUserResidencies:', error);
+    return [];
+  }
+}
+
+export async function createResidency(residency: NewResidency): Promise<Residency | null> {
+  try {
+    const { data, error } = await supabase
+      .from('residencies')
+      .insert(residency as SupabaseInsert)
+      .select()
+      .single();
+
+    if (error) {
+      log.error('Error creating residency:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    log.error('Error in createResidency:', error);
+    return null;
+  }
+}
+
+export async function updateResidency(id: string, residency: Partial<NewResidency>): Promise<Residency | null> {
+  try {
+    const { data, error } = await supabase
+      .from('residencies')
+      .update(residency as SupabaseUpdate)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      log.error('Error updating residency:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    log.error('Error in updateResidency:', error);
+    return null;
+  }
+}
+
+export async function deleteResidency(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('residencies')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      log.error('Error deleting residency:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    log.error('Error in deleteResidency:', error);
+    return false;
+  }
+}
+
+export function getAvailablePhases(isMsc: boolean): ResidencyPhase[] {
+  const phases: ResidencyPhase[] = ['R1', 'R2', 'R3', 'R4'];
+  if (isMsc) {
+    phases.push('R5');
+  }
+  return phases;
 }

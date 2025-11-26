@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Profile, ProfileFormData, ProfessionalStatus } from '@/lib/types';
 import { getProfileByUserId, updateProfile, isProfileComplete } from '@/lib/domain/profiles';
+import { getUserResidencies, createResidency, updateResidency, deleteResidency, getResidencyPartners, getAvailablePhases, type Residency, type NewResidency, type ResidencyPhase } from '@/lib/domain/residency';
+import { type ResidencyPartner } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
 
 const Index = () => {
@@ -43,6 +45,13 @@ const Index = () => {
     professionalStatus: null as ProfessionalStatus | null,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  
+  // Residency state
+  const [residencies, setResidencies] = useState<Residency[]>([]);
+  const [residencyPartners, setResidencyPartners] = useState<ResidencyPartner[]>([]);
+  const [residencyLoading, setResidencyLoading] = useState(true);
+  const [newResidency, setNewResidency] = useState<NewResidency | null>(null);
+  const [editingResidency, setEditingResidency] = useState<string | null>(null);
 
   // Reset form state when user changes
   useEffect(() => {
@@ -71,6 +80,11 @@ const Index = () => {
       setAvatarFile(null);
       setProfile(null);
       setProfileLoading(true);
+      setResidencies([]);
+      setResidencyPartners([]);
+      setNewResidency(null);
+      setEditingResidency(null);
+      setResidencyLoading(true);
     }
   }, [user]);
 
@@ -121,6 +135,28 @@ const Index = () => {
     useEffect(() => {
       fetchProfile();
     }, [fetchProfile]);
+
+    // Fetch residency data
+    const fetchResidencyData = useCallback(async () => {
+      if (!user) return;
+      setResidencyLoading(true);
+      try {
+        const [userResidencies, partners] = await Promise.all([
+          getUserResidencies(user.id),
+          getResidencyPartners()
+        ]);
+        setResidencies(userResidencies);
+        setResidencyPartners(partners);
+      } catch (error) {
+        log.error("Error fetching residency data:", error);
+      } finally {
+        setResidencyLoading(false);
+      }
+    }, [user]);
+
+    useEffect(() => {
+      fetchResidencyData();
+    }, [fetchResidencyData]);
 
    // Timeout to reset loading if stuck
    useEffect(() => {
@@ -186,6 +222,63 @@ const Index = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Residency handling functions
+  const handleAddResidency = () => {
+    if (!user) return;
+    setNewResidency({
+      phase: 'R1',
+      company_id: '',
+      user_id: user.id,
+      description: ''
+    });
+    setEditingResidency('new');
+  };
+
+  const handleSaveResidency = async (residency: NewResidency) => {
+    if (!user) return;
+    try {
+      if (editingResidency === 'new') {
+        const created = await createResidency(residency);
+        if (created) {
+          setResidencies(prev => [...prev, created]);
+        }
+      } else {
+        const updated = await updateResidency(editingResidency, residency);
+        if (updated) {
+          setResidencies(prev => prev.map(r => r.id === editingResidency ? updated : r));
+        }
+      }
+      setNewResidency(null);
+      setEditingResidency(null);
+    } catch (error) {
+      log.error("Error saving residency:", error);
+    }
+  };
+
+  const handleDeleteResidency = async (id: string) => {
+    try {
+      const success = await deleteResidency(id);
+      if (success) {
+        setResidencies(prev => prev.filter(r => r.id !== id));
+      }
+    } catch (error) {
+      log.error("Error deleting residency:", error);
+    }
+  };
+
+  const handleCancelResidency = () => {
+    setNewResidency(null);
+    setEditingResidency(null);
+  };
+
+  const getAvailablePhases = () => {
+    const phases: ResidencyPhase[] = ['R1', 'R2', 'R3', 'R4'];
+    if (formData.msc) {
+      phases.push('R5');
+    }
+    return phases;
   };
 
   if (loading) {
@@ -407,9 +500,148 @@ const Index = () => {
                      </div>
                    </AccordionContent>
                  </AccordionItem>
-               </Accordion>
+                </Accordion>
 
-               <div className="flex flex-col md:flex-row md:justify-end gap-2">
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="residencies">
+                    <AccordionTrigger className="text-sm font-medium hover:no-underline">Residencies</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4">
+                        {residencyLoading ? (
+                          <div className="text-sm text-muted-foreground">Loading residencies…</div>
+                        ) : (
+                          <>
+                            {/* Existing residencies */}
+                            {residencies.length > 0 && (
+                              <div className="space-y-3">
+                                {residencies.map((residency) => (
+                                  <div key={residency.id} className="p-3 border rounded-lg">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Badge variant="secondary">{residency.phase}</Badge>
+                                          <span className="text-sm font-medium">
+                                            {residencyPartners.find(p => p.id === residency.company_id)?.name || 'Unknown Company'}
+                                          </span>
+                                        </div>
+                                        {residency.description && (
+                                          <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                            {residency.description}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setNewResidency({
+                                              phase: residency.phase,
+                                              company_id: residency.company_id,
+                                              user_id: residency.user_id,
+                                              description: residency.description
+                                            });
+                                            setEditingResidency(residency.id);
+                                          }}
+                                        >
+                                          Edit
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => handleDeleteResidency(residency.id)}
+                                        >
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Add new residency form */}
+                            {editingResidency && newResidency && (
+                              <div className="p-3 border rounded-lg space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-xs opacity-70">Phase</label>
+                                    <Select 
+                                      value={newResidency.phase} 
+                                      onValueChange={(value) => setNewResidency(prev => prev ? { ...prev, phase: value as ResidencyPhase } : null)}
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select phase" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {getAvailablePhases().map((phase) => (
+                                          <SelectItem key={phase} value={phase}>
+                                            {phase}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs opacity-70">Company</label>
+                                    <Select 
+                                      value={newResidency.company_id} 
+                                      onValueChange={(value) => setNewResidency(prev => prev ? { ...prev, company_id: value } : null)}
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select company" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {residencyPartners.map((partner) => (
+                                          <SelectItem key={partner.id} value={partner.id}>
+                                            {partner.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-xs opacity-70">Description (Markdown supported)</label>
+                                  <Textarea 
+                                    value={newResidency.description || ''} 
+                                    onChange={(e) => setNewResidency(prev => prev ? { ...prev, description: e.target.value } : null)}
+                                    placeholder="Describe your residency experience..."
+                                    rows={4}
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    onClick={() => newResidency && handleSaveResidency(newResidency)}
+                                    disabled={!newResidency.company_id}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button variant="outline" onClick={handleCancelResidency}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Add new residency button */}
+                            {!editingResidency && (
+                              <Button 
+                                onClick={handleAddResidency}
+                                variant="outline"
+                                className="w-full"
+                              >
+                                Add Residency
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                <div className="flex flex-col md:flex-row md:justify-end gap-2">
                  <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">
                    {saving ? 'Saving…' : 'Save Profile'}
                  </Button>

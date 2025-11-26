@@ -90,6 +90,27 @@ export interface ProfileHistoryRow {
   change_type: 'INSERT' | 'UPDATE';
 }
 
+export interface ResidencyPartnerRow {
+  id: string;
+  name: string;
+  website: string | null;
+  logo_url: string | null;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResidencyRow {
+  id: string;
+  phase: 'R1' | 'R2' | 'R3' | 'R4' | 'R5';
+  company_id: string;
+  user_id: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Legacy Database interface for compatibility
 export interface Database {
   public: {
@@ -128,6 +149,16 @@ export interface Database {
         Row: ProfileHistoryRow;
         Insert: Omit<ProfileHistoryRow, 'id' | 'changed_at'>;
         Update: Partial<ProfileHistoryRow>;
+      }
+      residency_partners: {
+        Row: ResidencyPartnerRow;
+        Insert: Partial<ResidencyPartnerRow> & Pick<ResidencyPartnerRow, 'name'>;
+        Update: Partial<ResidencyPartnerRow>;
+      }
+      residencies: {
+        Row: ResidencyRow;
+        Insert: Omit<ResidencyRow, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<ResidencyRow>;
       }
     }
     Views: {
