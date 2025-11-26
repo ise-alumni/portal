@@ -5,6 +5,7 @@ export interface FilterOptions {
   tags?: string[];
   cohort?: number;
   userType?: string;
+  professionalStatus?: string;
   dateFrom?: Date;
   dateTo?: Date;
 }
@@ -173,6 +174,11 @@ export function filterProfiles(profiles: Profile[], filters: FilterOptions): Pro
     if (filters.userType) {
       const itemType = (item as { user_type?: string }).user_type;
       if (itemType !== filters.userType) return false;
+    }
+    // Professional status filter (for profiles)
+    if (filters.professionalStatus) {
+      const itemStatus = (item as { professional_status?: string }).professional_status;
+      if (itemStatus !== filters.professionalStatus) return false;
     }
 
     // Date range filter
