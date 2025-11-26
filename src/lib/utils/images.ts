@@ -1,19 +1,36 @@
 /**
- * Image generation utilities
+ * Image utilities for consistent fallback handling
  */
 
-export const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>): void => {
+export const generatePlaceholderUrl = (type: string, id: string | number): string => {
+  return `https://placehold.co/600x400?text=${type}+${id}`;
+};
+
+export const handleImageError = (
+  event: React.SyntheticEvent<HTMLImageElement, Event>,
+  fallbackUrl?: string
+): void => {
   const target = event.target as HTMLImageElement;
-  // Generate a new random image URL
-  const randomId = Math.floor(Math.random() * 1000);
-  const currentSrc = target.src;
   
-  if (currentSrc.toLowerCase().includes('event')) {
-    target.src = `https://placehold.co/600x400?text=Event+${randomId}`;
-  } else if (currentSrc.toLowerCase().includes('announcement')) {
-    target.src = `https://placehold.co/600x400?text=Announcement+${randomId}`;
+  if (fallbackUrl) {
+    target.src = fallbackUrl;
   } else {
-    // Fallback for any other image type
-    target.src = `https://placehold.co/600x400?text=Placeholder+${randomId}`;
+    // Generate a random fallback if none provided
+    const randomId = Math.floor(Math.random() * 1000);
+    const currentSrc = target.src;
+    const type = currentSrc.includes('Event') ? 'Event' : 
+                 currentSrc.includes('Announcement') ? 'Announcement' : 'Image';
+    target.src = generatePlaceholderUrl(type, randomId);
   }
+};
+
+export const getProfileInitials = (fullName?: string | null): string => {
+  if (!fullName) return 'U';
+  
+  return fullName
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 };

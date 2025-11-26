@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { ExternalLink, Clock, MegaphoneIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,10 +9,18 @@ import NewEventModal from '@/components/NewEventModal';
 import { Announcement, type Tag } from '@/lib/types';
 import { getAnnouncements } from '@/lib/domain/announcements';
 import { formatDateShort, isDateInPast, isDateWithinLastDays } from '@/lib/utils/date';
+import { handleImageError } from '@/lib/utils/images';
 import { filterAnnouncements, sortAnnouncements, type SortOption } from '@/lib/utils/data';
 import { log } from '@/lib/utils/logger';
 import { canUserCreateAnnouncements } from '@/lib/constants';
 import { getTags } from '@/lib/domain';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
+import { TagBadge } from '@/components/ui/tag-badge';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { usePagination } from '@/hooks/usePagination';
+import { useFiltering } from '@/hooks/useFiltering';
+import { useDataFetching } from '@/hooks/useDataFetching';
 
 
 // Announcement Card Component
@@ -33,12 +40,7 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           src={imageUrl} 
           alt={announcement.title}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            // Fallback to another random image if first one fails
-            const target = e.target as HTMLImageElement;
-            const randomId = Math.floor(Math.random() * 1000);
-            target.src = `https://placehold.co/600x400?text=Announcement+${randomId}`;
-          }}
+          onError={(e) => handleImageError(e)}
         />
       </div>
       <CardHeader className="pb-3">
@@ -46,18 +48,12 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
           <div className="flex-1">
             <CardTitle className="text-lg sm:text-xl leading-tight">{announcement.title}</CardTitle>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              {announcement.tags?.map((tag, index) => (
-                <Badge 
-                  key={index} 
-                  style={{ 
-                    backgroundColor: tag.color + '20',
-                    borderColor: tag.color,
-                    color: tag.color 
-                  }}
-                  className="text-xs"
-                >
-                  {tag.name}
-                </Badge>
+              {announcement.tags?.map((tag) => (
+                <TagBadge 
+                  key={tag.id} 
+                  name={tag.name}
+                  color={tag.color}
+                />
               ))}
               {announcement.deadline && (
                 <div className="flex items-center text-sm text-muted-foreground">
@@ -94,21 +90,26 @@ const AnnouncementCard = ({ announcement }: { announcement: Announcement }) => {
 
 export const Announcements = () => {
   const { user } = useAuth();
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [filteredAnnouncements, setFilteredAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'created_at' | 'deadline' | 'title'>('created_at');
   const [selectedTag, setSelectedTag] = useState<string>('');
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [announcementView, setAnnouncementView] = useState<'current' | 'past'>('current');
   const [userProfile, setUserProfile] = useState<{ user_type: string } | null>(null);
-  
-   // Pagination state
-   const [upcomingPage, setUpcomingPage] = useState(1);
-   const [pastPage, setPastPage] = useState(1);
-   const [itemsPerPage, setItemsPerPage] = useState(6);
 
+  // Fetch announcements data
+  const { data: announcements, loading, error, refetch } = useDataFetching(getAnnouncements);
+
+  // Fetch tags
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    const fetchTags = async () => {
+      const tagsData = await getTags();
+      setAvailableTags(tagsData);
+    };
+    fetchTags();
+  }, []);
+
+  // Fetch user profile
   const fetchUserProfile = useCallback(async () => {
     if (!user) return;
     
@@ -122,101 +123,64 @@ export const Announcements = () => {
   }, [user]);
 
   useEffect(() => {
-    fetchAnnouncements();
     fetchUserProfile();
-    fetchTags();
   }, [fetchUserProfile]);
 
-  const fetchTags = async () => {
-    const tagsData = await getTags();
-    setAvailableTags(tagsData);
-  };
+  // Use filtering hook
+  const { filteredData, setFilters } = useFiltering(announcements || [], {
+    searchFields: ['title', 'content']
+  });
 
+  // Apply tag filter
   useEffect(() => {
-    // Apply filtering and sorting when dependencies change
-    const filters = {
-      // Add tag filter when selectedTag is not empty
-      ...(selectedTag && { tags: [selectedTag] })
-    };
+    const filters = selectedTag ? { tags: [selectedTag] } : {};
+    setFilters(filters);
+  }, [selectedTag, setFilters]);
 
-    const sortOption: SortOption = {
-      field: sortBy,
-      direction: sortBy === 'created_at' ? 'desc' : 'asc'
-    };
-
-    const filtered = filterAnnouncements(announcements, filters);
-    const sorted = sortAnnouncements(filtered, sortOption);
-
-    setFilteredAnnouncements(sorted);
-  }, [announcements, selectedTag, sortBy]);
-
-   // Separate current/upcoming from past announcements
-   const currentAnnouncements = filteredAnnouncements.filter(announcement => {
-     // Consider announcements with deadlines in the future as current
-     if (announcement.deadline && !isDateInPast(announcement.deadline)) {
-       return true;
-     }
-     // Consider announcements without deadlines as current if created within last 30 days
-     if (!announcement.deadline && isDateWithinLastDays(announcement.created_at, 30)) {
-       return true;
-     }
-     return false;
-   });
-   
-   const pastAnnouncements = filteredAnnouncements.filter(announcement => {
-     // Consider announcements with past deadlines as past
-     if (announcement.deadline && isDateInPast(announcement.deadline)) {
-       return true;
-     }
-     // Consider announcements without deadlines as past if created more than 30 days ago
-     if (!announcement.deadline && !isDateWithinLastDays(announcement.created_at, 30)) {
-       return true;
-     }
-     return false;
-   });
-
-   // Pagination calculations
-   const upcomingTotalPages = Math.ceil(currentAnnouncements.length / itemsPerPage);
-   const pastTotalPages = Math.ceil(pastAnnouncements.length / itemsPerPage);
-   
-   const paginatedCurrentAnnouncements = currentAnnouncements.slice(
-     (upcomingPage - 1) * itemsPerPage,
-     upcomingPage * itemsPerPage
-   );
-   
-   const paginatedPastAnnouncements = pastAnnouncements.slice(
-     (pastPage - 1) * itemsPerPage,
-     pastPage * itemsPerPage
-   );
-
-    // Debug logging
-    log.debug('Total announcements:', announcements.length);
-    log.debug('Current announcements:', currentAnnouncements.length);
-    log.debug('Past announcements:', pastAnnouncements.length);
-    log.debug('Current page:', upcomingPage, 'Total pages:', upcomingTotalPages);
-    log.debug('Past page:', pastPage, 'Total pages:', pastTotalPages);
-
-   // Reset pagination when filters change
-   useEffect(() => {
-     setUpcomingPage(1);
-     setPastPage(1);
-   }, [selectedTag, sortBy]);
-
-   const fetchAnnouncements = async () => {
-    const data = await getAnnouncements();
-     log.debug('Fetched announcements:', data.length, data);
-    setAnnouncements(data);
-    setLoading(false);
+  // Apply sorting
+  const sortOption: SortOption = {
+    field: sortBy,
+    direction: sortBy === 'created_at' ? 'desc' : 'asc'
   };
+
+  // Separate current/upcoming from past announcements
+  const currentAnnouncements = (filteredData || []).filter(announcement => {
+    if (announcement.deadline && !isDateInPast(announcement.deadline)) {
+      return true;
+    }
+    if (!announcement.deadline && isDateWithinLastDays(announcement.created_at, 30)) {
+      return true;
+    }
+    return false;
+  });
+  
+  const pastAnnouncements = (filteredData || []).filter(announcement => {
+    if (announcement.deadline && isDateInPast(announcement.deadline)) {
+      return true;
+    }
+    if (!announcement.deadline && !isDateWithinLastDays(announcement.created_at, 30)) {
+      return true;
+    }
+    return false;
+  });
+
+  // Use pagination hooks
+  const upcomingPagination = usePagination(currentAnnouncements, { initialItemsPerPage: 6 });
+  const pastPagination = usePagination(pastAnnouncements, { initialItemsPerPage: 6 });
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    upcomingPagination.resetPagination();
+    pastPagination.resetPagination();
+  }, [selectedTag, sortBy, upcomingPagination, pastPagination]);
 
   const handleCreateAnnouncement = async (data: unknown) => {
     if (!user) return;
 
-    // NewEventModal now handles everything properly, just refresh the list
     log.info('Announcement created successfully');
     setIsModalOpen(false);
-    fetchAnnouncements(); // Refresh announcements list
-   };
+    refetch(); // Refresh announcements list
+  };
 
   const canCreateAnnouncement = canUserCreateAnnouncements(userProfile?.user_type || null);
 
@@ -224,11 +188,18 @@ export const Announcements = () => {
     return (
       <div className="container mx-auto py-8 px-4 sm:px-0">
         <h1 className="text-2xl sm:text-3xl font-bold mb-6">Announcements</h1>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading announcements...</p>
-          </div>
+        <LoadingSpinner text="Loading announcements..." size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-8 px-4 sm:px-0">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Announcements</h1>
+        <div className="text-center py-12">
+          <p className="text-red-500 mb-4">Error: {error.message}</p>
+          <Button onClick={refetch}>Try Again</Button>
         </div>
       </div>
     );
@@ -258,20 +229,20 @@ export const Announcements = () => {
            <option key={tag.id} value={tag.name}>{tag.name}</option>
            ))}
            </select>
-           <select
-             value={itemsPerPage}
-             onChange={(e) => {
-               setItemsPerPage(Number(e.target.value));
-               setUpcomingPage(1);
-               setPastPage(1);
-             }}
-             className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
-           >
-             <option value={6}>6 per page</option>
-             <option value={12}>12 per page</option>
-             <option value={24}>24 per page</option>
-             <option value={48}>48 per page</option>
-           </select>
+            <select
+              value={upcomingPagination.itemsPerPage}
+              onChange={(e) => {
+                const newItemsPerPage = Number(e.target.value);
+                upcomingPagination.setItemsPerPage(newItemsPerPage);
+                pastPagination.setItemsPerPage(newItemsPerPage);
+              }}
+              className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
+            >
+              <option value={6}>6 per page</option>
+              <option value={12}>12 per page</option>
+              <option value={24}>24 per page</option>
+              <option value={48}>48 per page</option>
+            </select>
            {canCreateAnnouncement && (
              <Button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto">
                Create Announcement
@@ -283,21 +254,21 @@ export const Announcements = () => {
       {/* Past Announcements Toggle */}
       {pastAnnouncements.length > 0 && (
         <div className="mb-6">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setAnnouncementView(announcementView === 'current' ? 'past' : 'current');
-              // Reset pagination when switching views
-              if (announcementView === 'current') {
-                setPastPage(1);
-              } else {
-                setUpcomingPage(1);
-              }
-            }}
-            className="w-full sm:w-auto"
-          >
-            {announcementView === 'current' ? `Show Past Announcements (${pastAnnouncements.length})` : `Show Current Announcements (${currentAnnouncements.length})`}
-          </Button>
+           <Button 
+             variant="outline" 
+             onClick={() => {
+               setAnnouncementView(announcementView === 'current' ? 'past' : 'current');
+               // Reset pagination when switching views
+               if (announcementView === 'current') {
+                 pastPagination.resetPagination();
+               } else {
+                 upcomingPagination.resetPagination();
+               }
+             }}
+             className="w-full sm:w-auto"
+           >
+             {announcementView === 'current' ? `Show Past Announcements (${pastAnnouncements.length})` : `Show Current Announcements (${currentAnnouncements.length})`}
+           </Button>
         </div>
       )}
       {/* Current/Upcoming Announcements */}
@@ -319,36 +290,17 @@ export const Announcements = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {paginatedCurrentAnnouncements.map((announcement) => (
-                  <AnnouncementCard key={announcement.id} announcement={announcement} />
-                ))}
-              </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                 {upcomingPagination.paginatedData.map((announcement) => (
+                   <AnnouncementCard key={announcement.id} announcement={announcement} />
+                 ))}
+               </div>
               
-              {/* Pagination for Current Announcements */}
-              {upcomingTotalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUpcomingPage(prev => Math.max(1, prev - 1))}
-                    disabled={upcomingPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {upcomingPage} of {upcomingTotalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUpcomingPage(prev => Math.min(upcomingTotalPages, prev + 1))}
-                    disabled={upcomingPage === upcomingTotalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
+               {/* Pagination for Current Announcements */}
+               <upcomingPagination.PaginationComponent 
+                 data={currentAnnouncements}
+                 totalItems={currentAnnouncements.length}
+               />
             </>
           )}
         </div>
@@ -358,38 +310,19 @@ export const Announcements = () => {
       {/* Past Announcements */}
       {announcementView === 'past' && pastAnnouncements.length > 0 && (
         <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {paginatedPastAnnouncements.map((announcement) => (
-              <div key={announcement.id} className="opacity-75">
-                <AnnouncementCard announcement={announcement} />
-              </div>
-            ))}
-          </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+             {pastPagination.paginatedData.map((announcement) => (
+               <div key={announcement.id} className="opacity-75">
+                 <AnnouncementCard announcement={announcement} />
+               </div>
+             ))}
+           </div>
               
-          {/* Pagination for Past Announcements */}
-          {pastTotalPages > 1 && (
-             <div className="flex justify-center items-center gap-2 mt-6">
-               <Button
-                 variant="outline"
-                 size="sm"
-                 onClick={() => setPastPage(prev => Math.max(1, prev - 1))}
-                 disabled={pastPage === 1}
-               >
-                 Previous
-               </Button>
-               <span className="text-sm text-muted-foreground">
-                 Page {pastPage} of {pastTotalPages}
-               </span>
-               <Button
-                 variant="outline"
-                 size="sm"
-                 onClick={() => setPastPage(prev => Math.min(pastTotalPages, prev + 1))}
-                 disabled={pastPage === pastTotalPages}
-               >
-                 Next
-               </Button>
-             </div>
-           )}
+           {/* Pagination for Past Announcements */}
+           <pastPagination.PaginationComponent 
+             data={pastAnnouncements}
+             totalItems={pastAnnouncements.length}
+           />
         </div>
       )}
 

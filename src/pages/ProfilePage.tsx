@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, MailIcon, ArrowLeftIcon, ExternalLinkIcon, MapPinIcon, BriefcaseIcon, GraduationCapIcon, GithubIcon, LinkedinIcon, TwitterIcon, GlobeIcon, PaperclipIcon } from 'lucide-react';
+import { Calendar, Mail, ArrowLeft, ExternalLink, MapPin, Briefcase, GraduationCap, Github, Linkedin, Twitter, Globe, Paperclip, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate } from '@/lib/utils/date';
@@ -13,7 +13,9 @@ import { getUserResidencies, type Residency, type ResidencyPartner } from '@/lib
 import { getCohortLabel } from '@/lib/utils/ui';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2Icon, FileTextIcon } from 'lucide-react';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
+import { TagBadge } from '@/components/ui/tag-badge';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface Announcement {
   id: string;
@@ -237,8 +239,7 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="text-muted-foreground">Loading profile...</p>
+        <LoadingSpinner text="Loading profile..." size="lg" />
       </div>
     );
   }
@@ -265,7 +266,7 @@ const ProfilePage = () => {
           onClick={() => navigate('/directory')}
           className="flex items-center gap-2"
         >
-          <ArrowLeftIcon className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" />
           Back to Directory
         </Button>
         
@@ -288,17 +289,11 @@ const ProfilePage = () => {
         <Card className="border-2 border-foreground shadow-none">
           <CardHeader>
             <div className="flex items-start gap-4">
-              {profile.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={`${profile.full_name || "User"} avatar`}
-                  className="w-20 h-20 rounded-full object-cover flex-shrink-0 border-2 border-border"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-medium text-xl border-2 border-border">
-                  {profile.full_name ? profile.full_name.split(' ').map(word => word[0]).join('').toUpperCase() : 'U'}
-                </div>
-              )}
+              <ProfileAvatar 
+                src={profile.avatar_url}
+                fullName={profile.full_name}
+                size="xl"
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold break-words">{profile.full_name || 'No Name'}</h1>
@@ -354,7 +349,7 @@ const ProfilePage = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
                     >
-                      <GithubIcon className="w-4 h-4" />
+                      <Github className="w-4 h-4" />
                       <span>GitHub</span>
                     </a>
                   )}
@@ -366,7 +361,7 @@ const ProfilePage = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
                     >
-                      <LinkedinIcon className="w-4 h-4" />
+                      <Linkedin className="w-4 h-4" />
                       <span>LinkedIn</span>
                     </a>
                   )}
@@ -378,7 +373,7 @@ const ProfilePage = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
                     >
-                      <TwitterIcon className="w-4 h-4" />
+                      <Twitter className="w-4 h-4" />
                       <span>Twitter</span>
                     </a>
                   )}
@@ -390,7 +385,7 @@ const ProfilePage = () => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 p-2 border rounded-lg hover:bg-accent transition-colors text-sm"
                     >
-                      <GlobeIcon className="w-4 h-4" />
+                      <Globe className="w-4 h-4" />
                       <span>Website</span>
                     </a>
                   )}
@@ -406,7 +401,7 @@ const ProfilePage = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <BriefcaseIcon className="w-5 h-5" />
+                <Briefcase className="w-5 h-5" />
                 Professional 
               </CardTitle>
             </CardHeader>
@@ -444,7 +439,7 @@ const ProfilePage = () => {
                 <div className="space-y-3">
                   {profile.email_visible && profile.email && (
                     <div className="flex items-center gap-2">
-                      <MailIcon className="w-4 h-4 text-muted-foreground" />
+                      <Mail className="w-4 h-4 text-muted-foreground" />
                       <a 
                         href={`mailto:${profile.email}`} 
                         className="text-blue-600 hover:text-blue-800 hover:underline text-sm break-all"
@@ -456,14 +451,14 @@ const ProfilePage = () => {
 
                   {!profile.email_visible && (
                     <div className="flex items-center gap-2">
-                      <MailIcon className="w-4 h-4 text-muted-foreground" />
+                      <Mail className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">(email hidden)</span>
                     </div>
                   )}
 
                   {profile.city && profile.country && (
                     <div className="flex items-center gap-2">
-                      <MapPinIcon className="w-4 h-4 text-muted-foreground" />
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm">{profile.city}, {profile.country}</span>
                     </div>
                   )}
@@ -482,8 +477,8 @@ const ProfilePage = () => {
                   {profile.job_title && (
                     <div>
                       <p className="font-medium text-foreground text-sm mb-1">Job Title: <span className="text-sm font-normal"> {profile.job_title}</span></p>
-                    </div>  
-                  )}
+                    </div>
+                  )}  
 
                                   </div>
               </div>
@@ -496,7 +491,7 @@ const ProfilePage = () => {
           <Card className="border-2 border-foreground shadow-none">
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2">
-                <Building2Icon className="w-6 h-6" />
+                <Building2 className="w-6 h-6" />
                 Residencies
               </CardTitle>
             </CardHeader>
@@ -522,7 +517,7 @@ const ProfilePage = () => {
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
                           >
-                            <ExternalLinkIcon className="w-4 h-4" />
+                            <ExternalLink className="w-4 h-4" />
                             Visit
                           </a>
                         )}
@@ -553,7 +548,7 @@ const ProfilePage = () => {
         <Card className="w-full mt-6 border-2 border-foreground shadow-none">
           <CardHeader className="pb-2">
             <CardTitle className="tracking-tight flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5" />
+              <Calendar className="w-5 h-5" />
               ANNOUNCEMENTS
             </CardTitle>
           </CardHeader>
@@ -581,18 +576,11 @@ const ProfilePage = () => {
                         {announcement.tags && announcement.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {announcement.tags.map((tag) => (
-                              <Badge 
+                              <TagBadge 
                                 key={tag.id}
-                                variant="secondary" 
-                                className="text-xs"
-                                style={{ 
-                                  backgroundColor: tag.color + '20',
-                                  borderColor: tag.color,
-                                  color: tag.color 
-                                }}
-                              >
-                                {tag.name}
-                              </Badge>
+                                name={tag.name}
+                                color={tag.color}
+                              />
                             ))}
                           </div>
                         )}
@@ -614,7 +602,7 @@ const ProfilePage = () => {
                       {announcement.external_url && (
                         <Button variant="outline" size="sm" asChild className="border-2 border-foreground shadow-none">
                           <a href={announcement.external_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                            <ExternalLinkIcon className="w-4 h-4" />
+                            <ExternalLink className="w-4 h-4" />
                             LINK
                           </a>
                         </Button>
@@ -633,7 +621,7 @@ const ProfilePage = () => {
         <Card className="w-full mt-6 border-2 border-foreground shadow-none">
           <CardHeader className="pb-2">
             <CardTitle className="tracking-tight flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5" />
+              <Calendar className="w-5 h-5" />
               EVENTS
             </CardTitle>
           </CardHeader>
@@ -661,18 +649,11 @@ const ProfilePage = () => {
                         {event.event_tags && event.event_tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {event.event_tags.map((tagRelation) => (
-                              <Badge 
+                              <TagBadge 
                                 key={tagRelation.tag_id}
-                                variant="secondary" 
-                                className="text-xs"
-                                style={{ 
-                                  backgroundColor: tagRelation.tags.color + '20',
-                                  borderColor: tagRelation.tags.color,
-                                  color: tagRelation.tags.color 
-                                }}
-                              >
-                                {tagRelation.tags.name}
-                              </Badge>
+                                name={tagRelation.tags.name}
+                                color={tagRelation.tags.color}
+                              />
                             ))}
                           </div>
                         )}
@@ -707,7 +688,7 @@ const ProfilePage = () => {
                         {event.registration_url && (
                           <Button variant="outline" size="sm" asChild className="border-2 border-foreground shadow-none">
                             <a href={event.registration_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                              <ExternalLinkIcon className="w-4 h-4" />
+                              <ExternalLink className="w-4 h-4" />
                               REGISTER
                             </a>
                           </Button>
