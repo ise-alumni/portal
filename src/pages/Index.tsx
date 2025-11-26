@@ -296,10 +296,57 @@ const Index = () => {
                   <label className="text-xs opacity-70">Company</label>
                   <Input value={formData.company} onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))} placeholder="Company" />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="text-xs opacity-70">Bio</label>
-                  <Textarea value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} placeholder="Short bio" rows={3} />
+              </div>
+
+              <div className="md:col-span-2 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs opacity-70">Status</label>
+                    <Select 
+                      value={formData.professionalStatus || ''} 
+                      onValueChange={(value) => setFormData(prev => ({ 
+                        ...prev, 
+                        professionalStatus: value as ProfessionalStatus || null 
+                      }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select professional status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="employed">Employed</SelectItem>
+                        <SelectItem value="entrepreneur">Entrepreneur</SelectItem>
+                        <SelectItem value="open_to_work">Open to Work</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className='flex flex-col justify-end'>
+                  <div className="flex items-center space-x-2 ">
+                    <input
+                      type="checkbox"
+                      id="isRemote"
+                      checked={formData.isRemote}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
+                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                    />
+                    <label htmlFor="isRemote" className="text-sm">Remote Worker</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isIseChampion"
+                      checked={formData.isIseChampion}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
+                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
+                    />
+                    <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
+                  </div>
                 </div>
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs opacity-70">Bio</label>
+                <Textarea value={formData.bio} onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))} placeholder="Short bio" rows={3} />
               </div>
 
               <Accordion type="single" collapsible className="w-full">
@@ -327,51 +374,6 @@ const Index = () => {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-
-              <div className="md:col-span-2 space-y-3">
-                <div className="text-xs opacity-70 font-medium">Professional Status</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs opacity-70">Status</label>
-                    <Select 
-                      value={formData.professionalStatus || ''} 
-                      onValueChange={(value) => setFormData(prev => ({ 
-                        ...prev, 
-                        professionalStatus: value as ProfessionalStatus || null 
-                      }))}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select professional status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="employed">Employed</SelectItem>
-                        <SelectItem value="entrepreneur">Entrepreneur</SelectItem>
-                        <SelectItem value="open_to_work">Open to Work</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isRemote"
-                      checked={formData.isRemote}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isRemote: e.target.checked }))}
-                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                    />
-                    <label htmlFor="isRemote" className="text-sm">Remote Worker</label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isIseChampion"
-                      checked={formData.isIseChampion}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isIseChampion: e.target.checked }))}
-                      className="h-4 w-4 rounded border-foreground focus:ring-2 focus:ring-primary focus:ring-offset-2 accent-green-600"
-                    />
-                    <label htmlFor="isIseChampion" className="text-sm">ISE Champion</label>
-                  </div>
-                </div>
-              </div>
 
               <div className="flex flex-col md:flex-row md:justify-end gap-2">
                 <Button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto border-2 border-foreground shadow-none">

@@ -144,7 +144,6 @@ const Directory = () => {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
           <Select 
             value={professionalStatusFilter} 
             onValueChange={(value) => setProfessionalStatusFilter(value as ProfessionalStatus | "all")}
