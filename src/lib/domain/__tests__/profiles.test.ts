@@ -150,8 +150,9 @@ describe('Profiles domain functions', () => {
         data: mockProfile,
         error: null
       })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const mockEq2 = vi.fn().mockReturnValue({ single: mockSingle })
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
 
       mockedSupabase.from.mockReturnValue({ select: mockSelect })
 
@@ -168,14 +169,15 @@ describe('Profiles domain functions', () => {
         data: null,
         error: mockError
       })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const mockEq2 = vi.fn().mockReturnValue({ single: mockSingle })
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
 
       mockedSupabase.from.mockReturnValue({ select: mockSelect })
 
       const result = await getProfileByUserId('non-existent')
 
-      expect(log.error).toHaveBeenCalledWith('Error fetching profile:', mockError)
+      expect(log.error).toHaveBeenCalledWith('Error fetching profile by user ID:', mockError)
       expect(result).toBeNull()
     })
   })
@@ -329,8 +331,9 @@ describe('Profiles domain functions', () => {
         error: null
       })
       const mockOr = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockEq = vi.fn().mockReturnValue({ or: mockOr })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const mockEq2 = vi.fn().mockReturnValue({ or: mockOr })
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
 
       mockedSupabase.from.mockReturnValue({ select: mockSelect })
 
@@ -349,8 +352,9 @@ describe('Profiles domain functions', () => {
         error: mockError
       })
       const mockOr = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockEq = vi.fn().mockReturnValue({ or: mockOr })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const mockEq2 = vi.fn().mockReturnValue({ or: mockOr })
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
 
       mockedSupabase.from.mockReturnValue({ select: mockSelect })
 
@@ -366,8 +370,9 @@ describe('Profiles domain functions', () => {
         error: null
       })
       const mockOr = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockEq = vi.fn().mockReturnValue({ or: mockOr })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const mockEq2 = vi.fn().mockReturnValue({ or: mockOr })
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
 
       mockedSupabase.from.mockReturnValue({ select: mockSelect })
 
