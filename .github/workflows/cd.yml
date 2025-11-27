@@ -4,6 +4,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  metadata: write
 
 on:
   push:
@@ -15,9 +16,7 @@ jobs:
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GH_TOKEN }}       
+        uses: actions/checkout@v4       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -55,7 +54,7 @@ jobs:
         
       - name: Semantic Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pnpm add -D semantic-release @semantic-release/git @semantic-release/github @semantic-release/changelog @semantic-release/commit-analyzer @semantic-release/release-notes-generator conventional-changelog-conventionalcommits
           npx semantic-release
