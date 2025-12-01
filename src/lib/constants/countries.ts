@@ -3,9 +3,9 @@
  */
 
 import countries from 'i18n-iso-countries';
+import enLocale from 'i18n-iso-countries/langs/en.json';
 
 // Register English locale
-const enLocale = require('i18n-iso-countries/langs/en.json');
 countries.registerLocale(enLocale);
 
 // Get all country names in English, sorted alphabetically
