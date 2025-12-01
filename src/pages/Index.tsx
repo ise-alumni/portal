@@ -14,6 +14,7 @@ import { getProfileByUserId, updateProfile, isProfileComplete } from '@/lib/doma
 import { getUserResidencies, createResidency, updateResidency, deleteResidency, getResidencyPartners, getAvailablePhases, type Residency, type NewResidency, type ResidencyPhase } from '@/lib/domain/residency';
 import { type ResidencyPartner } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
+import { COUNTRIES } from '@/lib/constants/countries';
 
 const Index = () => {
   const { user, session, loading, resetPassword } = useAuth();
@@ -423,10 +424,24 @@ const Index = () => {
                        <label className="text-xs opacity-70">City</label>
                        <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} placeholder="City" />
                      </div>
-                     <div>
-                       <label className="text-xs opacity-70">Country</label>
-                       <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} placeholder="Country" />
-                     </div>
+                    <div>
+                      <label className="text-xs opacity-70">Country</label>
+                      <Select 
+                        value={formData.country} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, country: value }))}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country} value={country}>
+                              {country}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                    </div>
                  </div>
                  <div>
