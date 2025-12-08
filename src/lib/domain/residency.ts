@@ -9,10 +9,12 @@ type SupabaseUpdate = Record<string, unknown>;
 
 export async function getResidencyPartners(): Promise<ResidencyPartner[]> {
   try {
+    // Get companies that are residency partners
     const { data, error } = await supabase
-      .from('residency_partners')
+      .from('companies')
       .select('*')
       .eq('is_active', true)
+      .eq('is_residency_partner', true)
       .order('name');
 
     if (error) {
@@ -29,9 +31,19 @@ export async function getResidencyPartners(): Promise<ResidencyPartner[]> {
 
 export async function createResidencyPartner(partner: NewResidencyPartner): Promise<ResidencyPartner | null> {
   try {
+    // Create company with is_residency_partner = true (default for residency partners)
+    const companyData = {
+      name: partner.name,
+      website: partner.website ?? null,
+      logo_url: partner.logo_url ?? null,
+      description: partner.description ?? null,
+      is_active: partner.is_active ?? true,
+      is_residency_partner: true, // Always true when created from residency partner form
+    } as SupabaseInsert;
+
     const { data, error } = await supabase
-      .from('residency_partners')
-      .insert(partner as SupabaseInsert)
+      .from('companies')
+      .insert(companyData)
       .select()
       .single();
 
@@ -50,7 +62,7 @@ export async function createResidencyPartner(partner: NewResidencyPartner): Prom
 export async function updateResidencyPartner(id: string, partner: Partial<NewResidencyPartner>): Promise<ResidencyPartner | null> {
   try {
     const { data, error } = await supabase
-      .from('residency_partners')
+      .from('companies')
       .update(partner as SupabaseUpdate)
       .eq('id', id)
       .select()
@@ -71,7 +83,7 @@ export async function updateResidencyPartner(id: string, partner: Partial<NewRes
 export async function deleteResidencyPartner(id: string): Promise<boolean> {
   try {
     const { error } = await supabase
-      .from('residency_partners')
+      .from('companies')
       .delete()
       .eq('id', id);
 
@@ -160,7 +172,7 @@ export async function getUserResidencies(userId: string): Promise<Residency[]> {
       .from('residencies')
       .select(`
         *,
-        residency_partners (
+        companies (
           id,
           name,
           website,
@@ -187,7 +199,7 @@ export async function createResidency(residency: NewResidency): Promise<Residenc
   try {
     const { data, error } = await supabase
       .from('residencies')
-      .insert(residency as SupabaseInsert)
+      .insert(residency as unknown as SupabaseInsert)
       .select()
       .single();
 

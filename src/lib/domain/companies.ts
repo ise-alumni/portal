@@ -7,6 +7,8 @@ export interface Company {
   website: string | null;
   logo_url: string | null;
   description: string | null;
+  is_active: boolean;
+  is_residency_partner: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -16,6 +18,8 @@ export interface NewCompany {
   website?: string | null;
   logo_url?: string | null;
   description?: string | null;
+  is_active?: boolean;
+  is_residency_partner?: boolean;
 }
 
 type SupabaseInsert = Record<string, unknown>;
@@ -41,9 +45,19 @@ export async function getCompanies(): Promise<Company[]> {
 
 export async function createCompany(company: NewCompany): Promise<Company | null> {
   try {
+    // Set defaults: is_active = true, is_residency_partner = false (unless specified)
+    const companyData = {
+      name: company.name,
+      website: company.website ?? null,
+      logo_url: company.logo_url ?? null,
+      description: company.description ?? null,
+      is_active: company.is_active ?? true,
+      is_residency_partner: company.is_residency_partner ?? false,
+    } as SupabaseInsert;
+
     const { data, error } = await supabase
       .from('companies')
-      .insert(company as SupabaseInsert)
+      .insert(companyData)
       .select()
       .single();
 
