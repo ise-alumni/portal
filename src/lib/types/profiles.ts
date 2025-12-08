@@ -41,7 +41,8 @@ export interface ProfileFormData {
   graduationYear: string;
   msc: boolean;
   jobTitle: string;
-  company: string;
+  company: string; // To do: Remove this field
+  companyId: string | null;
   bio: string;
   githubUrl: string;
   linkedinUrl: string;

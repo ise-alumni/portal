@@ -60,7 +60,8 @@ export async function updateProfile(userId: string, formData: ProfileFormData): 
       graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
       msc: formData.msc,
       job_title: formData.jobTitle || null,
-      company: formData.company || null,
+      company: formData.company || null, // To Do: Remove this field
+      company_id: formData.companyId || null,
       bio: formData.bio || null,
       github_url: formData.githubUrl || null,
       linkedin_url: formData.linkedinUrl || null,
