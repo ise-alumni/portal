@@ -1,11 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Map, Marker, Popup, Source, Layer } from 'react-map-gl';
-import { MapPinIcon, UsersIcon, UserIcon, Loader2Icon, ExternalLinkIcon, BuildingIcon } from "lucide-react";
+import { UsersIcon, UserIcon, Loader2Icon, BuildingIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface AlumniData {
   id: string;
@@ -14,6 +23,8 @@ interface AlumniData {
   jobTitle: string | null;
   location: { lat: number; lng: number };
   graduationYear: number | null;
+  cohort: number | null;
+  msc: boolean | null;
   city: string | null;
   country: string | null;
 }
@@ -71,6 +82,10 @@ const MapPage = () => {
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [cohortFilter, setCohortFilter] = useState("");
+  const [gradYearFilter, setGradYearFilter] = useState("");
+  const [degreeFilter, setDegreeFilter] = useState<"all" | "msc" | "bsc">("all");
 
   // Fetch alumni data from Supabase
   useEffect(() => {
@@ -86,9 +101,11 @@ const MapPage = () => {
             full_name,
             job_title,
             graduation_year,
+            cohort,
             city,
             country,
-            company
+            company,
+            msc
           `)
           .not('city', 'is', null)
           .not('country', 'is', null)
@@ -126,6 +143,8 @@ const MapPage = () => {
               jobTitle: profile.job_title,
               location: location,
               graduationYear: profile.graduation_year,
+              cohort: profile.cohort,
+              msc: profile.msc,
               city: profile.city,
               country: profile.country
             };
@@ -159,10 +178,35 @@ const MapPage = () => {
     setShowHeatmap(!showHeatmap);
   };
 
+  const filteredAlumni = useMemo(() => {
+    return alumniData.filter((alumni) => {
+      const matchesCompany = companyFilter
+        ? alumni.company?.toLowerCase().includes(companyFilter.toLowerCase())
+        : true;
+
+      const matchesCohort = cohortFilter
+        ? alumni.cohort === Number(cohortFilter)
+        : true;
+
+      const matchesGradYear = gradYearFilter
+        ? alumni.graduationYear === Number(gradYearFilter)
+        : true;
+
+      const matchesDegree =
+        degreeFilter === "all"
+          ? true
+          : degreeFilter === "msc"
+            ? alumni.msc === true
+            : alumni.msc === false;
+
+      return matchesCompany && matchesCohort && matchesGradYear && matchesDegree;
+    });
+  }, [alumniData, companyFilter, cohortFilter, gradYearFilter, degreeFilter]);
+
   // Heatmap data
   const heatmapData = {
     type: 'FeatureCollection' as const,
-    features: alumniData.map(alumni => ({
+    features: filteredAlumni.map(alumni => ({
       type: 'Feature' as const,
       geometry: {
         type: 'Point' as const,
@@ -225,6 +269,59 @@ const MapPage = () => {
         </div>
       </div>
 
+      <Card className="border-2 border-foreground shadow-none">
+        <CardHeader className="pb-2">
+          <CardTitle className="tracking-tight text-sm">Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="company-filter">Company</Label>
+            <Input
+              id="company-filter"
+              placeholder="Company name"
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cohort-filter">Cohort</Label>
+            <Input
+              id="cohort-filter"
+              placeholder="e.g. 2020"
+              inputMode="numeric"
+              value={cohortFilter}
+              onChange={(e) => setCohortFilter(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="grad-year-filter">Graduation Year</Label>
+            <Input
+              id="grad-year-filter"
+              placeholder="e.g. 2024"
+              inputMode="numeric"
+              value={gradYearFilter}
+              onChange={(e) => setGradYearFilter(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Degree</Label>
+            <Select value={degreeFilter} onValueChange={(value: "all" | "msc" | "bsc") => setDegreeFilter(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="msc">MSc</SelectItem>
+                <SelectItem value="bsc">BSc</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+        <div className="px-6 pb-4 text-sm text-muted-foreground">
+          Showing {filteredAlumni.length} of {alumniData.length} alumni
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Map */}
         <div className="lg:col-span-3">
@@ -270,7 +367,7 @@ const MapPage = () => {
                   )}
 
                   {/* Alumni Markers */}
-                  {!showHeatmap && alumniData.map((alumni) => (
+                  {!showHeatmap && filteredAlumni.map((alumni) => (
                     <Marker
                       key={alumni.id}
                       longitude={alumni.location.lng}
@@ -326,18 +423,18 @@ const MapPage = () => {
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm">Total Alumni</span>
-                <Badge variant="secondary">{alumniData.length}</Badge>
+                <Badge variant="secondary">{filteredAlumni.length}</Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm">Companies</span>
                 <Badge variant="secondary">
-                  {new Set(alumniData.map(a => a.company).filter(Boolean)).size}
+                  {new Set(filteredAlumni.map(a => a.company).filter(Boolean)).size}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm">Countries</span>
                 <Badge variant="secondary">
-                  {new Set(alumniData.map(a => a.country).filter(Boolean)).size}
+                  {new Set(filteredAlumni.map(a => a.country).filter(Boolean)).size}
                 </Badge>
               </div>
             </CardContent>
@@ -350,7 +447,7 @@ const MapPage = () => {
             <CardContent>
               <div className="space-y-2">
                 {Object.entries(
-                  alumniData.reduce((acc, alumni) => {
+                  filteredAlumni.reduce((acc, alumni) => {
                     if (alumni.company) {
                       acc[alumni.company] = (acc[alumni.company] || 0) + 1;
                     }
