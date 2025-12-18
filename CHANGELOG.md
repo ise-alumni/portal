@@ -1,3 +1,14 @@
+## [1.7.0](https://github.com/bxrne/ise-alumni/compare/v1.6.1...v1.7.0) (2025-12-18)
+
+### Features
+
+* **Map:** add selectedPathIndex state to track the index of the selected movement path; refactor popups to display users at selected locations, enhancing user interaction and data visibility ([d253981](https://github.com/bxrne/ise-alumni/commit/d2539818b79d4773a62ceb7ebdf5138085dab471))
+* **Map:** enhance type safety by defining CurrentMapDataRow and OvertimeMapDataRow types for alumni and movement path data, improving data handling and clarity in map component ([fd720d3](https://github.com/bxrne/ise-alumni/commit/fd720d3b63f61c03a763aadf3f259c43f349c16d))
+
+### Miscellaneous Chores
+
+* **CD:** simplify CI/CD workflow by removing unnecessary steps and retaining essential permissions and triggers for deployment ([93e7482](https://github.com/bxrne/ise-alumni/commit/93e7482dabcaf695363562f6dfeb78e7a9ab1849))
+
 ## [1.4.0](https://github.com/bxrne/ise-alumni/compare/v1.3.0...v1.4.0) (2025-11-27)
 
 ### Features
