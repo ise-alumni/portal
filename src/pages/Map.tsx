@@ -205,20 +205,13 @@ const MapPage = () => {
       const { data, error } = await supabase.rpc<{
         profile_id: string;
         full_name: string | null;
-        lat: number | null;
-        lng: number | null;
-        graduation_year: number | null;
-        cohort: number | null;
-        msc: boolean | null;
-        company: string | null;
-        city: string | null;
-        country: string | null;
-        avatar_url: string | null;
         timestamps: string[] | null;
         cities: (string | null)[] | null;
         countries: (string | null)[] | null;
         companies: (string | null)[] | null;
         job_titles: (string | null)[] | null;
+        lats: number[] | null;
+        lngs: number[] | null;
       }>('rpc_get_map_data', {
         view_mode: 'overtime',
       });
@@ -232,7 +225,6 @@ const MapPage = () => {
         return;
       }
 
-      const coordinateCache = new Map<string, { lat: number; lng: number } | null>();
       const paths: MovementPath[] = [];
       let userIndex = 0;
 
@@ -242,33 +234,20 @@ const MapPage = () => {
         const countries: (string | null)[] = row.countries || [];
         const companies: (string | null)[] = row.companies || [];
         const jobTitles: (string | null)[] = row.job_titles || [];
+        const lats: number[] = row.lats || [];
+        const lngs: number[] = row.lngs || [];
 
         const coordinates: [number, number][] = [];
         const locations: MovementPath["locations"] = [];
 
-        for (let i = 0; i < cities.length; i++) {
-          const city = cities[i];
-          const country = countries[i];
-          if (!city) continue;
-
-          const cacheKey = `${city}||${country || ""}`;
-          let coord = coordinateCache.get(cacheKey) || null;
-
-          if (coord === undefined) {
-            const geocoded = await geocodeLocation(city, country);
-            coordinateCache.set(cacheKey, geocoded);
-            coord = geocoded;
-          }
-
-          if (coord) {
-            coordinates.push([coord.lng, coord.lat]);
-            locations.push({
-              city,
-              country: country || null,
-              company: companies[i],
-              jobTitle: jobTitles[i],
-            });
-          }
+        for (let i = 0; i < lats.length && i < lngs.length; i++) {
+          coordinates.push([lngs[i], lats[i]]);
+          locations.push({
+            city: cities[i] || null,
+            country: countries[i] || null,
+            company: companies[i] || null,
+            jobTitle: jobTitles[i] || null,
+          });
         }
 
         if (coordinates.length >= 2) {
