@@ -25,6 +25,8 @@ import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { formatDateShort } from '@/lib/utils/date';
 import { supabase } from '@/integrations/supabase/client';
 import { log } from '@/lib/utils/logger';
+import { CompanyLogo } from '@/components/CompanyLogo';
+import { buildCompanyLogoMap, getCompanyLogoUrl } from '@/lib/utils/companyLogo';
 
 const Gawk = () => {
   const { user, loading } = useAuth();
@@ -46,6 +48,7 @@ const Gawk = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [residencyStats, setResidencyStats] = useState<ResidencyStats | null>(null);
   const [residencyPartners, setResidencyPartners] = useState<ResidencyPartner[]>([]);
+  const [companyLogoMap, setCompanyLogoMap] = useState<ReturnType<typeof buildCompanyLogoMap> | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -101,6 +104,9 @@ const Gawk = () => {
 
         setSignIns(signInData);
         setResidencyPartners(partners);
+        if (partners && partners.length > 0) {
+          setCompanyLogoMap(buildCompanyLogoMap(partners));
+        }
 
         const resStats = await getResidencyStats(nonStaffProfiles);
         setResidencyStats(resStats);
@@ -919,25 +925,34 @@ const Gawk = () => {
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               ) : residencyLeaders.length > 0 ? (
-                residencyLeaders.map((partner) => (
-                  <div key={partner.name} className="p-3 border rounded-lg space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">{partner.name}</p>
-                      <Badge variant="outline">{partner.count} ppl</Badge>
-                    </div>
+                residencyLeaders.map((partner) => {
+                  const logoUrl = companyLogoMap
+                    ? getCompanyLogoUrl(partner.name, companyLogoMap)
+                    : null;
+                  return (
+                    <div key={partner.name} className="p-3 border rounded-lg space-y-1">
+                      <div className="flex items-center justify-between">
+                        <CompanyLogo
+                          name={partner.name}
+                          logoUrl={logoUrl}
+                          size="sm"
+                        />
+                        <Badge variant="outline">{partner.count} ppl</Badge>
+                      </div>
                     <div className="flex items-center justify-between text-sm">
                       <span>BSc</span>
                       <span className="font-medium">{partner.bscCount}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>MSc</span>
-                      <span className="font-medium">{partner.mscCount}</span>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>MSc</span>
+                        <span className="font-medium">{partner.mscCount}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {partner.percentage}% of eligible alumni
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {partner.percentage}% of eligible alumni
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-sm text-muted-foreground">No residency partner matches yet</p>
               )}
@@ -1048,17 +1063,26 @@ const Gawk = () => {
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : residencyLeaders.length > 0 ? (
-                  residencyLeaders.slice(0, 3).map((partner) => (
-                    <div key={partner.name} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div className="flex flex-col">
-                        <p className="font-medium">{partner.name}</p>
-                        <span className="text-xs text-muted-foreground">
-                          {partner.percentage}% of eligible alumni
-                        </span>
+                  residencyLeaders.slice(0, 3).map((partner) => {
+                    const logoUrl = companyLogoMap
+                      ? getCompanyLogoUrl(partner.name, companyLogoMap)
+                      : null;
+                    return (
+                      <div key={partner.name} className="flex items-center justify-between p-2 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <CompanyLogo
+                            name={partner.name}
+                            logoUrl={logoUrl}
+                            size="sm"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {partner.percentage}% of eligible alumni
+                          </span>
+                        </div>
+                        <Badge variant="outline">{partner.count} ppl</Badge>
                       </div>
-                      <Badge variant="outline">{partner.count} ppl</Badge>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-6">
                     No residency partner matches yet
@@ -1078,12 +1102,21 @@ const Gawk = () => {
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : championCompanies.length > 0 ? (
-                  championCompanies.map((item) => (
-                    <div key={item.company} className="flex items-center justify-between p-2 border rounded-lg">
-                      <p className="font-medium">{item.company}</p>
-                      <Badge variant="outline">{item.count} champions</Badge>
-                    </div>
-                  ))
+                  championCompanies.map((item) => {
+                    const logoUrl = companyLogoMap
+                      ? getCompanyLogoUrl(item.company, companyLogoMap)
+                      : null;
+                    return (
+                      <div key={item.company} className="flex items-center justify-between p-2 border rounded-lg">
+                        <CompanyLogo
+                          name={item.company}
+                          logoUrl={logoUrl}
+                          size="sm"
+                        />
+                        <Badge variant="outline">{item.count} champions</Badge>
+                      </div>
+                    );
+                  })
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-6">
                     No champion company data yet

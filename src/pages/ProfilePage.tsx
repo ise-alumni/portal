@@ -10,12 +10,14 @@ import { log } from '@/lib/utils/logger';
 import { Profile, ProfessionalStatus } from '@/lib/types';
 import { EventData } from '@/lib/types/events';
 import { getUserResidencies, type Residency, type ResidencyPartner } from '@/lib/domain/residency';
-import { getCohortLabel } from '@/lib/utils/ui';
+import { getCohortLabel, getCohortBadgeClass } from '@/lib/utils/ui';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { TagBadge } from '@/components/ui/tag-badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { CompanyLogo } from '@/components/CompanyLogo';
+import { buildCompanyLogoMap, getCompanyLogoUrl } from '@/lib/utils/companyLogo';
 
 interface Announcement {
   id: string;
@@ -102,6 +104,7 @@ const ProfilePage = () => {
   const [userEvents, setUserEvents] = useState<EventData[]>([]);
   const [userResidencies, setUserResidencies] = useState<Residency[]>([]);
   const [residencyPartners, setResidencyPartners] = useState<ResidencyPartner[]>([]);
+  const [companyLogoMap, setCompanyLogoMap] = useState<ReturnType<typeof buildCompanyLogoMap> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -225,6 +228,7 @@ const ProfilePage = () => {
 
         if (partners.data) {
           setResidencyPartners(partners.data);
+          setCompanyLogoMap(buildCompanyLogoMap(partners.data as ResidencyPartner[]));
         }
       } catch (err) {
         log.error('Error fetching profile:', err);
@@ -315,8 +319,11 @@ const ProfilePage = () => {
                   {/* Academic Badges */}
                   {profile.user_type !== 'Staff' && (
                     <div className="flex gap-2">
-               {profile.cohort && (
-                  <Badge variant="secondary" className="text-xs">
+                {profile.cohort && (
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${getCohortBadgeClass(profile.cohort)}`}
+                  >
                     {getCohortLabel(profile.cohort)}
                   </Badge>
                 )}
@@ -328,10 +335,14 @@ const ProfilePage = () => {
                 )}
                 
                 {profile.msc !== undefined && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge
+                    variant={profile.msc ? 'default' : 'outline'}
+                    className={profile.msc ? 'text-xs' : 'text-xs text-slate-900 border-slate-900'}
+                  >
                     {profile.msc ? 'MSc' : 'BSc'}
                   </Badge>
-                )}                    </div>
+                )}
+                    </div>
                   )}
                 </div>
                 
@@ -470,7 +481,20 @@ const ProfilePage = () => {
                 <div className="space-y-3">
                   {profile.company && (
                     <div>
-                      <p className="font-medium text-foreground text-sm mb-1">Company: <span className="text-sm font-normal">{profile.company}</span></p>
+                      <p className="font-medium text-foreground text-sm mb-1">
+                        Company:
+                        <span className="text-sm font-normal ml-1">
+                          {companyLogoMap ? (
+                            <CompanyLogo
+                              name={profile.company}
+                              logoUrl={getCompanyLogoUrl(profile.company, companyLogoMap)}
+                              size="sm"
+                            />
+                          ) : (
+                            profile.company
+                          )}
+                        </span>
+                      </p>
                     </div>
                   )}
                   
@@ -507,7 +531,14 @@ const ProfilePage = () => {
                             {residency.phase}
                           </Badge>
                           <h3 className="font-semibold text-lg">
-                            {company?.name || 'Unknown Company'}
+                            {company ? (
+                              <CompanyLogo
+                                name={company.name}
+                                logoUrl={company.logo_url}
+                              />
+                            ) : (
+                              'Unknown Company'
+                            )}
                           </h3>
                         </div>
                         {company?.website && (

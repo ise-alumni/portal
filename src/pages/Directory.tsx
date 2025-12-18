@@ -14,11 +14,14 @@ import { Github, Linkedin, Twitter, ExternalLink, Search, ChevronRight } from "l
 import { Profile, ProfessionalStatus } from "@/lib/types";
 import { getProfiles, searchProfiles } from '@/lib/domain/profiles';
 import { filterProfiles, sortProfiles, paginateData, type FilterOptions, type SortOption } from '@/lib/utils/data';
-import { getCohortLabel } from '@/lib/utils/ui';
+import { getCohortLabel, getCohortBadgeClass } from '@/lib/utils/ui';
 import { log } from '@/lib/utils/logger';
 import { getUserTypesSync } from '@/lib/constants';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '@/hooks/useAuth';
+import { getResidencyPartners } from '@/lib/domain/residency';
+import { buildCompanyLogoMap, getCompanyLogoUrl } from '@/lib/utils/companyLogo';
+import { CompanyLogo } from '@/components/CompanyLogo';
 
 const Directory = () => {
   const { user } = useAuth();
@@ -28,6 +31,7 @@ const Directory = () => {
   const [professionalStatusFilter, setProfessionalStatusFilter] = useState<ProfessionalStatus | "all">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [companyLogoMap, setCompanyLogoMap] = useState<ReturnType<typeof buildCompanyLogoMap> | null>(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,9 +44,17 @@ const Directory = () => {
         setLoading(true);
         setError(null);
 
-        const data = await getProfiles();
-        setAllProfiles(data);
-        setFilteredProfiles(data);
+        const [profilesData, partners] = await Promise.all([
+          getProfiles(),
+          getResidencyPartners(),
+        ]);
+
+        setAllProfiles(profilesData);
+        setFilteredProfiles(profilesData);
+
+        if (partners && partners.length > 0) {
+          setCompanyLogoMap(buildCompanyLogoMap(partners));
+        }
       } catch (err) {
         log.error("Error loading profiles:", err);
         setError("Failed to load alumni profiles. Please try again.");
@@ -225,17 +237,23 @@ const Directory = () => {
                         </Badge>
                       )}
                       {profile.cohort && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs ${getCohortBadgeClass(profile.cohort)}`}
+                        >
                           {getCohortLabel(profile.cohort)}
                         </Badge>
                       )}
                       {profile.user_type !== "Staff" && (
                         profile.msc ? (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="default" className="text-xs">
                             MSc
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className="text-xs text-slate-900 border-slate-900"
+                          >
                             BSc
                           </Badge>
                         )
@@ -253,7 +271,19 @@ const Directory = () => {
                   {profile.job_title && (
                     <div className="font-medium">{profile.job_title}</div>
                   )}
-                  {profile.company && <div>{profile.company}</div>}
+                  {profile.company && (
+                    <div className="flex items-center gap-2">
+                      {companyLogoMap ? (
+                        <CompanyLogo
+                          name={profile.company}
+                          logoUrl={getCompanyLogoUrl(profile.company, companyLogoMap)}
+                          size="sm"
+                        />
+                      ) : (
+                        <span>{profile.company}</span>
+                      )}
+                    </div>
+                  )}
                   {(profile.city || profile.country) && (
                     <div className="text-sm">
                       {[profile.city, profile.country]

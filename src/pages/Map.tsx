@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { getCohortBadgeClass } from '@/lib/utils/ui';
 import { Link } from "react-router-dom";
 
 interface AlumniData {
@@ -612,12 +613,22 @@ const MapPage = () => {
                             </h3>
                             {selectedAlumni.graduationYear && (
                               <div className="mt-1 flex flex-wrap gap-1">
-                                <Badge variant="secondary" className="text-[10px]">
+                                <Badge
+                                  variant={selectedAlumni.msc ? 'default' : 'outline'}
+                                  className={
+                                    selectedAlumni.msc
+                                      ? 'text-[10px]'
+                                      : 'text-[10px] text-slate-900 border-slate-900'
+                                  }
+                                >
                                   {selectedAlumni.msc ? "MSc" : "BSc"}{" "}
                                   {selectedAlumni.graduationYear}
                                 </Badge>
                                 {selectedAlumni.cohort && (
-                                  <Badge variant="outline" className="text-[10px]">
+                                  <Badge
+                                    variant="secondary"
+                                    className={`text-[10px] ${getCohortBadgeClass(selectedAlumni.cohort)}`}
+                                  >
                                     Cohort {selectedAlumni.cohort}
                                   </Badge>
                                 )}
