@@ -124,32 +124,20 @@ const MapPage = () => {
   const [timeRange, setTimeRange] = useState<[number, number]>([0, 100]);
   const [selectedPath, setSelectedPath] = useState<MovementPath | null>(null);
 
-  // Fetch alumni data from Supabase
+  // Fetch alumni data for current view using RPC (pre-geocoded lat/lng)
   useEffect(() => {
     const fetchAlumniData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data, error: fetchError } = await supabase
-          .from('profiles')
-          .select(`
-            id,
-            full_name,
-            job_title,
-            graduation_year,
-            cohort,
-            city,
-            country,
-            company,
-            msc,
-            avatar_url,
-            user_type
-          `)
-          .not('city', 'is', null)
-          .not('country', 'is', null)
-          .eq('is_public', true)
-          .neq('user_type', 'Staff');
+        const { data, error: fetchError } = await supabase.rpc('rpc_get_map_data', {
+          view_mode: 'current',
+          p_company: null,
+          p_cohort: null,
+          p_grad_year: null,
+          p_degree: null,
+        });
 
         if (fetchError) {
           throw fetchError;
@@ -157,45 +145,27 @@ const MapPage = () => {
 
         if (!data || data.length === 0) {
           setAlumniData([]);
-          setLoading(false);
           return;
         }
 
-        // Geocode locations
-        setGeocoding(true);
-        const geocodedData: AlumniData[] = [];
+        const mappedData: AlumniData[] = data.map((row: any) => ({
+          id: row.profile_id,
+          name: row.full_name || 'Unknown',
+          avatarUrl: row.avatar_url || null,
+          company: row.company || null,
+          jobTitle: null, // not needed in popup
+          location: {
+            lat: row.lat,
+            lng: row.lng,
+          },
+          graduationYear: row.graduation_year,
+          cohort: row.cohort,
+          msc: row.msc,
+          city: row.city,
+          country: row.country,
+        }));
 
-        for (const profile of data) {
-          if (!profile.city) {
-            continue;
-          }
-
-          const location = await geocodeLocation(
-            profile.city,
-            profile.country
-          );
-
-          if (location) {
-            const alumniEntry = {
-              id: profile.id,
-              name: profile.full_name || 'Unknown',
-              avatarUrl: profile.avatar_url || null,
-              company: profile.company || null,
-              jobTitle: profile.job_title,
-              location: location,
-              graduationYear: profile.graduation_year,
-              cohort: profile.cohort,
-              msc: profile.msc,
-              city: profile.city,
-              country: profile.country
-            };
-            
-            geocodedData.push(alumniEntry);
-            
-          } 
-        }
-
-        setAlumniData(geocodedData);
+        setAlumniData(mappedData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch alumni data');
       } finally {
@@ -219,84 +189,82 @@ const MapPage = () => {
     setShowHeatmap(!showHeatmap);
   };
 
-  // Fetch and process profile history for movement paths
+  // Fetch and process profile history for movement paths via RPC
   const fetchMovementPaths = useCallback(async () => {
     try {
       setLoadingHistory(true);
-      
-      // Fetch profile history and current profiles
-      const [historyData, profilesData] = await Promise.all([
-        getProfileHistory(),
-        supabase
-          .from('profiles')
-          .select('id, full_name, city, country, company, job_title, is_public, removed, user_type')
-          .eq('is_public', true)
-          .eq('removed', false)
-          .neq('user_type', 'Staff')
-      ]);
 
-      if (!profilesData.data) return;
-
-      // Group history by user and process location changes
-      const userHistoryMap: Record<string, ProfileHistory[]> = {};
-      historyData.forEach(record => {
-        if (!userHistoryMap[record.profile_id]) {
-          userHistoryMap[record.profile_id] = [];
-        }
-        userHistoryMap[record.profile_id].push(record);
+      const { data, error } = await supabase.rpc('rpc_get_map_data', {
+        view_mode: 'overtime',
+        p_company: null,
+        p_cohort: null,
+        p_grad_year: null,
+        p_degree: null,
       });
 
+      if (error) {
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        setMovementPaths([]);
+        return;
+      }
+
+      const coordinateCache = new Map<string, { lat: number; lng: number } | null>();
       const paths: MovementPath[] = [];
       let userIndex = 0;
 
-      for (const profileId in userHistoryMap) {
-        // Get user info from current profiles
-        const profile = profilesData.data.find(p => p.id === profileId);
-        if (!profile) continue;
+      for (const row of data as any[]) {
+        const timestamps: string[] = row.timestamps || [];
+        const cities: (string | null)[] = row.cities || [];
+        const countries: (string | null)[] = row.countries || [];
+        const companies: (string | null)[] = row.companies || [];
+        const jobTitles: (string | null)[] = row.job_titles || [];
 
-        // Sort history by timestamp
-        const sortedHistory = userHistoryMap[profileId].sort((a, b) => 
-          Date.parse(a.changed_at) - Date.parse(b.changed_at)
-        );
-
-        // Filter records with location data
-        const locationHistory = sortedHistory.filter(record => 
-          record.city && record.country
-        );
-
-        if (locationHistory.length < 2) continue; // Need at least 2 locations for a path
-
-        // Geocode all locations for this user
         const coordinates: [number, number][] = [];
-        const locations = locationHistory;
-        
-        for (const record of locationHistory) {
-          const location = await geocodeLocation(record.city!, record.country);
-          if (location) {
-            coordinates.push([location.lng, location.lat]);
+        const locations: MovementPath["locations"] = [];
+
+        for (let i = 0; i < cities.length; i++) {
+          const city = cities[i];
+          const country = countries[i];
+          if (!city) continue;
+
+          const cacheKey = `${city}||${country || ""}`;
+          let coord = coordinateCache.get(cacheKey) || null;
+
+          if (coord === undefined) {
+            const geocoded = await geocodeLocation(city, country);
+            coordinateCache.set(cacheKey, geocoded);
+            coord = geocoded;
+          }
+
+          if (coord) {
+            coordinates.push([coord.lng, coord.lat]);
+            locations.push({
+              city,
+              country: country || null,
+              company: companies[i],
+              jobTitle: jobTitles[i],
+            });
           }
         }
 
         if (coordinates.length >= 2) {
           paths.push({
-            userId: profileId,
-            userName: profile.full_name || 'Unknown',
-            color: generateUserColor(profileId, userIndex++),
+            userId: row.profile_id,
+            userName: row.full_name || "Unknown",
+            color: generateUserColor(row.profile_id, userIndex++),
             coordinates,
-            timestamps: locationHistory.map(h => h.changed_at),
-            locations: locationHistory.map(h => ({
-              city: h.city,
-              country: h.country,
-              company: h.company,
-              jobTitle: h.job_title
-            }))
+            timestamps: timestamps,
+            locations,
           });
         }
       }
 
       setMovementPaths(paths);
     } catch (err) {
-      console.error('Error fetching movement paths:', err);
+      console.error("Error fetching movement paths:", err);
     } finally {
       setLoadingHistory(false);
     }

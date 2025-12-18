@@ -7,6 +7,7 @@ import {
   type SignInData, 
   type UserActivity, 
   getProfileHistory, 
+  getProfileHistoryStats,
   getSignInsOverTime, 
   getUserActivity 
 } from '@/lib/domain/profiles';
@@ -76,12 +77,13 @@ const Gawk = () => {
         setAnalyticsLoading(true);
         setDataLoading(true);
 
-        const [signInData, historyData, activity, profilesData, partners] = await Promise.all([
+        const [signInData, historyData, activity, profilesData, partners, stats] = await Promise.all([
           getSignInsOverTime(90),
           getProfileHistory(),
           getUserActivity(),
           getProfiles(),
-          getResidencyPartners()
+          getResidencyPartners(),
+          getProfileHistoryStats()
         ]);
 
         const nonStaffProfiles = profilesData.filter(p => p.user_type !== 'Staff');
@@ -91,20 +93,7 @@ const Gawk = () => {
         const filteredHistory = historyData.filter(h => allowedIds.has(h.profile_id));
         setHistory(filteredHistory);
 
-        const monthCounts: Record<string, number> = {};
-        const typeCounts: Record<string, number> = {};
-        filteredHistory.forEach(h => {
-          const month = new Date(h.changed_at).toISOString().slice(0, 7);
-          monthCounts[month] = (monthCounts[month] || 0) + 1;
-          typeCounts[h.change_type] = (typeCounts[h.change_type] || 0) + 1;
-        });
-
-        setHistoryStats({
-          totalChanges: filteredHistory.length,
-          changesByMonth: Object.entries(monthCounts).sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => ({ month, count })),
-          changesByType: Object.entries(typeCounts).map(([type, count]) => ({ type, count })),
-          topChangedFields: []
-        });
+        setHistoryStats(stats);
 
         const filteredActivity = activity.filter(a => a.profile?.user_type !== 'Staff');
         setUserActivity(filteredActivity);
@@ -164,6 +153,11 @@ const Gawk = () => {
 
   const fieldChangesByMonth = useMemo(() => historyStats?.changesByMonth || [], [historyStats]);
 
+  const fieldChangeFrequency = useMemo(
+    () => historyStats?.topChangedFields || [],
+    [historyStats]
+  );
+
   const topJobTitles = useMemo(() => {
     const counts = profiles.reduce<Record<string, number>>((acc, profile) => {
       if (!profile.job_title) return acc;
@@ -197,6 +191,64 @@ const Gawk = () => {
       .slice(0, 5)
       .map(([city, count]) => ({ city, count }));
   }, [profiles, history]);
+
+  const recentMovers = useMemo(() => {
+    if (history.length === 0 || profiles.length === 0) return [];
+
+    const byProfile = history.reduce<Record<string, ProfileHistory[]>>((acc, entry) => {
+      const list = acc[entry.profile_id] || [];
+      list.push(entry);
+      acc[entry.profile_id] = list;
+      return acc;
+    }, {});
+
+    const movers = Object.entries(byProfile).map(([id, entries]) => {
+      const sorted = [...entries].sort(
+        (a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
+      );
+
+      const steps: { cityLabel: string; changedAt: string }[] = [];
+      let lastLabel: string | null = null;
+
+      sorted.forEach((e) => {
+        if (!e.city && !e.country) return;
+        const label = e.city ? (e.country ? `${e.city}, ${e.country}` : e.city) : e.country!;
+        if (label === lastLabel) return;
+        lastLabel = label;
+        steps.push({ cityLabel: label, changedAt: e.changed_at });
+      });
+
+      const profile = profiles.find((p) => p.id === id);
+      if (profile?.city || profile?.country) {
+        const label = profile.city
+          ? profile.country
+            ? `${profile.city}, ${profile.country}`
+            : profile.city
+          : profile.country!;
+        if (label !== lastLabel) {
+          steps.push({ cityLabel: label, changedAt: profile.updated_at });
+        }
+      }
+
+      const distinctCities = new Set(steps.map((s) => s.cityLabel));
+
+      return {
+        id,
+        name: profile?.full_name || 'Unknown user',
+        path: steps,
+        cityCount: distinctCities.size,
+        lastChangedAt: steps.length ? steps[steps.length - 1].changedAt : null,
+      };
+    });
+
+    return movers
+      .filter((m) => m && m.cityCount > 1)
+      .sort((a, b) => {
+        if (!a.lastChangedAt || !b.lastChangedAt) return 0;
+        return new Date(b.lastChangedAt).getTime() - new Date(a.lastChangedAt).getTime();
+      })
+      .slice(0, 8);
+  }, [history, profiles]);
 
   const cohortBreakdown = useMemo(() => {
     const grouped = profiles.reduce<Record<string, Profile[]>>((acc, profile) => {
@@ -502,15 +554,15 @@ const Gawk = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Field / role changes</CardTitle>
-                <CardDescription>Change volume by month</CardDescription>
+                <CardTitle>Field change frequency</CardTitle>
+                <CardDescription>Which profile fields are being updated the most</CardDescription>
               </CardHeader>
               <CardContent>
                 {analyticsLoading ? (
                   <div className="flex items-center justify-center h-64">
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
-                ) : fieldChangesByMonth.length > 0 ? (
+                ) : fieldChangeFrequency.length > 0 ? (
                   <ChartContainer
                     config={{
                       count: { label: 'Changes', color: 'hsl(var(--chart-1))' },
@@ -518,13 +570,13 @@ const Gawk = () => {
                     className="h-64"
                   >
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={fieldChangesByMonth}>
+                      <BarChart data={fieldChangeFrequency}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
+                        <XAxis dataKey="field" />
                         <YAxis allowDecimals={false} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))" }} />
-                      </LineChart>
+                        <Bar dataKey="count" fill="hsl(var(--primary))" />
+                      </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
@@ -626,42 +678,42 @@ const Gawk = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Mobility over time</CardTitle>
-                <CardDescription>City count trend from history events</CardDescription>
+                <CardTitle>Recent movers</CardTitle>
+                <CardDescription>Compact paths for alumni who have moved between cities</CardDescription>
               </CardHeader>
               <CardContent>
                 {analyticsLoading ? (
                   <div className="flex items-center justify-center h-64">
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
+                ) : recentMovers.length > 0 ? (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {recentMovers.map((mover) => (
+                      <div
+                        key={mover.id}
+                        className="p-3 border rounded-lg space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium">{mover.name}</p>
+                          <Badge variant="outline" className="text-xs">
+                            {mover.cityCount} cities
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {mover.path.map((step, index) => (
+                            <span key={`${mover.id}-${index}`}>
+                              {index > 0 && <span className="mx-1">→</span>}
+                              <span>{step.cityLabel}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <ChartContainer
-                    config={{
-                      count: { label: 'City touches', color: 'hsl(var(--chart-1))' },
-                    }}
-                    className="h-64"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={fieldChangesByMonth.map(m => {
-                        const monthCities = history
-                          .filter(h => h.changed_at.startsWith(m.month))
-                          .reduce<Record<string, boolean>>((acc, h) => {
-                            if (h.city) {
-                              const key = h.country ? `${h.city}, ${h.country}` : h.city;
-                              acc[key] = true;
-                            }
-                            return acc;
-                          }, {});
-                        return { month: m.month, count: Object.keys(monthCities).length };
-                      })}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis allowDecimals={false} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))" }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
+                  <div className="flex items-center justify-center h-64 text-muted-foreground">
+                    <p>No movement paths detected yet</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -713,7 +765,6 @@ const Gawk = () => {
           <Card>
             <CardHeader>
               <CardTitle>Most popular residency partners</CardTitle>
-              <CardDescription>Current matches; grad/+5/+10 to follow when date-sliced history is available</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {dataLoading ? (
