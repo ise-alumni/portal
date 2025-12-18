@@ -590,7 +590,10 @@ const MapPage = () => {
                       closeOnClick={false}
                       anchor="bottom"
                     >
-                      <div className="min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg">
+                      <Link
+                        to={`/profile/${selectedAlumni.id}`}
+                        className="block min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg hover:bg-accent transition-colors"
+                      >
                         <div className="flex items-center gap-3">
                           {selectedAlumni.avatarUrl ? (
                             <img
@@ -611,40 +614,9 @@ const MapPage = () => {
                             <h3 className="font-semibold text-sm truncate">
                               {selectedAlumni.name}
                             </h3>
-                            {selectedAlumni.graduationYear && (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                <Badge
-                                  variant={selectedAlumni.msc ? 'default' : 'outline'}
-                                  className={
-                                    selectedAlumni.msc
-                                      ? 'text-[10px]'
-                                      : 'text-[10px] text-slate-900 border-slate-900'
-                                  }
-                                >
-                                  {selectedAlumni.msc ? "MSc" : "BSc"}{" "}
-                                  {selectedAlumni.graduationYear}
-                                </Badge>
-                                {selectedAlumni.cohort && (
-                                  <Badge
-                                    variant="secondary"
-                                    className={`text-[10px] ${getCohortBadgeClass(selectedAlumni.cohort)}`}
-                                  >
-                                    Cohort {selectedAlumni.cohort}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
                           </div>
                         </div>
-                        <div className="mt-3 flex justify-end">
-                          <Link
-                            to={`/profile/${selectedAlumni.id}`}
-                            className="text-xs font-medium text-primary hover:underline"
-                          >
-                            View profile
-                          </Link>
-                        </div>
-                      </div>
+                      </Link>
                     </Popup>
                   )}
 
@@ -658,7 +630,10 @@ const MapPage = () => {
                       closeOnClick={false}
                       anchor="bottom"
                     >
-                      <div className="min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg">
+                      <Link
+                        to={`/profile/${selectedPath.userId}`}
+                        className="block min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg hover:bg-accent transition-colors"
+                      >
                         <div className="flex items-center gap-3">
                           {(() => {
                             const userProfile = alumniData.find(
@@ -687,20 +662,9 @@ const MapPage = () => {
                             <h3 className="font-semibold text-sm truncate">
                               {selectedPath.userName}
                             </h3>
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {selectedPath.locations.length} recorded moves
-                            </p>
                           </div>
                         </div>
-                        <div className="mt-3 flex justify-end">
-                          <Link
-                            to={`/profile/${selectedPath.userId}`}
-                            className="text-xs font-medium text-primary hover:underline"
-                          >
-                            View profile
-                          </Link>
-                        </div>
-                      </div>
+                      </Link>
                     </Popup>
                   )}
                 </Map>
