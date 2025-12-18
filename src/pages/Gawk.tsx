@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { log } from '@/lib/utils/logger';
 import { CompanyLogo } from '@/components/CompanyLogo';
 import { buildCompanyLogoMap, getCompanyLogoUrl } from '@/lib/utils/companyLogo';
+import { getCohortBadgeClass } from '@/lib/utils/ui';
 
 const Gawk = () => {
   const { user, loading } = useAuth();
@@ -725,19 +726,24 @@ const Gawk = () => {
             </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Cohort Employment</CardTitle>
-              <CardDescription>Employment + entrepreneurship share by cohort</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {cohortBreakdown.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No cohort data yet</p>
-              ) : cohortBreakdown.map((row) => (
-                <div key={row.cohort} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">Cohort {row.cohort}</p>
-                    <Badge variant="outline">{row.total} ppl</Badge>
-                  </div>
+          <CardHeader>
+          <CardTitle>Cohort Employment</CardTitle>
+          <CardDescription>Employment + entrepreneurship share by cohort</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {cohortBreakdown.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No cohort data yet</p>
+          ) : cohortBreakdown.map((row) => (
+          <div key={row.cohort} className="p-3 border rounded-lg">
+          <div className="flex items-center justify-between">
+          <Badge
+            variant="secondary"
+            className={getCohortBadgeClass(Number(row.cohort)) + ' text-xs'}
+          >
+            Cohort {row.cohort}
+          </Badge>
+          <Badge variant="outline">{row.total} ppl</Badge>
+          </div>
                   <div className="mt-2 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Employed</span>
@@ -758,19 +764,24 @@ const Gawk = () => {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Cohort Program Mix</CardTitle>
-              <CardDescription>BSc vs MSc share within each cohort</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {cohortProgramBreakdown.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No cohort data yet</p>
-              ) : cohortProgramBreakdown.map((row) => (
-                <div key={row.cohort} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">Cohort {row.cohort}</p>
-                    <Badge variant="outline">{row.total} ppl</Badge>
-                  </div>
+          <CardHeader>
+          <CardTitle>Cohort Program Mix</CardTitle>
+          <CardDescription>BSc vs MSc share within each cohort</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {cohortProgramBreakdown.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No cohort data yet</p>
+          ) : cohortProgramBreakdown.map((row) => (
+          <div key={row.cohort} className="p-3 border rounded-lg">
+          <div className="flex items-center justify-between">
+          <Badge
+            variant="secondary"
+            className={getCohortBadgeClass(Number(row.cohort)) + ' text-xs'}
+          >
+            Cohort {row.cohort}
+          </Badge>
+          <Badge variant="outline">{row.total} ppl</Badge>
+          </div>
                   <div className="mt-2 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>BSc</span>
@@ -1068,8 +1079,11 @@ const Gawk = () => {
                       ? getCompanyLogoUrl(partner.name, companyLogoMap)
                       : null;
                     return (
-                      <div key={partner.name} className="flex items-center justify-between p-2 border rounded-lg">
-                        <div className="flex items-center gap-2">
+                      <div
+                        key={partner.name}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div className="flex flex-col gap-1 min-w-0">
                           <CompanyLogo
                             name={partner.name}
                             logoUrl={logoUrl}
