@@ -440,7 +440,7 @@ const MapPage = () => {
             <Label htmlFor="cohort-filter">Cohort</Label>
             <Input
               id="cohort-filter"
-              placeholder="e.g. 2020"
+              placeholder="e.g. 1"
               inputMode="numeric"
               value={cohortFilter}
               onChange={(e) => setCohortFilter(e.target.value)}
