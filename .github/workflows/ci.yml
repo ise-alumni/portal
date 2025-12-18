@@ -4,10 +4,16 @@ on:
   pull_request:
     branches: [ main ]
 
+# Set permissions for the workflow
+permissions:
+  contents: read  # Allow checking out the repository
+
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # Allow checking out the repository
 
     steps:
     - name: Checkout code
@@ -45,6 +51,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # Allow checking out the repository
 
     steps:
     - name: Checkout code
