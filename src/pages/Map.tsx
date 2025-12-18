@@ -124,6 +124,7 @@ const MapPage = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [timeRange, setTimeRange] = useState<[number, number]>([0, 100]);
   const [selectedPath, setSelectedPath] = useState<MovementPath | null>(null);
+  const [selectedPathIndex, setSelectedPathIndex] = useState<number | null>(null);
 
   // Fetch alumni data for current view using RPC (pre-geocoded lat/lng)
   useEffect(() => {
@@ -132,19 +133,7 @@ const MapPage = () => {
         setLoading(true);
         setError(null);
 
-        const { data, error: fetchError } = await supabase.rpc<{
-          profile_id: string;
-          full_name: string | null;
-          lat: number;
-          lng: number;
-          graduation_year: number | null;
-          cohort: number | null;
-          msc: boolean | null;
-          company: string | null;
-          city: string | null;
-          country: string | null;
-          avatar_url: string | null;
-        }>('rpc_get_map_data', {
+        const { data, error: fetchError } = await supabase.rpc('rpc_get_map_data', {
           view_mode: 'current',
         });
 
@@ -157,7 +146,7 @@ const MapPage = () => {
           return;
         }
 
-        const mappedData: AlumniData[] = data.map((row) => ({
+        const mappedData: AlumniData[] = (data as any[]).map((row) => ({
           id: row.profile_id,
           name: row.full_name || 'Unknown',
           avatarUrl: row.avatar_url || null,
@@ -203,17 +192,7 @@ const MapPage = () => {
     try {
       setLoadingHistory(true);
 
-      const { data, error } = await supabase.rpc<{
-        profile_id: string;
-        full_name: string | null;
-        timestamps: string[] | null;
-        cities: (string | null)[] | null;
-        countries: (string | null)[] | null;
-        companies: (string | null)[] | null;
-        job_titles: (string | null)[] | null;
-        lats: number[] | null;
-        lngs: number[] | null;
-      }>('rpc_get_map_data', {
+      const { data, error } = await supabase.rpc('rpc_get_map_data', {
         view_mode: 'overtime',
       });
 
@@ -229,7 +208,7 @@ const MapPage = () => {
       const paths: MovementPath[] = [];
       let userIndex = 0;
 
-      for (const row of data) {
+      for (const row of (data as any[])) {
         const timestamps: string[] = row.timestamps || [];
         const cities: (string | null)[] = row.cities || [];
         const countries: (string | null)[] = row.countries || [];
@@ -556,7 +535,10 @@ const MapPage = () => {
                          key={`${path.userId}-marker-${index}`}
                          longitude={coord[0]}
                          latitude={coord[1]}
-                         onClick={() => setSelectedPath(path)}
+                         onClick={() => {
+                           setSelectedPath(path);
+                           setSelectedPathIndex(index);
+                         }}
                        >
                          <div 
                            className="w-4 h-4 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-transform"
@@ -580,7 +562,7 @@ const MapPage = () => {
                      </Marker>
                    ))}
 
-                  {/* Alumni Popup */}
+                  {/* Alumni Popup - show all users at this city */}
                   {selectedAlumni && viewMode === "current" && (
                     <Popup
                       longitude={selectedAlumni.location.lng}
@@ -590,81 +572,108 @@ const MapPage = () => {
                       closeOnClick={false}
                       anchor="bottom"
                     >
-                      <Link
-                        to={`/profile/${selectedAlumni.id}`}
-                        className="block min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg hover:bg-accent transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          {selectedAlumni.avatarUrl ? (
-                            <img
-                              src={selectedAlumni.avatarUrl}
-                              alt={`${selectedAlumni.name} avatar`}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                              {selectedAlumni.name
-                                .split(" ")
-                                .map(word => word[0])
-                                .join("")
-                                .toUpperCase()}
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <h3 className="font-semibold text-sm truncate">
-                              {selectedAlumni.name}
-                            </h3>
-                          </div>
-                        </div>
-                      </Link>
+                      <div className="min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-3 shadow-lg">
+                        {filteredAlumni
+                          .filter(
+                            (alumni) =>
+                              alumni.city === selectedAlumni.city &&
+                              alumni.country === selectedAlumni.country
+                          )
+                          .map((alumni) => (
+                            <Link
+                              key={alumni.id}
+                              to={`/profile/${alumni.id}`}
+                              className="flex items-center gap-3 p-2 -mx-2 rounded-md hover:bg-accent transition-colors"
+                            >
+                              {alumni.avatarUrl ? (
+                                <img
+                                  src={alumni.avatarUrl}
+                                  alt={`${alumni.name} avatar`}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium">
+                                  {alumni.name
+                                    .split(" ")
+                                    .map((word) => word[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-sm font-medium truncate">
+                                {alumni.name}
+                              </span>
+                            </Link>
+                          ))}
+                      </div>
                     </Popup>
                   )}
 
-                  {/* Movement Path Popup */}
-                  {selectedPath && viewMode === "overtime" && (
+                  {/* Movement Path Popup - show all users at this city */}
+                  {selectedPath && viewMode === "overtime" && selectedPathIndex !== null && (
                     <Popup
-                      longitude={selectedPath.coordinates[0][0]}
-                      latitude={selectedPath.coordinates[0][1]}
-                      onClose={() => setSelectedPath(null)}
+                      longitude={selectedPath.coordinates[selectedPathIndex][0]}
+                      latitude={selectedPath.coordinates[selectedPathIndex][1]}
+                      onClose={() => {
+                        setSelectedPath(null);
+                        setSelectedPathIndex(null);
+                      }}
                       closeButton={true}
                       closeOnClick={false}
                       anchor="bottom"
                     >
-                      <Link
-                        to={`/profile/${selectedPath.userId}`}
-                        className="block min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg hover:bg-accent transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          {(() => {
-                            const userProfile = alumniData.find(
-                              alumni => alumni.id === selectedPath.userId
-                            );
-                            if (userProfile?.avatarUrl) {
-                              return (
-                                <img
-                                  src={userProfile.avatarUrl}
-                                  alt={`${selectedPath.userName} avatar`}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                />
+                      <div className="min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-3 shadow-lg">
+                        {(() => {
+                          const clickedLocation = selectedPath.locations[selectedPathIndex];
+                          if (!clickedLocation) return null;
+
+                          const usersAtLocation = filteredMovementPaths
+                            .filter((path) =>
+                              path.locations.some(
+                                (loc) =>
+                                  loc.city === clickedLocation.city &&
+                                  loc.country === clickedLocation.country
+                              )
+                            )
+                            .map((path) => {
+                              const userProfile = alumniData.find(
+                                (alumni) => alumni.id === path.userId
                               );
-                            }
-                            return (
-                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                                {selectedPath.userName
-                                  .split(" ")
-                                  .map(word => word[0])
-                                  .join("")
-                                  .toUpperCase()}
-                              </div>
-                            );
-                          })()}
-                          <div className="min-w-0">
-                            <h3 className="font-semibold text-sm truncate">
-                              {selectedPath.userName}
-                            </h3>
-                          </div>
-                        </div>
-                      </Link>
+                              return {
+                                id: path.userId,
+                                name: path.userName,
+                                avatarUrl: userProfile?.avatarUrl || null,
+                              };
+                            });
+
+                          return usersAtLocation.map((user) => (
+                            <Link
+                              key={user.id}
+                              to={`/profile/${user.id}`}
+                              className="flex items-center gap-3 p-2 -mx-2 rounded-md hover:bg-accent transition-colors"
+                            >
+                              {user.avatarUrl ? (
+                                <img
+                                  src={user.avatarUrl}
+                                  alt={`${user.name} avatar`}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium">
+                                  {user.name
+                                    .split(" ")
+                                    .map((word) => word[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-sm font-medium truncate">
+                                {user.name}
+                              </span>
+                            </Link>
+                          ));
+                        })()}
+                      </div>
                     </Popup>
                   )}
                 </Map>
