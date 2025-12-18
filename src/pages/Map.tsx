@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Link } from "react-router-dom";
 
 interface AlumniData {
   id: string;
   name: string;
+  avatarUrl: string | null;
   company: string | null;
   jobTitle: string | null;
   location: { lat: number; lng: number };
@@ -140,7 +142,8 @@ const MapPage = () => {
             city,
             country,
             company,
-            msc
+            msc,
+            avatar_url
           `)
           .not('city', 'is', null)
           .not('country', 'is', null)
@@ -174,6 +177,7 @@ const MapPage = () => {
             const alumniEntry = {
               id: profile.id,
               name: profile.full_name || 'Unknown',
+              avatarUrl: profile.avatar_url || null,
               company: profile.company || null,
               jobTitle: profile.job_title,
               location: location,
@@ -302,6 +306,14 @@ const MapPage = () => {
     }
   }, [viewMode, movementPaths.length, fetchMovementPaths]);
 
+  // Re-fetch movement paths when filters change and in over-time mode to ensure we have all data
+  useEffect(() => {
+    if (viewMode === "overtime" && movementPaths.length > 0) {
+      // Only re-fetch if we haven't fetched yet or if filters are applied
+      fetchMovementPaths();
+    }
+  }, [viewMode, companyFilter, cohortFilter, gradYearFilter, degreeFilter, fetchMovementPaths]);
+
   const filteredAlumni = useMemo(() => {
     return alumniData.filter((alumni) => {
       const matchesCompany = companyFilter
@@ -382,7 +394,7 @@ const MapPage = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl tracking-tight">ALUMNI MAP</h1>
+           <h1 className="text-2xl sm:text-3xl font-bold">Map</h1>
         </div>
         <div className="flex items-center justify-center h-[600px]">
           <div className="text-center">
@@ -402,7 +414,7 @@ const MapPage = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl tracking-tight">ALUMNI MAP</h1>
+           <h1 className="text-2xl sm:text-3xl font-bold">Map</h1>
         </div>
         <div className="flex items-center justify-center h-[600px]">
           <div className="text-center">
@@ -417,7 +429,7 @@ const MapPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl tracking-tight">ALUMNI MAP</h1>
+           <h1 className="text-2xl sm:text-3xl font-bold">Map</h1>
         <div className="flex gap-2">
           <Button
             variant={viewMode === "current" ? "default" : "outline"}
@@ -441,10 +453,8 @@ const MapPage = () => {
       </div>
 
       <Card className="border-2 border-foreground shadow-none">
-        <CardHeader className="pb-2">
-          <CardTitle className="tracking-tight text-sm">Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CardContent className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label htmlFor="company-filter">Company</Label>
             <Input
@@ -487,6 +497,7 @@ const MapPage = () => {
               </SelectContent>
             </Select>
           </div>
+        </div>
         </CardContent>
         <div className="px-6 pb-4 text-sm text-muted-foreground">
           {viewMode === "current" 
@@ -607,21 +618,50 @@ const MapPage = () => {
                       closeOnClick={false}
                       anchor="bottom"
                     >
-                      <div className="p-2 min-w-[200px]">
-                        <h3 className="font-semibold text-sm">{selectedAlumni.name}</h3>
-                        <p className="text-xs text-muted-foreground">{selectedAlumni.jobTitle || 'Job title not specified'}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <BuildingIcon className="w-3 h-3" />
-                          <span className="text-xs font-medium">{selectedAlumni.company || 'No company specified'}</span>
+                      <div className="min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg">
+                        <div className="flex items-center gap-3">
+                          {selectedAlumni.avatarUrl ? (
+                            <img
+                              src={selectedAlumni.avatarUrl}
+                              alt={`${selectedAlumni.name} avatar`}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                              {selectedAlumni.name
+                                .split(" ")
+                                .map(word => word[0])
+                                .join("")
+                                .toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm truncate">
+                              {selectedAlumni.name}
+                            </h3>
+                            {selectedAlumni.graduationYear && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                <Badge variant="secondary" className="text-[10px]">
+                                  {selectedAlumni.msc ? "MSc" : "BSc"}{" "}
+                                  {selectedAlumni.graduationYear}
+                                </Badge>
+                                {selectedAlumni.cohort && (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    Cohort {selectedAlumni.cohort}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {selectedAlumni.city}{selectedAlumni.country ? `, ${selectedAlumni.country}` : ''}
-                        </p>
-                        {selectedAlumni.graduationYear && (
-                          <Badge variant="secondary" className="text-xs mt-1">
-                            Class of {selectedAlumni.graduationYear}
-                          </Badge>
-                        )}
+                        <div className="mt-3 flex justify-end">
+                          <Link
+                            to={`/profile/${selectedAlumni.id}`}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            View profile
+                          </Link>
+                        </div>
                       </div>
                     </Popup>
                   )}
@@ -636,26 +676,47 @@ const MapPage = () => {
                       closeOnClick={false}
                       anchor="bottom"
                     >
-                      <div className="p-2 min-w-[250px]">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div 
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: selectedPath.color }}
-                          />
-                          <h3 className="font-semibold text-sm">{selectedPath.userName}</h3>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium">Movement Path ({selectedPath.locations.length} locations):</p>
-                          {selectedPath.locations.map((location, index) => (
-                            <div key={index} className="text-xs text-muted-foreground">
-                              <div className="font-medium">{location.city}, {location.country}</div>
-                              {location.company && <div className="ml-2">🏢 {location.company}</div>}
-                              {location.jobTitle && <div className="ml-2">💼 {location.jobTitle}</div>}
-                              <div className="ml-2 text-xs opacity-75">
-                                {new Date(selectedPath.timestamps[index]).toLocaleDateString()}
+                      <div className="min-w-[220px] max-w-xs rounded-lg border border-border bg-background p-4 shadow-lg">
+                        <div className="flex items-center gap-3">
+                          {(() => {
+                            const userProfile = alumniData.find(
+                              alumni => alumni.id === selectedPath.userId
+                            );
+                            if (userProfile?.avatarUrl) {
+                              return (
+                                <img
+                                  src={userProfile.avatarUrl}
+                                  alt={`${selectedPath.userName} avatar`}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              );
+                            }
+                            return (
+                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                                {selectedPath.userName
+                                  .split(" ")
+                                  .map(word => word[0])
+                                  .join("")
+                                  .toUpperCase()}
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })()}
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm truncate">
+                              {selectedPath.userName}
+                            </h3>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {selectedPath.locations.length} recorded moves
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex justify-end">
+                          <Link
+                            to={`/profile/${selectedPath.userId}`}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            View profile
+                          </Link>
                         </div>
                       </div>
                     </Popup>
@@ -702,6 +763,36 @@ const MapPage = () => {
                       {new Set(filteredAlumni.map(a => a.country).filter(Boolean)).size}
                     </Badge>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">MSc</span>
+                    <Badge variant="secondary">
+                      {filteredAlumni.filter(a => a.msc === true).length}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">BSc</span>
+                    <Badge variant="secondary">
+                      {filteredAlumni.filter(a => a.msc === false).length}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Cohorts</span>
+                    <div className="flex gap-1 flex-wrap justify-end">
+                      {Array.from(
+                        new Set(
+                          filteredAlumni
+                            .map(a => a.cohort)
+                            .filter((c): c is number => c != null)
+                        )
+                      )
+                        .sort((a, b) => a - b)
+                        .map(cohort => (
+                          <Badge key={cohort} variant="outline" className="text-xs">
+                            {cohort}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -737,7 +828,7 @@ const MapPage = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="tracking-tight text-sm">Movement Statistics</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Users with Paths</span>
                     <Badge variant="secondary">{filteredMovementPaths.length}</Badge>
@@ -757,6 +848,39 @@ const MapPage = () => {
                         )
                       ).size}
                     </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">MSc</span>
+                    <Badge variant="secondary">
+                      {filteredMovementPaths.filter(path => {
+                        const userProfile = alumniData.find(alumni => alumni.id === path.userId);
+                        return userProfile?.msc === true;
+                      }).length}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">BSc</span>
+                    <Badge variant="secondary">
+                      {filteredMovementPaths.filter(path => {
+                        const userProfile = alumniData.find(alumni => alumni.id === path.userId);
+                        return userProfile?.msc === false;
+                      }).length}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Cohorts</span>
+                    <div className="flex gap-1">
+                      {Array.from(new Set(
+                        filteredMovementPaths
+                          .map(path => {
+                            const userProfile = alumniData.find(alumni => alumni.id === path.userId);
+                            return userProfile?.cohort;
+                          })
+                          .filter(Boolean)
+                      )).sort((a, b) => a - b).map(cohort => (
+                        <Badge key={cohort} variant="outline" className="text-xs">{cohort}</Badge>
+                      ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
