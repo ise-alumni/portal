@@ -127,6 +127,20 @@ const MapPage = () => {
   const [selectedPathIndex, setSelectedPathIndex] = useState<number | null>(null);
 
   // Fetch alumni data for current view using RPC (pre-geocoded lat/lng)
+  type CurrentMapDataRow = {
+    profile_id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    company: string | null;
+    lat: number;
+    lng: number;
+    graduation_year: number | null;
+    cohort: string | null;
+    msc: string | null;
+    city: string | null;
+    country: string | null;
+  };
+
   useEffect(() => {
     const fetchAlumniData = async () => {
       try {
@@ -146,7 +160,7 @@ const MapPage = () => {
           return;
         }
 
-        const mappedData: AlumniData[] = (data as any[]).map((row) => ({
+        const mappedData: AlumniData[] = (data as CurrentMapDataRow[]).map((row) => ({
           id: row.profile_id,
           name: row.full_name || 'Unknown',
           avatarUrl: row.avatar_url || null,
@@ -187,6 +201,18 @@ const MapPage = () => {
     setShowHeatmap(!showHeatmap);
   };
 
+  type OvertimeMapDataRow = {
+    profile_id: string;
+    full_name: string | null;
+    timestamps: string[] | null;
+    cities: (string | null)[] | null;
+    countries: (string | null)[] | null;
+    companies: (string | null)[] | null;
+    job_titles: (string | null)[] | null;
+    lats: number[] | null;
+    lngs: number[] | null;
+  };
+
   // Fetch and process profile history for movement paths via RPC
   const fetchMovementPaths = useCallback(async () => {
     try {
@@ -208,14 +234,14 @@ const MapPage = () => {
       const paths: MovementPath[] = [];
       let userIndex = 0;
 
-      for (const row of (data as any[])) {
-        const timestamps: string[] = row.timestamps || [];
-        const cities: (string | null)[] = row.cities || [];
-        const countries: (string | null)[] = row.countries || [];
-        const companies: (string | null)[] = row.companies || [];
-        const jobTitles: (string | null)[] = row.job_titles || [];
-        const lats: number[] = row.lats || [];
-        const lngs: number[] = row.lngs || [];
+      for (const row of data as OvertimeMapDataRow[]) {
+        const timestamps = row.timestamps ?? [];
+        const cities = row.cities ?? [];
+        const countries = row.countries ?? [];
+        const companies = row.companies ?? [];
+        const jobTitles = row.job_titles ?? [];
+        const lats = row.lats ?? [];
+        const lngs = row.lngs ?? [];
 
         const coordinates: [number, number][] = [];
         const locations: MovementPath["locations"] = [];
