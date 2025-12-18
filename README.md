@@ -91,23 +91,6 @@ supabase db push
 
 Some features may not be released to users but pushed regardless (they may be toggled over time). Feature flags are configured in [features.ts](./src/config/features.ts).
 
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
-
-- How to set up your development environment
-- Our code style and standards
-- How to submit pull requests
-- Our issue reporting guidelines
-
-## Code of Conduct
-
-This project adheres to a Code of Conduct that all contributors are expected to follow. Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before participating.
-
-## Security
-
-If you discover a security vulnerability, please see [SECURITY.md](SECURITY.md) for information on how to report it responsibly.
-
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/bxrne/ise-alumni/issues)
