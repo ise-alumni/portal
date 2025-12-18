@@ -143,11 +143,13 @@ const MapPage = () => {
             country,
             company,
             msc,
-            avatar_url
+            avatar_url,
+            user_type
           `)
           .not('city', 'is', null)
           .not('country', 'is', null)
-          .eq('is_public', true);
+          .eq('is_public', true)
+          .neq('user_type', 'Staff');
 
         if (fetchError) {
           throw fetchError;
@@ -227,9 +229,10 @@ const MapPage = () => {
         getProfileHistory(),
         supabase
           .from('profiles')
-          .select('id, full_name, city, country, company, job_title, is_public, removed')
+          .select('id, full_name, city, country, company, job_title, is_public, removed, user_type')
           .eq('is_public', true)
           .eq('removed', false)
+          .neq('user_type', 'Staff')
       ]);
 
       if (!profilesData.data) return;
