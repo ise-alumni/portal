@@ -10,10 +10,13 @@ import NewEventModal from "@/components/NewEventModal";
 
 // Import centralized types and utilities
 import { type EventData, type Tag } from "@/lib/types";
-import { getEvents, getTags, isEventInPast, isEventUpcoming } from "@/lib/domain";
+import { getEvents, getTags, isEventInPast, isEventUpcoming, isEventOngoing } from "@/lib/domain";
 import { formatDate } from "@/lib/utils/date";
 import { log } from '@/lib/utils/logger';
 import { canUserCreateEvents } from '@/lib/constants';
+import { usePagination } from '@/hooks/usePagination';
+import { useFiltering } from '@/hooks/useFiltering';
+import { useDataFetching } from '@/hooks/useDataFetching';
 
 const ExistingEvent = ({ event }: { event: EventData }) => {
   const navigate = useNavigate();
@@ -85,33 +88,16 @@ const Events = () => {
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [userProfile, setUserProfile] = useState<{ user_type?: string } | null>(null);
-  const [upcomingPage, setUpcomingPage] = useState(1);
-  const [pastPage, setPastPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(15);
   const [eventView, setEventView] = useState<'upcoming' | 'past'>('upcoming');
   const { user } = useAuth();
 
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Fetch events data
+  const { data: eventsData, loading: eventsLoading, error: eventsError, refetch: refetchEvents } = useDataFetching(getEvents);
 
-      const [eventsData, tagsData] = await Promise.all([
-        getEvents(),
-        getTags()
-      ]);
-
-      log.debug('Fetched events:', eventsData?.length, eventsData);
-      log.debug('Fetched tags:', tagsData?.length, tagsData);
-      setEvents(eventsData);
-      setAvailableTags(tagsData);
-    } catch (err) {
-      log.error('Error fetching events:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch events');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use filtering hook
+  const { filteredData, setFilters } = useFiltering(eventsData || [], {
+    searchFields: ['title', 'description', 'location']
+  });
 
   const fetchUserProfile = useCallback(async () => {
     // This function can be removed or replaced with a domain service later
@@ -125,7 +111,7 @@ const Events = () => {
         .eq('user_id', user.id)
         .single();
     
-      if (error) {
+if (eventsError) {
         throw error;
       }
 
@@ -136,27 +122,33 @@ const Events = () => {
   }, [user]);
 
   useEffect(() => {
-    fetchEvents();
+    refetchEvents();
     if (user) {
       fetchUserProfile();
     }
-  }, [user, fetchUserProfile]);
+  }, [user, fetchUserProfile, refetchEvents]);
 
   const handleEventCreated = () => {
-    fetchEvents(); // Refresh events list
+    refetchEvents(); // Refresh events list
   };
 
   // Check if user can create events (admin only)
   const canCreateEvents = user && userProfile && canUserCreateEvents(userProfile.user_type);
 
+  // Apply tag filter
+  useEffect(() => {
+    const filters = selectedTag ? { tags: [selectedTag] } : {};
+    setFilters(filters);
+  }, [selectedTag, setFilters]);
+
   // Filter and sort events
-  const allUpcomingEvents = events.filter(event => isEventUpcoming(event));
-  const allPastEvents = events.filter(event => isEventInPast(event));
+  const allCurrentEvents = (filteredData || []).filter(event => 
+    isEventUpcoming(event) || isEventOngoing(event)
+  );
+  const allPastEvents = (filteredData || []).filter(event => isEventInPast(event));
   
-  // Apply tag filtering to each group
-  const upcomingEvents = allUpcomingEvents.filter(event => 
-    !selectedTag || event.event_tags?.some(et => et.tags.name === selectedTag)
-  ).sort((a, b) => {
+  // Apply sorting
+  const upcomingEvents = allCurrentEvents.sort((a, b) => {
     if (sortBy === 'date') {
       return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
     } else {
@@ -164,9 +156,7 @@ const Events = () => {
     }
   });
   
-  const pastEvents = allPastEvents.filter(event => 
-    !selectedTag || event.event_tags?.some(et => et.tags.name === selectedTag)
-  ).sort((a, b) => {
+  const pastEvents = allPastEvents.sort((a, b) => {
     if (sortBy === 'date') {
       return new Date(b.start_at).getTime() - new Date(a.start_at).getTime(); // Past events sorted descending
     } else {
@@ -179,30 +169,17 @@ const Events = () => {
   log.debug('Upcoming events:', upcomingEvents.length, upcomingEvents.map(e => ({ title: e.title, date: e.start_at })));
   log.debug('Past events:', pastEvents.length, pastEvents.map(e => ({ title: e.title, date: e.start_at })));
 
-  // Pagination logic
-  const totalUpcomingEvents = upcomingEvents.length;
-  const totalPastEvents = pastEvents.length;
-  
-  const upcomingEventsPaginated = upcomingEvents.slice(
-    (upcomingPage - 1) * itemsPerPage,
-    upcomingPage * itemsPerPage
-  );
-  
-  const pastEventsPaginated = pastEvents.slice(
-    (pastPage - 1) * itemsPerPage,
-    pastPage * itemsPerPage
-  );
-
-  const upcomingTotalPages = Math.ceil(totalUpcomingEvents / itemsPerPage);
-  const pastTotalPages = Math.ceil(totalPastEvents / itemsPerPage);
+  // Use pagination hooks
+  const upcomingPagination = usePagination(upcomingEvents, { initialItemsPerPage: 15 });
+  const pastPagination = usePagination(pastEvents, { initialItemsPerPage: 15 });
 
   // Reset pagination when filters change
   useEffect(() => {
-    setUpcomingPage(1);
-    setPastPage(1);
-  }, [selectedTag, sortBy]);
+    upcomingPagination.resetPagination();
+    pastPagination.resetPagination();
+  }, [selectedTag, sortBy, upcomingPagination, pastPagination]);
 
-  if (loading) {
+  if (eventsLoading) {
     return (
       <div className="container mx-auto py-8 px-4 sm:px-0">
         <h1 className="text-2xl sm:text-3xl font-bold mb-6">Events</h1>
@@ -220,8 +197,8 @@ const Events = () => {
     return (
       <div className="container mx-auto py-8">
         <div className="text-center py-12">
-          <p className="text-red-500 mb-4">Error: {error}</p>
-          <Button onClick={fetchEvents}>Try Again</Button>
+          <p className="text-red-500 mb-4">Error: {eventsError?.message || 'Failed to load events'}</p>
+          <Button onClick={refetchEvents}>Try Again</Button>
         </div>
       </div>
     );
@@ -251,11 +228,11 @@ const Events = () => {
             ))}
           </select>
           <select
-            value={itemsPerPage}
+            value={upcomingPagination.itemsPerPage}
             onChange={(e) => {
-              setItemsPerPage(Number(e.target.value));
-              setUpcomingPage(1);
-              setPastPage(1);
+              const newItemsPerPage = Number(e.target.value);
+              upcomingPagination.setItemsPerPage(newItemsPerPage);
+              pastPagination.setItemsPerPage(newItemsPerPage);
             }}
             className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
           >
@@ -281,9 +258,9 @@ const Events = () => {
               setEventView(eventView === 'upcoming' ? 'past' : 'upcoming');
               // Reset pagination when switching views
               if (eventView === 'upcoming') {
-                setPastPage(1);
+                pastPagination.resetPagination();
               } else {
-                setUpcomingPage(1);
+                upcomingPagination.resetPagination();
               }
             }}
             className="w-full sm:w-auto"
@@ -317,35 +294,16 @@ const Events = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {upcomingEventsPaginated.map((event) => (
+                {upcomingPagination.paginatedData.map((event) => (
                   <ExistingEvent key={event.id} event={event} />
                 ))}
               </div>
               
-              {/* Pagination Controls */}
-              {upcomingTotalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUpcomingPage(Math.max(1, upcomingPage - 1))}
-                    disabled={upcomingPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {upcomingPage} of {upcomingTotalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUpcomingPage(Math.min(upcomingTotalPages, upcomingPage + 1))}
-                    disabled={upcomingPage === upcomingTotalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
+              {/* Pagination for Upcoming Events */}
+              <upcomingPagination.PaginationComponent 
+                data={upcomingEvents}
+                totalItems={upcomingEvents.length}
+              />
             </>
           )}
         </div>
@@ -355,35 +313,18 @@ const Events = () => {
       {eventView === 'past' && pastEvents.length > 0 && (
         <div className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {pastEventsPaginated.map((event) => (
-              <ExistingEvent key={event.id} event={event} />
+            {pastPagination.paginatedData.map((event) => (
+              <div key={event.id} className="opacity-75">
+                <ExistingEvent event={event} />
+              </div>
             ))}
           </div>
               
           {/* Pagination for Past Events */}
-          {pastTotalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPastPage(Math.max(1, pastPage - 1))}
-                disabled={pastPage === 1}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {pastPage} of {pastTotalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPastPage(Math.min(pastTotalPages, pastPage + 1))}
-                disabled={pastPage === pastTotalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          <pastPagination.PaginationComponent 
+            data={pastEvents}
+            totalItems={pastEvents.length}
+          />
         </div>
       )}
 
