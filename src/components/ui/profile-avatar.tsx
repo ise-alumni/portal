@@ -38,7 +38,7 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
         src={src}
         alt={alt || `${fullName || 'User'} avatar`}
         className={cn(
-          'rounded-full object-cover flex-shrink-0 border-2 border-border',
+          'rounded-full object-cover flex-shrink-0',
           sizeClasses[size],
           className
         )}
@@ -50,7 +50,7 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
           if (parent && !parent.querySelector('.fallback-avatar')) {
             const fallback = document.createElement('div');
             fallback.className = cn(
-              'bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-medium border-2 border-border fallback-avatar',
+              'bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-medium fallback-avatar',
               sizeClasses[size]
             );
             fallback.textContent = initials;
@@ -64,7 +64,7 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   return (
     <div
       className={cn(
-        'bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-medium border-2 border-border',
+        'bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-medium',
         sizeClasses[size],
         className
       )}

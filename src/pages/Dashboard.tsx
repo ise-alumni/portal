@@ -78,6 +78,7 @@ import {
   Eye,
   BarChart3,
 } from 'lucide-react';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 
 // Helper function to render profile avatar or initials
 const renderProfileAvatar = (profile: Profile, size: string = "w-8 h-8") => {
@@ -2014,9 +2015,23 @@ const Dashboard = () => {
                       {fieldChanges.map((change) => (
                         <tr key={change.id} className="border-b">
                           <td className="p-2">
-                            <div>
-                              <p className="font-medium">{change.userName}</p>
-                              <p className="text-sm text-muted-foreground">{change.userEmail}</p>
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const profileMatch = profiles.find(
+                                  (p) => p.email && p.email.toLowerCase() === change.userEmail.toLowerCase()
+                                );
+                                return (
+                                  <ProfileAvatar
+                                    src={profileMatch?.avatar_url}
+                                    fullName={profileMatch?.full_name || change.userName}
+                                    size="sm"
+                                  />
+                                );
+                              })()}
+                              <div>
+                                <p className="font-medium">{change.userName}</p>
+                                <p className="text-sm text-muted-foreground">{change.userEmail}</p>
+                              </div>
                             </div>
                           </td>
                           <td className="p-2">

@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Loader2, ShieldAlert, BarChart3, RefreshCcw, Home, MapPin, Briefcase } from 'lucide-react';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { formatDateShort } from '@/lib/utils/date';
 import { supabase } from '@/integrations/supabase/client';
 import { log } from '@/lib/utils/logger';
@@ -250,6 +251,73 @@ const Gawk = () => {
       .slice(0, 8);
   }, [history, profiles]);
 
+  const championCompanies = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    profiles.forEach((profile) => {
+      if (!profile.is_ise_champion || !profile.company) return;
+      const company = profile.company.trim();
+      if (!company) return;
+      counts[company] = (counts[company] || 0) + 1;
+    });
+
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([company, count]) => ({ company, count }));
+  }, [profiles]);
+
+  const destinationCities = useMemo(() => {
+    if (profiles.length === 0) return [];
+
+    const historyByProfile = history.reduce<Record<string, ProfileHistory[]>>(
+      (acc, entry) => {
+        const list = acc[entry.profile_id] || [];
+        list.push(entry);
+        acc[entry.profile_id] = list;
+        return acc;
+      },
+      {}
+    );
+
+    const cityCounts: Record<string, number> = {};
+
+    profiles.forEach((profile) => {
+      const entries = historyByProfile[profile.id] || [];
+      let label: string | null = null;
+
+      if (entries.length > 0) {
+        const sorted = [...entries].sort(
+          (a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime()
+        );
+        const last = sorted[sorted.length - 1];
+        if (last.city || last.country) {
+          label = last.city
+            ? last.country
+              ? `${last.city}, ${last.country}`
+              : last.city
+            : last.country!;
+        }
+      }
+
+      if (profile.city || profile.country) {
+        label = profile.city
+          ? profile.country
+            ? `${profile.city}, ${profile.country}`
+            : profile.city
+          : profile.country!;
+      }
+
+      if (!label) return;
+      cityCounts[label] = (cityCounts[label] || 0) + 1;
+    });
+
+    return Object.entries(cityCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([city, count]) => ({ city, count }));
+  }, [history, profiles]);
+
   const cohortBreakdown = useMemo(() => {
     const grouped = profiles.reduce<Record<string, Profile[]>>((acc, profile) => {
       const cohort = profile.cohort ? profile.cohort.toString() : 'Unknown';
@@ -269,16 +337,43 @@ const Gawk = () => {
     }).sort((a, b) => a.cohort.localeCompare(b.cohort));
   }, [profiles]);
 
+  const cohortProgramBreakdown = useMemo(() => {
+    const grouped = profiles.reduce<Record<string, Profile[]>>((acc, profile) => {
+      const cohort = profile.cohort ? profile.cohort.toString() : 'Unknown';
+      acc[cohort] = acc[cohort] ? [...acc[cohort], profile] : [profile];
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([cohort, list]) => {
+        const bscCount = list.filter(p => !p.msc).length;
+        const mscCount = list.filter(p => p.msc).length;
+        const total = list.length || 1;
+        const bscRate = Math.round((bscCount / total) * 100);
+        const mscRate = Math.round((mscCount / total) * 100);
+        return { cohort, bscCount, mscCount, bscRate, mscRate, total };
+      })
+      .sort((a, b) => a.cohort.localeCompare(b.cohort));
+  }, [profiles]);
+
   const leaderboards = useMemo(() => {
     const byProfile = history.reduce<Record<string, ProfileHistory[]>>((acc, entry) => {
       acc[entry.profile_id] = acc[entry.profile_id] ? [...acc[entry.profile_id], entry] : [entry];
       return acc;
     }, {});
 
-    const getProfileName = (id: string) => profiles.find(p => p.id === id)?.full_name || 'Unknown user';
+    const getProfileForId = (id: string) => profiles.find(p => p.id === id) || null;
+
+    const getProfileName = (id: string) => getProfileForId(id)?.full_name || 'Unknown user';
+    const getProfileAvatar = (id: string) => getProfileForId(id)?.avatar_url || null;
 
     const historyCounts = Object.entries(byProfile)
-      .map(([id, entries]) => ({ id, name: getProfileName(id), count: entries.length }))
+      .map(([id, entries]) => ({
+        id,
+        name: getProfileName(id),
+        avatarUrl: getProfileAvatar(id),
+        count: entries.length,
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 3);
 
@@ -289,17 +384,27 @@ const Gawk = () => {
           cities.add(e.country ? `${e.city}, ${e.country}` : e.city);
         }
       });
-      const profileCity = profiles.find(p => p.id === id)?.city;
+      const profileCity = getProfileForId(id)?.city;
       if (profileCity) cities.add(profileCity);
-      return { id, name: getProfileName(id), cityCount: cities.size };
+      return {
+        id,
+        name: getProfileName(id),
+        avatarUrl: getProfileAvatar(id),
+        cityCount: cities.size,
+      };
     }).sort((a, b) => b.cityCount - a.cityCount).slice(0, 3);
 
     const employerHoppers = Object.entries(byProfile).map(([id, entries]) => {
       const companies = new Set<string>();
       entries.forEach(e => e.company && companies.add(e.company));
-      const profileCompany = profiles.find(p => p.id === id)?.company;
+      const profileCompany = getProfileForId(id)?.company;
       if (profileCompany) companies.add(profileCompany);
-      return { id, name: getProfileName(id), companyCount: companies.size };
+      return {
+        id,
+        name: getProfileName(id),
+        avatarUrl: getProfileAvatar(id),
+        companyCount: companies.size,
+      };
     }).sort((a, b) => b.companyCount - a.companyCount).slice(0, 3);
 
     return { historyCounts, jetsetters, employerHoppers };
@@ -646,6 +751,39 @@ const Gawk = () => {
               ))}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cohort / program mix</CardTitle>
+              <CardDescription>BSc vs MSc share within each cohort</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {cohortProgramBreakdown.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No cohort data yet</p>
+              ) : cohortProgramBreakdown.map((row) => (
+                <div key={row.cohort} className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">Cohort {row.cohort}</p>
+                    <Badge variant="outline">{row.total} ppl</Badge>
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>BSc</span>
+                      <span className="font-medium">
+                        {row.bscCount} ({row.bscRate}%)
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>MSc</span>
+                      <span className="font-medium">
+                        {row.mscCount} ({row.mscRate}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="mobility" className="space-y-4">
@@ -688,27 +826,37 @@ const Gawk = () => {
                   </div>
                 ) : recentMovers.length > 0 ? (
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    {recentMovers.map((mover) => (
-                      <div
-                        key={mover.id}
-                        className="p-3 border rounded-lg space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium">{mover.name}</p>
-                          <Badge variant="outline" className="text-xs">
-                            {mover.cityCount} cities
-                          </Badge>
+                    {recentMovers.map((mover) => {
+                      const moverProfile = profiles.find((p) => p.id === mover.id) || null;
+                      return (
+                        <div
+                          key={mover.id}
+                          className="p-3 border rounded-lg space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <ProfileAvatar
+                                src={moverProfile?.avatar_url || null}
+                                fullName={mover.name}
+                                size="sm"
+                              />
+                              <p className="font-medium">{mover.name}</p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {mover.cityCount} cities
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {mover.path.map((step, index) => (
+                              <span key={`${mover.id}-${index}`}>
+                                {index > 0 && <span className="mx-1">→</span>}
+                                <span>{step.cityLabel}</span>
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {mover.path.map((step, index) => (
-                            <span key={`${mover.id}-${index}`}>
-                              {index > 0 && <span className="mx-1">→</span>}
-                              <span>{step.cityLabel}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -813,7 +961,14 @@ const Gawk = () => {
                 ) : leaderboards.historyCounts.length > 0 ? (
                   leaderboards.historyCounts.map((entry) => (
                     <div key={entry.id} className="flex items-center justify-between p-2 border rounded-lg">
-                      <p className="font-medium">{entry.name}</p>
+                      <div className="flex items-center gap-2">
+                        <ProfileAvatar
+                          src={entry.avatarUrl}
+                          fullName={entry.name}
+                          size="sm"
+                        />
+                        <p className="font-medium">{entry.name}</p>
+                      </div>
                       <Badge variant="outline">{entry.count}</Badge>
                     </div>
                   ))
@@ -836,7 +991,14 @@ const Gawk = () => {
                 ) : leaderboards.jetsetters.length > 0 ? (
                   leaderboards.jetsetters.map((entry) => (
                     <div key={entry.id} className="flex items-center justify-between p-2 border rounded-lg">
-                      <p className="font-medium">{entry.name}</p>
+                      <div className="flex items-center gap-2">
+                        <ProfileAvatar
+                          src={entry.avatarUrl}
+                          fullName={entry.name}
+                          size="sm"
+                        />
+                        <p className="font-medium">{entry.name}</p>
+                      </div>
                       <Badge variant="outline">{entry.cityCount} cities</Badge>
                     </div>
                   ))
@@ -859,7 +1021,14 @@ const Gawk = () => {
                 ) : leaderboards.employerHoppers.length > 0 ? (
                   leaderboards.employerHoppers.map((entry) => (
                     <div key={entry.id} className="flex items-center justify-between p-2 border rounded-lg">
-                      <p className="font-medium">{entry.name}</p>
+                      <div className="flex items-center gap-2">
+                        <ProfileAvatar
+                          src={entry.avatarUrl}
+                          fullName={entry.name}
+                          size="sm"
+                        />
+                        <p className="font-medium">{entry.name}</p>
+                      </div>
                       <Badge variant="outline">{entry.companyCount} employers</Badge>
                     </div>
                   ))
@@ -868,9 +1037,90 @@ const Gawk = () => {
                 )}
               </CardContent>
             </Card>
-          </div>
 
-       
+            <Card>
+              <CardHeader>
+                <CardTitle>Biggest residency hirers</CardTitle>
+                <CardDescription>Residency partners with the most ISE alumni</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dataLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : residencyLeaders.length > 0 ? (
+                  residencyLeaders.slice(0, 3).map((partner) => (
+                    <div key={partner.name} className="flex items-center justify-between p-2 border rounded-lg">
+                      <div className="flex flex-col">
+                        <p className="font-medium">{partner.name}</p>
+                        <span className="text-xs text-muted-foreground">
+                          {partner.percentage}% of eligible alumni
+                        </span>
+                      </div>
+                      <Badge variant="outline">{partner.count} ppl</Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No residency partner matches yet
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Champion-heavy companies</CardTitle>
+                <CardDescription>Companies with the most ISE champions</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dataLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : championCompanies.length > 0 ? (
+                  championCompanies.map((item) => (
+                    <div key={item.company} className="flex items-center justify-between p-2 border rounded-lg">
+                      <p className="font-medium">{item.company}</p>
+                      <Badge variant="outline">{item.count} champions</Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No champion company data yet
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Destination cities</CardTitle>
+                <CardDescription>Where alumni are currently clustered</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dataLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : destinationCities.length > 0 ? (
+                  destinationCities.map((item) => (
+                    <div key={item.city} className="flex items-center justify-between p-2 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <p className="font-medium">{item.city}</p>
+                      </div>
+                      <Badge variant="outline">{item.count}</Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No destination city data yet
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
