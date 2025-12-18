@@ -769,8 +769,12 @@ const MapPage = () => {
                       )
                         .sort((a, b) => a - b)
                         .map(cohort => (
-                          <Badge key={cohort} variant="outline" className="text-xs">
-                            {cohort}
+                          <Badge
+                            key={cohort}
+                            variant="secondary"
+                            className={`text-xs ${getCohortBadgeClass(cohort)}`}
+                          >
+                            Cohort {cohort}
                           </Badge>
                         ))}
                     </div>
