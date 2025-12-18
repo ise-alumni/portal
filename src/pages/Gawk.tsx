@@ -717,11 +717,10 @@ const Gawk = () => {
                 )}
               </CardContent>
             </Card>
-          </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Cohort / program breakdown</CardTitle>
+              <CardTitle>Cohort Employment</CardTitle>
               <CardDescription>Employment + entrepreneurship share by cohort</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -754,7 +753,7 @@ const Gawk = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Cohort / program mix</CardTitle>
+              <CardTitle>Cohort Program Mix</CardTitle>
               <CardDescription>BSc vs MSc share within each cohort</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -784,6 +783,7 @@ const Gawk = () => {
               ))}
             </CardContent>
           </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="mobility" className="space-y-4">
@@ -791,7 +791,6 @@ const Gawk = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Location leaders</CardTitle>
-                <CardDescription>Top cities touched by profiles or history</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {dataLoading ? (
@@ -912,7 +911,7 @@ const Gawk = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Most popular residency partners</CardTitle>
+              <CardTitle>Breakdown </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {dataLoading ? (
@@ -950,8 +949,8 @@ const Gawk = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle>“Biggest gawker”</CardTitle>
-                <CardDescription>Most history entries (proxy for edits/engagement)</CardDescription>
+                <CardTitle>Biggest gawker</CardTitle>
+                <CardDescription>Most logins to the site</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {analyticsLoading ? (

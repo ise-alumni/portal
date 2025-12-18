@@ -1961,7 +1961,7 @@ const Dashboard = () => {
                       color: "hsl(var(--chart-1))",
                     },
                   }}
-                  className="h-64"
+                  className="h-64 w-full"
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={signInsData}>

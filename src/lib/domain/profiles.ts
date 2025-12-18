@@ -290,27 +290,36 @@ export interface SignInData {
 export async function getSignInsOverTime(days: number = 30): Promise<SignInData[]> {
   try {
     const profiles = await getProfiles();
-    
-    // Group sign-ins by date (using updated_at as proxy for last activity)
-    const signInsByDate = profiles.reduce((acc, profile) => {
-      const date = new Date(profile.updated_at).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-      });
-      
-      const existing = acc.find(item => item.date === date);
-      if (existing) {
-        existing.count++;
-      } else {
-        acc.push({ date, count: 1 });
-      }
-      return acc;
-    }, [] as SignInData[]);
 
-    // Sort by date and limit to requested days
-    return signInsByDate
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(-days);
+    const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    // Group sign-ins by date label, using updated_at as proxy for last activity
+    const map = profiles.reduce(
+      (acc, profile) => {
+        const updatedAt = profile.updated_at ? new Date(profile.updated_at) : null;
+        if (!updatedAt || updatedAt < cutoffDate) return acc;
+
+        const label = updatedAt.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        });
+
+        const existing = acc.get(label);
+        if (existing) {
+          existing.count += 1;
+          existing.latest = Math.max(existing.latest, updatedAt.getTime());
+        } else {
+          acc.set(label, { label, count: 1, latest: updatedAt.getTime() });
+        }
+
+        return acc;
+      },
+      new Map<string, { label: string; count: number; latest: number }>()
+    );
+
+    return Array.from(map.values())
+      .sort((a, b) => a.latest - b.latest)
+      .map((item) => ({ date: item.label, count: item.count }));
   } catch (error) {
     log.error('Error in getSignInsOverTime:', error);
     return [];
