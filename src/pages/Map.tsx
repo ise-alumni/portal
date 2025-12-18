@@ -327,6 +327,42 @@ const MapPage = () => {
     });
   }, [alumniData, companyFilter, cohortFilter, gradYearFilter, degreeFilter]);
 
+  // Filter movement paths based on the same criteria
+  const filteredMovementPaths = useMemo(() => {
+    if (viewMode !== "overtime") return movementPaths;
+    
+    return movementPaths.filter((path) => {
+      // Check if any location in the path matches the filters
+      return path.locations.some((location) => {
+        const matchesCompany = companyFilter
+          ? location.company?.toLowerCase().includes(companyFilter.toLowerCase())
+          : true;
+
+        // For cohort and graduation year, we need to fetch the user's current profile data
+        // since history doesn't track these fields. We'll use a simple approach by checking
+        // if the user ID exists in our alumni data and matches the filters.
+        const userProfile = alumniData.find(alumni => alumni.id === path.userId);
+        
+        const matchesCohort = cohortFilter
+          ? userProfile?.cohort === Number(cohortFilter)
+          : true;
+
+        const matchesGradYear = gradYearFilter
+          ? userProfile?.graduationYear === Number(gradYearFilter)
+          : true;
+
+        const matchesDegree =
+          degreeFilter === "all"
+            ? true
+            : degreeFilter === "msc"
+              ? userProfile?.msc === true
+              : userProfile?.msc === false;
+
+        return matchesCompany && matchesCohort && matchesGradYear && matchesDegree;
+      });
+    });
+  }, [movementPaths, viewMode, companyFilter, cohortFilter, gradYearFilter, degreeFilter, alumniData]);
+
   // Heatmap data
   const heatmapData = {
     type: 'FeatureCollection' as const,
@@ -401,17 +437,6 @@ const MapPage = () => {
             <ClockIcon className="w-4 h-4" />
             Over Time
           </Button>
-          {viewMode === "current" && (
-            <Button
-              variant={showHeatmap ? "default" : "outline"}
-              size="sm"
-              onClick={toggleHeatmap}
-              className="flex items-center gap-2"
-            >
-              <UsersIcon className="w-4 h-4" />
-              {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
-            </Button>
-          )}
         </div>
       </div>
 
@@ -466,7 +491,7 @@ const MapPage = () => {
         <div className="px-6 pb-4 text-sm text-muted-foreground">
           {viewMode === "current" 
             ? `Showing ${filteredAlumni.length} of ${alumniData.length} alumni`
-            : `Showing ${movementPaths.length} movement paths`
+            : `Showing ${filteredMovementPaths.length} of ${movementPaths.length} movement paths`
           }
         </div>
       </Card>
@@ -516,7 +541,7 @@ const MapPage = () => {
                   )}
 
                    {/* Movement Paths */}
-                   {viewMode === "overtime" && movementPaths.map((path, index) => (
+                   {viewMode === "overtime" && filteredMovementPaths.map((path, index) => (
                      <Source key={`path-${path.userId}`} type="geojson" data={{
                        type: 'Feature',
                        geometry: {
@@ -542,7 +567,7 @@ const MapPage = () => {
                    ))}
 
                    {/* Movement Path Markers */}
-                   {viewMode === "overtime" && movementPaths.flatMap((path) =>
+                   {viewMode === "overtime" && filteredMovementPaths.flatMap((path) =>
                      path.coordinates.map((coord, index) => (
                        <Marker
                          key={`${path.userId}-marker-${index}`}
@@ -643,6 +668,17 @@ const MapPage = () => {
 
         {/* Stats Sidebar */}
         <div className="space-y-4">
+          {viewMode === "current" && (
+            <Button
+              variant={showHeatmap ? "default" : "outline"}
+              size="sm"
+              onClick={toggleHeatmap}
+              className="flex items-center gap-2 w-full"
+            >
+              <UsersIcon className="w-4 h-4" />
+              {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
+            </Button>
+          )}
           {viewMode === "current" ? (
             <>
               <Card className="border-2 border-foreground shadow-none">
@@ -704,19 +740,19 @@ const MapPage = () => {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Users with Paths</span>
-                    <Badge variant="secondary">{movementPaths.length}</Badge>
+                    <Badge variant="secondary">{filteredMovementPaths.length}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Total Movements</span>
                     <Badge variant="secondary">
-                      {movementPaths.reduce((sum, path) => sum + path.locations.length, 0)}
+                      {filteredMovementPaths.reduce((sum, path) => sum + path.locations.length, 0)}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Countries Visited</span>
                     <Badge variant="secondary">
                       {new Set(
-                        movementPaths.flatMap(path => 
+                        filteredMovementPaths.flatMap(path => 
                           path.locations.filter(l => l.country).map(l => l.country)
                         )
                       ).size}
@@ -734,7 +770,7 @@ const MapPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {movementPaths.slice(0, 10).map((path) => (
+                    {filteredMovementPaths.slice(0, 10).map((path) => (
                       <div 
                         key={path.userId} 
                         className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted p-1 rounded"
@@ -750,7 +786,7 @@ const MapPage = () => {
                         </Badge>
                       </div>
                     ))}
-                    {movementPaths.length === 0 && (
+                    {filteredMovementPaths.length === 0 && (
                       <p className="text-xs text-muted-foreground">No movement paths found</p>
                     )}
                   </div>
