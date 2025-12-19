@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +38,7 @@ interface DashboardResidencyTabProps {
   setPartnerForm: (form: DashboardResidencyTabProps['partnerForm']) => void;
 }
 
-export function DashboardResidencyTab({
+export const DashboardResidencyTab = memo(function DashboardResidencyTab({
   residencyPartners,
   residencyStats,
   residencyFilter,
@@ -373,5 +374,5 @@ export function DashboardResidencyTab({
       </Dialog>
     </div>
   );
-}
+});
 

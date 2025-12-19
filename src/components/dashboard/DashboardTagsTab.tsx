@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,7 @@ interface DashboardTagsTabProps {
   setTags: (tags: Tag[]) => void;
 }
 
-export function DashboardTagsTab({
+export const DashboardTagsTab = memo(function DashboardTagsTab({
   tags,
   tagsLoading,
   newTag,
@@ -146,5 +147,5 @@ export function DashboardTagsTab({
       </Card>
     </div>
   );
-}
+});
 

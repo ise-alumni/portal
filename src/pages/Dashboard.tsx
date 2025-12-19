@@ -176,32 +176,64 @@ const Dashboard = () => {
   }, [user, loading, navigate]);
 
 
-  // Fetch dashboard data
+  // Fetch dashboard data, analytics, and tags (consolidated - all have same dependencies)
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchAllData = async () => {
       if (!user || !profile) return;
       
       try {
+        // Set all loading states
         setDataLoading(true);
-        const [profilesData, alumniProfilesData, eventsData, announcementsData] = await Promise.all([
+        setAnalyticsLoading(true);
+        setTagsLoading(true);
+        
+        // Fetch all data in parallel
+        const [
+          profilesData,
+          alumniProfilesData,
+          eventsData,
+          announcementsData,
+          analyticsStats,
+          signIns,
+          changes,
+          userActivityData,
+          tagsData
+        ] = await Promise.all([
           getProfiles(),
           getAlumniProfiles(),
           getEvents(),
-          getAnnouncements()
+          getAnnouncements(),
+          getProfileHistoryStats(),
+          getSignInsOverTime(30),
+          getAllFieldChanges(),
+          getUserActivity(),
+          getTags()
         ]);
         
+        // Set dashboard data
         setProfiles(profilesData);
         setAlumniProfiles(alumniProfilesData);
         setEvents(eventsData);
         setAnnouncements(announcementsData);
+        
+        // Set analytics data
+        setProfileHistoryStats(analyticsStats);
+        setSignInsData(signIns);
+        setFieldChanges(changes);
+        setUserActivity(userActivityData);
+        
+        // Set tags data
+        setTags(tagsData);
       } catch (error) {
         log.error('Error fetching dashboard data:', error);
       } finally {
         setDataLoading(false);
+        setAnalyticsLoading(false);
+        setTagsLoading(false);
       }
     };
 
-    fetchDashboardData();
+    fetchAllData();
   }, [user, profile]);
 
   // Calculate statistics with useMemo
@@ -273,38 +305,10 @@ const Dashboard = () => {
       .slice(0, 5);
   }, [alumniProfiles, events, announcements]);
 
-  // Fetch analytics data
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      if (!user || !profile) return;
-      
-      try {
-        setAnalyticsLoading(true);
-        const [stats, signIns, changes, userActivityData] = await Promise.all([
-          getProfileHistoryStats(),
-          getSignInsOverTime(30),
-          getAllFieldChanges(),
-          getUserActivity()
-        ]);
-        
-        setProfileHistoryStats(stats);
-        setSignInsData(signIns);
-        setFieldChanges(changes);
-        setUserActivity(userActivityData);
-      } catch (error) {
-        log.error('Error fetching analytics data:', error);
-      } finally {
-        setAnalyticsLoading(false);
-      }
-    };
-
-    fetchAnalyticsData();
-  }, [user, profile]);
-
-  // Fetch residency data
+  // Fetch residency data (separate effect - depends on profiles)
   useEffect(() => {
     const fetchResidencyData = async () => {
-      if (!user || !profile) return;
+      if (!user || !profile || profiles.length === 0) return;
       
       try {
         setResidencyLoading(true);
@@ -324,25 +328,6 @@ const Dashboard = () => {
 
     fetchResidencyData();
   }, [user, profile, profiles]);
-
-  // Fetch tags data
-  useEffect(() => {
-    const fetchTagsData = async () => {
-      if (!user || !profile) return;
-      
-      try {
-        setTagsLoading(true);
-        const tagsData = await getTags();
-        setTags(tagsData);
-      } catch (error) {
-        log.error('Error fetching tags data:', error);
-      } finally {
-        setTagsLoading(false);
-      }
-    };
-
-    fetchTagsData();
-  }, [user, profile]);
 
   // Residency partner handlers with useCallback
   const handleCreatePartner = useCallback(async () => {

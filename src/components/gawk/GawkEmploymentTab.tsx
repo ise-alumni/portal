@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -50,7 +51,7 @@ interface GawkEmploymentTabProps {
   cohortProgramBreakdown: CohortProgramBreakdownItem[];
 }
 
-export function GawkEmploymentTab({
+export const GawkEmploymentTab = memo(function GawkEmploymentTab({
   dataLoading,
   analyticsLoading,
   employmentBreakdown,
@@ -242,5 +243,5 @@ export function GawkEmploymentTab({
       </div>
     </div>
   );
-}
+}););
 

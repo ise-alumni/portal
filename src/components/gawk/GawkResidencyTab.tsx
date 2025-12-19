@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, BarChart3 } from 'lucide-react';
@@ -21,7 +22,7 @@ interface GawkResidencyTabProps {
   companyLogoMap: ReturnType<typeof import('@/lib/utils/companyLogo').buildCompanyLogoMap> | null;
 }
 
-export function GawkResidencyTab({
+export const GawkResidencyTab = memo(function GawkResidencyTab({
   dataLoading,
   residencyStats,
   residencyPartners,
@@ -116,5 +117,5 @@ export function GawkResidencyTab({
       </Card>
     </div>
   );
-}
+});
 

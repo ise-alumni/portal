@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -30,7 +31,7 @@ interface DashboardAnalyticsTabProps {
   dataLoading: boolean;
 }
 
-export function DashboardAnalyticsTab({
+export const DashboardAnalyticsTab = memo(function DashboardAnalyticsTab({
   profiles,
   profileHistoryStats,
   signInsData,
@@ -212,5 +213,5 @@ export function DashboardAnalyticsTab({
       </Card>
     </div>
   );
-}
+});
 

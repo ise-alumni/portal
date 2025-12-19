@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,7 @@ interface DashboardAnnouncementsTabProps {
   dataLoading: boolean;
 }
 
-export function DashboardAnnouncementsTab({
+export const DashboardAnnouncementsTab = memo(function DashboardAnnouncementsTab({
   announcements,
   announcementsFilter,
   announcementsSort,
@@ -137,5 +138,5 @@ export function DashboardAnnouncementsTab({
       </Card>
     </div>
   );
-}
+});
 

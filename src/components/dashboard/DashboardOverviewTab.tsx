@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, Calendar, Megaphone, TrendingUp, UserPlus } from 'lucide-react';
@@ -35,7 +36,7 @@ interface DashboardOverviewTabProps {
   recentActivity: RecentActivity[];
 }
 
-export function DashboardOverviewTab({
+export const DashboardOverviewTab = memo(function DashboardOverviewTab({
   profiles,
   alumniProfiles,
   events,
@@ -191,5 +192,5 @@ export function DashboardOverviewTab({
       </div>
     </div>
   );
-}
+});
 

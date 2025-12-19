@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -22,7 +23,7 @@ interface GawkOverviewTabProps {
   recentHistory: ProfileHistory[];
 }
 
-export function GawkOverviewTab({
+export const GawkOverviewTab = memo(function GawkOverviewTab({
   analyticsLoading,
   historyStats,
   totalSignIns,
@@ -166,5 +167,5 @@ export function GawkOverviewTab({
       </div>
     </div>
   );
-}
+});
 

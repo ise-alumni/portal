@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ interface DashboardUsersTabProps {
   setAddUserForm: (form: DashboardUsersTabProps['addUserForm']) => void;
 }
 
-export function DashboardUsersTab({
+export const DashboardUsersTab = memo(function DashboardUsersTab({
   userActivity,
   profiles,
   usersFilter,
@@ -352,5 +352,5 @@ export function DashboardUsersTab({
       </Card>
     </div>
   );
-}
+});
 

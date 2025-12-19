@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, MapPin } from 'lucide-react';
@@ -25,7 +26,7 @@ interface GawkMobilityTabProps {
   profiles: Profile[];
 }
 
-export function GawkMobilityTab({
+export const GawkMobilityTab = memo(function GawkMobilityTab({
   dataLoading,
   analyticsLoading,
   locationLeaders,
@@ -114,5 +115,5 @@ export function GawkMobilityTab({
       </div>
     </div>
   );
-}
+});
 

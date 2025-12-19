@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, MapPin } from 'lucide-react';
@@ -50,7 +51,7 @@ interface GawkLeaderboardsTabProps {
   profiles: Profile[];
 }
 
-export function GawkLeaderboardsTab({
+export const GawkLeaderboardsTab = memo(function GawkLeaderboardsTab({
   analyticsLoading,
   dataLoading,
   leaderboards,
@@ -259,5 +260,5 @@ export function GawkLeaderboardsTab({
       </div>
     </div>
   );
-}
+});
 
