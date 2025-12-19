@@ -27,6 +27,8 @@ const { log } = await import('@/lib/utils/logger')
 const {
   getAnnouncements,
   getAnnouncementById,
+  deleteAnnouncement,
+  getAnnouncementsByUserId,
   isAnnouncementExpired,
   isAnnouncementActive,
   createAnnouncement
@@ -393,6 +395,145 @@ describe('Announcements domain functions', () => {
 
       expect(log.error).toHaveBeenCalledWith('Error creating announcement:', mockError)
       expect(result).toBeNull()
+    })
+  })
+
+  describe('deleteAnnouncement', () => {
+    it('should delete announcement successfully', async () => {
+      const announcementId = 'announcement-123'
+
+      const mockEq = vi.fn().mockResolvedValue({ error: null })
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq })
+      mockedSupabase.from.mockReturnValue({ delete: mockDelete })
+
+      const result = await deleteAnnouncement(announcementId)
+
+      expect(mockedSupabase.from).toHaveBeenCalledWith('announcements')
+      expect(mockDelete).toHaveBeenCalled()
+      expect(mockEq).toHaveBeenCalledWith('id', announcementId)
+      expect(result).toBe(true)
+    })
+
+    it('should handle deletion errors', async () => {
+      const announcementId = 'announcement-123'
+      const error = { message: 'Delete failed' }
+
+      const mockEq = vi.fn().mockResolvedValue({ error })
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq })
+      mockedSupabase.from.mockReturnValue({ delete: mockDelete })
+
+      const result = await deleteAnnouncement(announcementId)
+
+      expect(log.error).toHaveBeenCalledWith('Error deleting announcement:', error)
+      expect(result).toBe(false)
+    })
+
+    it('should handle unexpected errors', async () => {
+      const announcementId = 'announcement-123'
+
+      mockedSupabase.from.mockImplementation(() => {
+        throw new Error('Network error')
+      })
+
+      const result = await deleteAnnouncement(announcementId)
+
+      expect(log.error).toHaveBeenCalledWith('Error in deleteAnnouncement:', expect.any(Error))
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('getAnnouncementsByUserId', () => {
+    it('should fetch announcements by user id successfully', async () => {
+      const userId = 'user-123'
+      const mockAnnouncements = [
+        {
+          id: '1',
+          title: 'Test Announcement',
+          content: 'Test content',
+          external_url: null,
+          deadline: null,
+          image_url: null,
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+          created_by: userId,
+          slug: 'test-announcement',
+          organiser_profile_id: null,
+          organiser: null,
+          announcement_tags: []
+        }
+      ]
+
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: mockAnnouncements,
+        error: null
+      })
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getAnnouncementsByUserId(userId)
+
+      expect(mockedSupabase.from).toHaveBeenCalledWith('announcements')
+      expect(mockEq).toHaveBeenCalledWith('created_by', userId)
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('1')
+      expect(result[0].title).toBe('Test Announcement')
+      expect(result[0].image_url).toBe('https://placehold.co/600x400')
+      expect(result[0].tags).toEqual([])
+    })
+
+    it('should handle empty results', async () => {
+      const userId = 'user-123'
+
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: [],
+        error: null
+      })
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getAnnouncementsByUserId(userId)
+
+      expect(result).toEqual([])
+    })
+
+    it('should handle database errors', async () => {
+      const userId = 'user-123'
+      const mockError = new Error('Database error')
+
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: null,
+        error: mockError
+      })
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getAnnouncementsByUserId(userId)
+
+      expect(log.error).toHaveBeenCalledWith('Error fetching announcements by user ID:', mockError)
+      expect(result).toEqual([])
+    })
+
+    it('should handle null data', async () => {
+      const userId = 'user-123'
+
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: null,
+        error: null
+      })
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getAnnouncementsByUserId(userId)
+
+      expect(result).toEqual([])
     })
   })
 })
