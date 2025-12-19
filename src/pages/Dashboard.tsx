@@ -142,7 +142,6 @@ const Dashboard = () => {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [addUserForm, setAddUserForm] = useState({
     email: '',
-    password: '',
     fullName: '',
     graduationYear: '',
     userType: 'Alum' as 'Alum' | 'Admin' | 'Staff',
@@ -417,7 +416,6 @@ const Dashboard = () => {
       
       const result = await createUserWithProfile({
         email: addUserForm.email,
-        password: addUserForm.password,
         fullName: addUserForm.fullName,
         graduationYear: addUserForm.graduationYear,
         userType: addUserForm.userType,
@@ -436,7 +434,6 @@ const Dashboard = () => {
       // Reset form and close modal
       setAddUserForm({
         email: '',
-        password: '',
         fullName: '',
         graduationYear: '',
         userType: 'Alum',

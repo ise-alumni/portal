@@ -29,7 +29,6 @@ interface DashboardUsersTabProps {
   setSelectedUserForRemoval: (user: UserActivity | null) => void;
   addUserForm: {
     email: string;
-    password: string;
     fullName: string;
     graduationYear: string;
     userType: 'Alum' | 'Admin' | 'Staff';
@@ -111,7 +110,7 @@ export const DashboardUsersTab = memo(function DashboardUsersTab({
                 <DialogHeader>
                   <DialogTitle>Create New User</DialogTitle>
                   <DialogDescription>
-                    Add a new user to the system with their profile information.
+                    Add a new user to the system. They will receive an email to set their password.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -123,16 +122,6 @@ export const DashboardUsersTab = memo(function DashboardUsersTab({
                       value={addUserForm.email}
                       onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })}
                       placeholder="user@example.com"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={addUserForm.password}
-                      onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
-                      placeholder="Enter password"
                     />
                   </div>
                   <div className="grid gap-2">

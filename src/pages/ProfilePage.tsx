@@ -283,7 +283,7 @@ const ProfilePage = () => {
               {/* Contact Section */}
               <div className="pb-4">
                 <div className="space-y-3">
-                  {profile.email_visible && profile.email && (
+                  {profile.email && (
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-muted-foreground" />
                       <a 
@@ -292,13 +292,6 @@ const ProfilePage = () => {
                       >
                         {profile.email}
                       </a>
-                    </div>
-                  )}
-
-                  {!profile.email_visible && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">(email hidden)</span>
                     </div>
                   )}
 

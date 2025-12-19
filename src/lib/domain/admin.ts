@@ -4,7 +4,6 @@ import { getProfiles, getUserActivity } from './profiles';
 
 export interface CreateUserProfileData {
   email: string;
-  password: string;
   fullName: string;
   graduationYear?: string;
   userType: 'Alum' | 'Admin' | 'Staff';
@@ -24,10 +23,9 @@ export async function createUserWithProfile(
   profileData: CreateUserProfileData
 ): Promise<CreateUserResult> {
   try {
-    // Create auth user
+    // Create auth user without password - they will receive an email to set their password
     const { error: signUpError } = await supabase.auth.signUp({
       email: profileData.email,
-      password: profileData.password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
         data: {
