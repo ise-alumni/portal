@@ -1,12 +1,10 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { useNavigate, Link } from "react-router-dom";
 import { LogOut  } from "lucide-react";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerClose, DrawerTitle } from "@/components/ui/drawer";
-import { supabase } from '@/integrations/supabase/client';
-import { ProfileRow } from '@/integrations/supabase/types';
-import { log } from '@/lib/utils/logger';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,29 +12,8 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const { user, loading, signOut } = useAuth();
+  const { profile } = useUserProfile();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) throw error;
-        setProfile(data);
-      } catch (error) {
-        log.error('Error fetching profile:', error);
-      }
-    };
-
-    fetchProfile();
-  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -148,7 +125,7 @@ const Layout = ({ children }: LayoutProps) => {
       </header>
 
       <main className="container mx-auto px-4 py-10 flex-1">
-        {!loading && user && children}
+        {!loading && user && profile && children}
       </main>
 
       <footer className="border-t-2 border-foreground">

@@ -16,24 +16,23 @@ import { getResidencyPartners, getResidencyStats } from '@/lib/domain/residency'
 import { type ResidencyPartner, type ResidencyStats } from '@/lib/types/residency';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Loader2, ShieldAlert, BarChart3, RefreshCcw, Home, MapPin, Briefcase } from 'lucide-react';
-import { ProfileAvatar } from '@/components/ui/profile-avatar';
-import { formatDateShort } from '@/lib/utils/date';
-import { supabase } from '@/integrations/supabase/client';
+import { Loader2, ShieldAlert, BarChart3, RefreshCcw, Home } from 'lucide-react';
 import { log } from '@/lib/utils/logger';
-import { CompanyLogo } from '@/components/CompanyLogo';
-import { buildCompanyLogoMap, getCompanyLogoUrl } from '@/lib/utils/companyLogo';
-import { getCohortBadgeClass } from '@/lib/utils/ui';
+import { buildCompanyLogoMap } from '@/lib/utils/companyLogo';
+import { useUserProfile } from '@/hooks/useUserProfile';
+
+// Import extracted tab components
+import { GawkOverviewTab } from '@/components/gawk/GawkOverviewTab';
+import { GawkEmploymentTab } from '@/components/gawk/GawkEmploymentTab';
+import { GawkMobilityTab } from '@/components/gawk/GawkMobilityTab';
+import { GawkResidencyTab } from '@/components/gawk/GawkResidencyTab';
+import { GawkLeaderboardsTab } from '@/components/gawk/GawkLeaderboardsTab';
 
 const Gawk = () => {
   const { user, loading } = useAuth();
+  const { profile, loading: profileLoading } = useUserProfile();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
 
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
@@ -51,28 +50,6 @@ const Gawk = () => {
   const [residencyPartners, setResidencyPartners] = useState<ResidencyPartner[]>([]);
   const [companyLogoMap, setCompanyLogoMap] = useState<ReturnType<typeof buildCompanyLogoMap> | null>(null);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) throw error;
-        setProfile(data);
-      } catch (error) {
-        log.error('Error fetching profile in Gawk:', error);
-      } finally {
-        setProfileLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [user]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -491,682 +468,59 @@ const Gawk = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Profile changes</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {analyticsLoading ? '--' : historyStats?.totalChanges || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">All-time tracked updates</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Sign-ins (90d)</CardTitle>
-                <Loader2 className={`h-4 w-4 ${analyticsLoading ? 'animate-spin' : 'text-muted-foreground'}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {analyticsLoading ? '--' : totalSignIns}
-                </div>
-                <p className="text-xs text-muted-foreground">Total auth events in last 90 days</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Recent unique users</CardTitle>
-                <Home className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {analyticsLoading ? '--' : uniqueRecentUsers}
-                </div>
-                <p className="text-xs text-muted-foreground">Users with a recorded sign-in</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sign-ins over time</CardTitle>
-                <CardDescription>90-day activity trend (auth events)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : signIns.length > 0 ? (
-                  <ChartContainer
-                    config={{
-                      count: {
-                        label: "Sign-ins",
-                        color: "hsl(var(--chart-1))",
-                      },
-                    }}
-                    className="h-64"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={signIns}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line 
-                          type="monotone" 
-                          dataKey="count" 
-                          stroke="hsl(var(--primary))" 
-                          strokeWidth={2}
-                          dot={{ fill: "hsl(var(--primary))" }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64 text-muted-foreground">
-                    <p>No sign-in data yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Latest profile history slices</CardTitle>
-                <CardDescription>Lightweight peek at recent `profiles_history` rows</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : recentHistory.length > 0 ? (
-                  <div className="space-y-3">
-                    {recentHistory.map((entry) => (
-                      <div key={entry.id} className="flex items-start justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{entry.job_title || 'Role TBD'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {entry.company || 'Company n/a'} • {entry.city || 'City n/a'}
-                          </p>
-                          <div className="flex gap-2 mt-2">
-                            {entry.professional_status && (
-                              <Badge variant="outline" className="text-xs">
-                                {entry.professional_status}
-                              </Badge>
-                            )}
-                            {entry.change_type && (
-                              <Badge variant={entry.change_type === 'INSERT' ? 'default' : 'secondary'} className="text-xs">
-                                {entry.change_type}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right text-sm text-muted-foreground">
-                          {formatDateShort(entry.changed_at)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No history records to preview</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <GawkOverviewTab
+            analyticsLoading={analyticsLoading}
+            historyStats={historyStats}
+            totalSignIns={totalSignIns}
+            uniqueRecentUsers={uniqueRecentUsers}
+            signIns={signIns}
+            recentHistory={recentHistory}
+          />
         </TabsContent>
 
         <TabsContent value="employment" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Employment & entrepreneurship rate</CardTitle>
-                <CardDescription>Overall vs BSc vs MSc</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {dataLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : (
-                  <ChartContainer
-                    config={{
-                      employed: { label: 'Employed', color: 'hsl(var(--chart-1))' },
-                      entrepreneur: { label: 'Entrepreneur', color: 'hsl(var(--chart-2))' },
-                      open: { label: 'Open to work', color: 'hsl(var(--chart-3))' },
-                      unknown: { label: 'Unknown', color: 'hsl(var(--chart-4))' },
-                    }}
-                    className="h-64"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={employmentBreakdown}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="segment" />
-                        <YAxis allowDecimals={false} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="employed" stackId="a" fill="hsl(var(--primary))" />
-                        <Bar dataKey="entrepreneur" stackId="a" fill="hsl(var(--primary))" />
-                        <Bar dataKey="open" stackId="a" fill="hsl(var(--primary))" />
-                        <Bar dataKey="unknown" stackId="a" fill="hsl(var(--muted-foreground))" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Field change frequency</CardTitle>
-                <CardDescription>Which profile fields are being updated the most</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : fieldChangeFrequency.length > 0 ? (
-                  <ChartContainer
-                    config={{
-                      count: { label: 'Changes', color: 'hsl(var(--chart-1))' },
-                    }}
-                    className="h-64"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={fieldChangeFrequency}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="field" />
-                        <YAxis allowDecimals={false} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-64 text-muted-foreground">
-                    <p>No change data yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Top job titles</CardTitle>
-                <CardDescription>Most common current titles</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {dataLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : topJobTitles.length > 0 ? (
-                  topJobTitles.map((item) => (
-                    <div key={item.title} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-medium">{item.title}</p>
-                      </div>
-                      <Badge variant="outline">{item.count}</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">No job title data</p>
-                )}
-              </CardContent>
-            </Card>
-
-          <Card>
-          <CardHeader>
-          <CardTitle>Cohort Employment</CardTitle>
-          <CardDescription>Employment + entrepreneurship share by cohort</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {cohortBreakdown.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No cohort data yet</p>
-          ) : cohortBreakdown.map((row) => (
-          <div key={row.cohort} className="p-3 border rounded-lg">
-          <div className="flex items-center justify-between">
-          <Badge
-            variant="secondary"
-            className={getCohortBadgeClass(Number(row.cohort)) + ' text-xs'}
-          >
-            Cohort {row.cohort}
-          </Badge>
-          <Badge variant="outline">{row.total} ppl</Badge>
-          </div>
-                  <div className="mt-2 space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Employed</span>
-                      <span className="font-medium">{row.employedRate}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Entrepreneur</span>
-                      <span className="font-medium">{row.entrepreneurRate}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Open to work</span>
-                      <span className="font-medium">{row.openRate}%</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-          <CardHeader>
-          <CardTitle>Cohort Program Mix</CardTitle>
-          <CardDescription>BSc vs MSc share within each cohort</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {cohortProgramBreakdown.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No cohort data yet</p>
-          ) : cohortProgramBreakdown.map((row) => (
-          <div key={row.cohort} className="p-3 border rounded-lg">
-          <div className="flex items-center justify-between">
-          <Badge
-            variant="secondary"
-            className={getCohortBadgeClass(Number(row.cohort)) + ' text-xs'}
-          >
-            Cohort {row.cohort}
-          </Badge>
-          <Badge variant="outline">{row.total} ppl</Badge>
-          </div>
-                  <div className="mt-2 space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>BSc</span>
-                      <span className="font-medium">
-                        {row.bscCount} ({row.bscRate}%)
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>MSc</span>
-                      <span className="font-medium">
-                        {row.mscCount} ({row.mscRate}%)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          </div>
+          <GawkEmploymentTab
+            employmentBreakdown={employmentBreakdown}
+            fieldChangeFrequency={fieldChangeFrequency}
+            topJobTitles={topJobTitles}
+            cohortBreakdown={cohortBreakdown}
+            cohortProgramBreakdown={cohortProgramBreakdown}
+            dataLoading={dataLoading}
+            analyticsLoading={analyticsLoading}
+          />
         </TabsContent>
 
         <TabsContent value="mobility" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Location leaders</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {dataLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : locationLeaders.length > 0 ? (
-                  locationLeaders.map((item) => (
-                    <div key={item.city} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-medium">{item.city}</p>
-                      </div>
-                      <Badge variant="outline">{item.count}</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">No location data</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent movers</CardTitle>
-                <CardDescription>Compact paths for alumni who have moved between cities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : recentMovers.length > 0 ? (
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    {recentMovers.map((mover) => {
-                      const moverProfile = profiles.find((p) => p.id === mover.id) || null;
-                      return (
-                        <div
-                          key={mover.id}
-                          className="p-3 border rounded-lg space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <ProfileAvatar
-                                src={moverProfile?.avatar_url || null}
-                                fullName={mover.name}
-                                size="sm"
-                              />
-                              <p className="font-medium">{mover.name}</p>
-                            </div>
-                            <Badge variant="outline" className="text-xs">
-                              {mover.cityCount} cities
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {mover.path.map((step, index) => (
-                              <span key={`${mover.id}-${index}`}>
-                                {index > 0 && <span className="mx-1">→</span>}
-                                <span>{step.cityLabel}</span>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-64 text-muted-foreground">
-                    <p>No movement paths detected yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <GawkMobilityTab
+            locationLeaders={locationLeaders}
+            recentMovers={recentMovers}
+            profiles={profiles}
+            dataLoading={dataLoading}
+            analyticsLoading={analyticsLoading}
+          />
         </TabsContent>
 
         <TabsContent value="residency" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">At residency partner</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {dataLoading ? '--' : residencyStats?.atResidencyPartner || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {dataLoading ? 'Loading...' : `${residencyStats?.residencyPercentage ?? 0}% of eligible profiles`}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Not at partner</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {dataLoading ? '--' : residencyStats?.notAtResidencyPartner || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">Alumni/admin outside residency partners</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active partners</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {dataLoading ? '--' : residencyPartners.length}
-                </div>
-                <p className="text-xs text-muted-foreground">Used for persistence / popularity</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Breakdown </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {dataLoading ? (
-                <div className="flex items-center justify-center py-8 col-span-full">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : residencyLeaders.length > 0 ? (
-                residencyLeaders.map((partner) => {
-                  const logoUrl = companyLogoMap
-                    ? getCompanyLogoUrl(partner.name, companyLogoMap)
-                    : null;
-                  return (
-                    <div key={partner.name} className="p-3 border rounded-lg space-y-1">
-                      <div className="flex items-center justify-between">
-                        <CompanyLogo
-                          name={partner.name}
-                          logoUrl={logoUrl}
-                          size="sm"
-                        />
-                        <Badge variant="outline">{partner.count} ppl</Badge>
-                      </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>BSc</span>
-                      <span className="font-medium">{partner.bscCount}</span>
-                    </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span>MSc</span>
-                        <span className="font-medium">{partner.mscCount}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {partner.percentage}% of eligible alumni
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-sm text-muted-foreground">No residency partner matches yet</p>
-              )}
-            </CardContent>
-          </Card>
+          <GawkResidencyTab
+            dataLoading={dataLoading}
+            residencyStats={residencyStats}
+            residencyPartners={residencyPartners}
+            residencyLeaders={residencyLeaders}
+            companyLogoMap={companyLogoMap}
+          />
         </TabsContent>
 
         <TabsContent value="leaderboards" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Biggest gawker</CardTitle>
-                <CardDescription>Most logins to the site</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : leaderboards.historyCounts.length > 0 ? (
-                  leaderboards.historyCounts.map((entry) => (
-                    <div key={entry.id} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <ProfileAvatar
-                          src={entry.avatarUrl}
-                          fullName={entry.name}
-                          size="sm"
-                        />
-                        <p className="font-medium">{entry.name}</p>
-                      </div>
-                      <Badge variant="outline">{entry.count}</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">No history yet</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Jetsetter</CardTitle>
-                <CardDescription>Most distinct locations seen in history</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : leaderboards.jetsetters.length > 0 ? (
-                  leaderboards.jetsetters.map((entry) => (
-                    <div key={entry.id} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <ProfileAvatar
-                          src={entry.avatarUrl}
-                          fullName={entry.name}
-                          size="sm"
-                        />
-                        <p className="font-medium">{entry.name}</p>
-                      </div>
-                      <Badge variant="outline">{entry.cityCount} cities</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">No travel data yet</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Antiloyalist</CardTitle>
-                <CardDescription>Most distinct employers over time</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : leaderboards.employerHoppers.length > 0 ? (
-                  leaderboards.employerHoppers.map((entry) => (
-                    <div key={entry.id} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <ProfileAvatar
-                          src={entry.avatarUrl}
-                          fullName={entry.name}
-                          size="sm"
-                        />
-                        <p className="font-medium">{entry.name}</p>
-                      </div>
-                      <Badge variant="outline">{entry.companyCount} employers</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">No employer change data</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Biggest residency hirers</CardTitle>
-                <CardDescription>Residency partners with the most ISE alumni</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {dataLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : residencyLeaders.length > 0 ? (
-                  residencyLeaders.slice(0, 3).map((partner) => {
-                    const logoUrl = companyLogoMap
-                      ? getCompanyLogoUrl(partner.name, companyLogoMap)
-                      : null;
-                    return (
-                      <div
-                        key={partner.name}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <CompanyLogo
-                            name={partner.name}
-                            logoUrl={logoUrl}
-                            size="sm"
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {partner.percentage}% of eligible alumni
-                          </span>
-                        </div>
-                        <Badge variant="outline">{partner.count} ppl</Badge>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No residency partner matches yet
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Champion-heavy companies</CardTitle>
-                <CardDescription>Companies with the most ISE champions</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {dataLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : championCompanies.length > 0 ? (
-                  championCompanies.map((item) => {
-                    const logoUrl = companyLogoMap
-                      ? getCompanyLogoUrl(item.company, companyLogoMap)
-                      : null;
-                    return (
-                      <div key={item.company} className="flex items-center justify-between p-2 border rounded-lg">
-                        <CompanyLogo
-                          name={item.company}
-                          logoUrl={logoUrl}
-                          size="sm"
-                        />
-                        <Badge variant="outline">{item.count} champions</Badge>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No champion company data yet
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Destination cities</CardTitle>
-                <CardDescription>Where alumni are currently clustered</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {dataLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : destinationCities.length > 0 ? (
-                  destinationCities.map((item) => (
-                    <div key={item.city} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-medium">{item.city}</p>
-                      </div>
-                      <Badge variant="outline">{item.count}</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No destination city data yet
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <GawkLeaderboardsTab
+            analyticsLoading={analyticsLoading}
+            dataLoading={dataLoading}
+            leaderboards={leaderboards}
+            residencyLeaders={residencyLeaders}
+            championCompanies={championCompanies}
+            destinationCities={destinationCities}
+            companyLogoMap={companyLogoMap}
+            profiles={profiles}
+          />
         </TabsContent>
       </Tabs>
     </div>

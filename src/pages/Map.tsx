@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Map, Marker, Popup, Source, Layer } from 'react-map-gl';
 import { UsersIcon, UserIcon, Loader2Icon, BuildingIcon, RouteIcon, ClockIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { getProfileHistory, type ProfileHistory } from "@/lib/domain/profiles";
+import { getMapDataCurrent, getMapDataOvertime, type CurrentMapDataRow, type OvertimeMapDataRow } from "@/lib/domain/map";
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Input } from "@/components/ui/input";
 import {
@@ -126,41 +126,21 @@ const MapPage = () => {
   const [selectedPath, setSelectedPath] = useState<MovementPath | null>(null);
   const [selectedPathIndex, setSelectedPathIndex] = useState<number | null>(null);
 
-  // Fetch alumni data for current view using RPC (pre-geocoded lat/lng)
-  type CurrentMapDataRow = {
-    profile_id: string;
-    full_name: string | null;
-    avatar_url: string | null;
-    company: string | null;
-    lat: number;
-    lng: number;
-    graduation_year: number | null;
-    cohort: string | null;
-    msc: string | null;
-    city: string | null;
-    country: string | null;
-  };
-
+  // Fetch alumni data for current view using domain function
   useEffect(() => {
     const fetchAlumniData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const { data, error: fetchError } = await supabase.rpc('rpc_get_map_data', {
-          view_mode: 'current',
-        });
-
-        if (fetchError) {
-          throw fetchError;
-        }
+        const data = await getMapDataCurrent();
 
         if (!data || data.length === 0) {
           setAlumniData([]);
           return;
         }
 
-        const mappedData: AlumniData[] = (data as CurrentMapDataRow[]).map((row) => ({
+        const mappedData: AlumniData[] = data.map((row) => ({
           id: row.profile_id,
           name: row.full_name || 'Unknown',
           avatarUrl: row.avatar_url || null,
@@ -201,30 +181,12 @@ const MapPage = () => {
     setShowHeatmap(!showHeatmap);
   };
 
-  type OvertimeMapDataRow = {
-    profile_id: string;
-    full_name: string | null;
-    timestamps: string[] | null;
-    cities: (string | null)[] | null;
-    countries: (string | null)[] | null;
-    companies: (string | null)[] | null;
-    job_titles: (string | null)[] | null;
-    lats: number[] | null;
-    lngs: number[] | null;
-  };
-
-  // Fetch and process profile history for movement paths via RPC
+  // Fetch and process profile history for movement paths via domain function
   const fetchMovementPaths = useCallback(async () => {
     try {
       setLoadingHistory(true);
 
-      const { data, error } = await supabase.rpc('rpc_get_map_data', {
-        view_mode: 'overtime',
-      });
-
-      if (error) {
-        throw error;
-      }
+      const data = await getMapDataOvertime();
 
       if (!data || data.length === 0) {
         setMovementPaths([]);
@@ -234,7 +196,7 @@ const MapPage = () => {
       const paths: MovementPath[] = [];
       let userIndex = 0;
 
-      for (const row of data as OvertimeMapDataRow[]) {
+      for (const row of data) {
         const timestamps = row.timestamps ?? [];
         const cities = row.cities ?? [];
         const countries = row.countries ?? [];

@@ -50,6 +50,21 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
   return data;
 }
 
+export async function getUserProfileType(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_type')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    log.error('Error fetching user profile type:', error);
+    return null;
+  }
+
+  return data?.user_type || null;
+}
+
 export async function updateProfile(userId: string, formData: ProfileFormData): Promise<Profile | null> {
   try {
     const updatePayload = {

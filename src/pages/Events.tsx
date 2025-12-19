@@ -4,13 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useCallback } from "react";
 import { CalendarIcon, MapPinIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import NewEventModal from "@/components/NewEventModal";
 
 // Import centralized types and utilities
 import { type EventData, type Tag } from "@/lib/types";
-import { getEvents, getTags, isEventInPast, isEventUpcoming, isEventOngoing } from "@/lib/domain";
+import { getEvents, getTags, isEventInPast, isEventUpcoming, isEventOngoing, getUserProfileType } from "@/lib/domain";
 import { formatDate } from "@/lib/utils/date";
 import { log } from '@/lib/utils/logger';
 import { canUserCreateEvents } from '@/lib/constants';
@@ -100,22 +99,13 @@ const Events = () => {
   });
 
   const fetchUserProfile = useCallback(async () => {
-    // This function can be removed or replaced with a domain service later
-    // For now, keeping it simple since user_type check is minimal
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_type')
-        .eq('user_id', user.id)
-        .single();
-    
-if (eventsError) {
-        throw error;
+      const userType = await getUserProfileType(user.id);
+      if (userType) {
+        setUserProfile({ user_type: userType });
       }
-
-      setUserProfile(data);
     } catch (err) {
       log.error('Error fetching user profile:', err);
     }
