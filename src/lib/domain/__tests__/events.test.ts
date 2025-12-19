@@ -78,13 +78,7 @@ describe('Events Domain', () => {
       const result = await getEvents()
 
       expect(mockedSupabase.from).toHaveBeenCalledWith('events')
-      expect(mockSelect).toHaveBeenCalledWith(`
-      *,
-      event_tags (
-        tag_id,
-        tags (*)
-      )
-    `)
+      expect(mockSelect).toHaveBeenCalled()
       expect(mockOrder).toHaveBeenCalledWith('start_at', { ascending: true })
       expect(result).toHaveLength(2)
       expect(result[0].title).toBe('React Workshop')

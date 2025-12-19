@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { UserRole } from '@/lib/types/common'
+import { createMockProfile } from './test-helpers'
 
 // Mock dependencies
 vi.mock('@/integrations/supabase/client', () => ({
@@ -38,35 +39,7 @@ describe('Profiles domain functions', () => {
 
   describe('getProfiles', () => {
     it('should fetch profiles successfully', async () => {
-      const mockProfiles = [
-{
-          id: '1',
-          user_id: '1',
-          full_name: 'John Doe',
-          bio: 'React developer',
-          company: 'Tech Corp',
-          cohort: 2020,
-          user_type: 'Alum' as UserRole,
-          email: 'john@example.com',
-          email_visible: true,
-          avatar_url: null,
-          city: null,
-          country: null,
-          graduation_year: null,
-          job_title: null,
-          github_url: null,
-          linkedin_url: null,
-          twitter_url: null,
-          website_url: null,
-          is_public: true,
-          msc: false,
-          is_remote: false,
-          is_entrepreneur: false,
-          is_ise_champion: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z'
-        }
-      ]
+      const mockProfiles = [createMockProfile()]
 
       const mockOrder = vi.fn().mockResolvedValue({
         data: mockProfiles,
@@ -120,33 +93,7 @@ describe('Profiles domain functions', () => {
 
   describe('getProfileByUserId', () => {
     it('should fetch profile by user ID successfully', async () => {
-      const mockProfile = {
-        id: '1',
-        user_id: '1',
-        full_name: 'John Doe',
-        bio: 'React developer',
-        company: 'Tech Corp',
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        job_title: null,
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
+      const mockProfile = createMockProfile()
 
       const mockSingle = vi.fn().mockResolvedValue({
         data: mockProfile,
@@ -201,14 +148,13 @@ describe('Profiles domain functions', () => {
         twitterUrl: 'https://twitter.com/john',
         websiteUrl: 'https://john.com',
         avatarUrl: 'https://example.com/avatar.jpg',
-        emailVisible: true,
         isRemote: false,
         isEntrepreneur: false,
         isIseChampion: false,
-        professionalStatus: 'employed'
+        professionalStatus: 'employed' as const
       }
 
-      const updatedProfile = {
+      const updatedProfile = createMockProfile({
         id: '1',
         user_id: '1',
         full_name: 'John Updated',
@@ -223,19 +169,9 @@ describe('Profiles domain functions', () => {
         twitter_url: 'https://twitter.com/john',
         website_url: 'https://john.com',
         avatar_url: 'https://example.com/avatar.jpg',
-        email_visible: true,
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
         professional_status: 'employed',
-        created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-15T00:00:00Z'
-      }
+      })
 
       const mockSingle = vi.fn().mockResolvedValue({
         data: updatedProfile,
@@ -280,7 +216,6 @@ describe('Profiles domain functions', () => {
         twitterUrl: '',
         websiteUrl: '',
         avatarUrl: '',
-        emailVisible: false,
         isRemote: false,
         isEntrepreneur: false,
         isIseChampion: false,
@@ -296,37 +231,7 @@ describe('Profiles domain functions', () => {
 
   describe('searchProfiles', () => {
     it('should search profiles successfully', async () => {
-      const mockProfiles = [
-{
-          id: '1',
-          user_id: '1',
-          full_name: 'John Doe',
-
-          bio: 'React developer',
-          company: 'Tech Corp',
-          cohort: 2020,
-          user_type: 'Alum' as UserRole,
-          email: 'john@example.com',
-          email_visible: true,
-          avatar_url: null,
-          city: null,
-          country: null,
-          graduation_year: null,
-          job_title: null,
-          github_url: null,
-          linkedin_url: null,
-          twitter_url: null,
-          website_url: null,
-          is_public: true,
-          msc: false,
-          is_remote: false,
-          is_entrepreneur: false,
-          is_ise_champion: false,
-          professional_status: 'employed',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z'
-        }
-      ]
+      const mockProfiles = [createMockProfile({ professional_status: 'employed' })]
 
       const mockOrder = vi.fn().mockResolvedValue({
         data: mockProfiles,
@@ -386,132 +291,30 @@ describe('Profiles domain functions', () => {
 
   describe('isProfileComplete', () => {
     it('should return true for complete profiles', () => {
-      const profile = {
-        id: '1',
-        user_id: '1',
-        full_name: 'John Doe',
-        bio: 'React developer',
-        company: 'Tech Corp',
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        job_title: 'Software Engineer',
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-
+      const profile = createMockProfile({ job_title: 'Software Engineer' })
       expect(isProfileComplete(profile)).toBe(true)
     })
 
     it('should return false for incomplete profiles', () => {
-      const profile = {
-        id: '1',
-        user_id: '1',
+      const profile = createMockProfile({
         full_name: '',
-
         bio: '',
         company: '',
         cohort: null,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        job_title: null,
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-
+        job_title: null
+      })
       expect(isProfileComplete(profile)).toBe(false)
     })
 
     it('should handle profiles with missing optional fields', () => {
-      const profile = {
-        id: '1',
-        user_id: '1',
-        full_name: 'John Doe',
-        bio: 'React developer',
-        company: null,
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        job_title: 'Software Engineer',
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-
+      const profile = createMockProfile({ company: null, job_title: 'Software Engineer' })
       expect(isProfileComplete(profile)).toBe(false) // company is null, so should be false
     })
   })
 
   describe('getProfileById', () => {
     it('should fetch profile by profile ID successfully', async () => {
-      const mockProfile = {
-        id: 'profile-123',
-        user_id: 'user-123',
-        full_name: 'John Doe',
-        bio: 'React developer',
-        company: 'Tech Corp',
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        job_title: null,
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
+      const mockProfile = createMockProfile({ id: 'profile-123', user_id: 'user-123' })
 
       const mockSingle = vi.fn().mockResolvedValue({
         data: mockProfile,
@@ -610,130 +413,22 @@ describe('Profiles domain functions', () => {
     })
 
     it('should return 100 for complete profile', () => {
-      const profile = {
-        id: '1',
-        user_id: '1',
-        full_name: 'John Doe',
-        bio: 'React developer',
-        company: 'Tech Corp',
-        job_title: 'Software Engineer',
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-
+      const profile = createMockProfile({ job_title: 'Software Engineer' })
       expect(calculateProfileCompletionPercentage(profile)).toBe(100)
     })
 
     it('should return 50 for half-complete profile', () => {
-      const profile = {
-        id: '1',
-        user_id: '1',
-        full_name: 'John Doe',
-        bio: 'React developer',
-        company: null,
-        job_title: null,
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-
+      const profile = createMockProfile({ company: null, job_title: null })
       expect(calculateProfileCompletionPercentage(profile)).toBe(50)
     })
 
     it('should return 0 for empty profile', () => {
-      const profile = {
-        id: '1',
-        user_id: '1',
-        full_name: '',
-        bio: '',
-        company: null,
-        job_title: null,
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-
+      const profile = createMockProfile({ full_name: '', bio: '', company: null, job_title: null })
       expect(calculateProfileCompletionPercentage(profile)).toBe(0)
     })
 
     it('should handle whitespace-only fields', () => {
-      const profile = {
-        id: '1',
-        user_id: '1',
-        full_name: '   ',
-        bio: 'React developer',
-        company: 'Tech Corp',
-        job_title: '   ',
-        cohort: 2020,
-        user_type: 'Alum' as UserRole,
-        email: 'john@example.com',
-        email_visible: true,
-        avatar_url: null,
-        city: null,
-        country: null,
-        graduation_year: null,
-        github_url: null,
-        linkedin_url: null,
-        twitter_url: null,
-        website_url: null,
-        is_public: true,
-        msc: false,
-        is_remote: false,
-        is_entrepreneur: false,
-        is_ise_champion: false,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-
+      const profile = createMockProfile({ full_name: '   ', job_title: '   ' })
       expect(calculateProfileCompletionPercentage(profile)).toBe(50)
     })
   })

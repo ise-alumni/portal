@@ -251,7 +251,7 @@ const MapPage = () => {
       // Only re-fetch if we haven't fetched yet or if filters are applied
       fetchMovementPaths();
     }
-  }, [viewMode, companyFilter, cohortFilter, gradYearFilter, degreeFilter, fetchMovementPaths]);
+  }, [viewMode, companyFilter, cohortFilter, gradYearFilter, degreeFilter, movementPaths.length, fetchMovementPaths]);
 
   const filteredAlumni = useMemo(() => {
     return alumniData.filter((alumni) => {

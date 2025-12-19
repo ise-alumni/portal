@@ -1,5 +1,7 @@
+ 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createMockProfileData, createMockProfileQueryChain, createMockProfileUpdateChain, mockSetTimeoutImmediate } from './admin-test-helpers'
 
 // Mock dependencies
 vi.mock('@/integrations/supabase/client', () => ({
@@ -48,45 +50,22 @@ describe('Admin domain functions', () => {
 
   describe('createUserWithProfile', () => {
     it('should create user and profile successfully', async () => {
-      const profileData = {
-        email: 'test@example.com',
-        fullName: 'Test User',
-        graduationYear: '2020',
-        userType: 'Alum' as const,
-        msc: false
-      }
-
+      const profileData = createMockProfileData({ graduationYear: '2020' })
       const mockProfileId = { id: 'profile-123' }
 
       // Mock auth signup
-      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({
-        error: null
-      })
+      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({ error: null })
 
       // Mock profile fetch
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockProfileId,
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      createMockProfileQueryChain(mockedSupabase, { data: mockProfileId, error: null })
 
       // Mock profile update
-      const mockUpdateEq = vi.fn().mockResolvedValue({ error: null })
-      const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq })
-      mockedSupabase.from.mockReturnValueOnce({ select: mockSelect }).mockReturnValueOnce({ update: mockUpdate })
+      const { mockUpdate } = createMockProfileUpdateChain(mockedSupabase, { error: null })
+      mockedSupabase.from.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: mockProfileId, error: null }) }) }) }).mockReturnValueOnce({ update: mockUpdate })
 
-      // Mock setTimeout to resolve immediately
-      const originalSetTimeout = global.setTimeout
-      global.setTimeout = vi.fn((fn: () => void) => {
-        fn()
-        return 1 as any
-      }) as any
-
+      const restoreSetTimeout = mockSetTimeoutImmediate()
       const result = await createUserWithProfile(profileData)
-
-      global.setTimeout = originalSetTimeout
+      restoreSetTimeout()
 
       expect(mockedSupabase.auth.signUp).toHaveBeenCalledWith({
         email: profileData.email,
@@ -102,12 +81,7 @@ describe('Admin domain functions', () => {
     })
 
     it('should handle signup errors', async () => {
-      const profileData = {
-        email: 'test@example.com',
-        fullName: 'Test User',
-        userType: 'Alum' as const,
-        msc: false
-      }
+      const profileData = createMockProfileData()
 
       const signUpError = { message: 'Email already exists' }
       mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({
@@ -122,91 +96,46 @@ describe('Admin domain functions', () => {
     })
 
     it('should handle profile fetch errors', async () => {
-      const profileData = {
-        email: 'test@example.com',
-        fullName: 'Test User',
-        userType: 'Alum' as const,
-        msc: false
-      }
+      const profileData = createMockProfileData()
 
-      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({
-        error: null
-      })
+      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({ error: null })
 
       const fetchError = { message: 'Profile not found' }
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: fetchError
-      })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      createMockProfileQueryChain(mockedSupabase, { data: null, error: fetchError })
 
-      // Mock setTimeout to resolve immediately
-      const originalSetTimeout = global.setTimeout
-      global.setTimeout = vi.fn((fn: () => void) => {
-        fn()
-        return 1 as any
-      }) as any
-
+      const restoreSetTimeout = mockSetTimeoutImmediate()
       const result = await createUserWithProfile(profileData)
-
-      global.setTimeout = originalSetTimeout
+      restoreSetTimeout()
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('profile not found')
     })
 
     it('should handle profile update errors', async () => {
-      const profileData = {
-        email: 'test@example.com',
-        fullName: 'Test User',
-        userType: 'Alum' as const,
-        msc: false
-      }
+      const profileData = createMockProfileData()
 
-      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({
-        error: null
-      })
+      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({ error: null })
 
       const mockProfileId = { id: 'profile-123' }
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockProfileId,
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const { mockSelect } = createMockProfileQueryChain(mockedSupabase, { data: mockProfileId, error: null })
 
       const updateError = { message: 'Update failed' }
-      const mockUpdateEq = vi.fn().mockResolvedValue({ error: updateError })
-      const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq })
+      const { mockUpdate } = createMockProfileUpdateChain(mockedSupabase, { error: updateError })
 
       mockedSupabase.from
         .mockReturnValueOnce({ select: mockSelect })
         .mockReturnValueOnce({ update: mockUpdate })
 
-      // Mock setTimeout to resolve immediately
-      const originalSetTimeout = global.setTimeout
-      global.setTimeout = vi.fn((fn: () => void) => {
-        fn()
-        return 1 as any
-      }) as any
-
+      const restoreSetTimeout = mockSetTimeoutImmediate()
       const result = await createUserWithProfile(profileData)
-
-      global.setTimeout = originalSetTimeout
+      restoreSetTimeout()
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('Profile update failed')
     })
 
     it('should handle unexpected errors', async () => {
-      const profileData = {
-        email: 'test@example.com',
-        fullName: 'Test User',
-        userType: 'Alum' as const,
-        msc: false
-      }
+      const profileData = createMockProfileData()
 
       mockedSupabase.auth.signUp = vi.fn().mockRejectedValue(new Error('Network error'))
 
