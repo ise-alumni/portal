@@ -15,6 +15,10 @@ import { getUserResidencies, createResidency, updateResidency, deleteResidency, 
 import { type ResidencyPartner } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
 import { COUNTRIES } from '@/lib/constants/countries';
+import { getCompanies, createCompany, type Company } from '@/lib/domain/companies';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const Index = () => {
   const { user, session, loading, resetPassword } = useAuth();
@@ -31,7 +35,7 @@ const Index = () => {
     graduationYear: '',
     msc: false,
     jobTitle: '',
-    company: '',
+    companyId: null as string | null,
     bio: '',
     githubUrl: '',
     linkedinUrl: '',
@@ -45,6 +49,13 @@ const Index = () => {
     professionalStatus: null as ProfessionalStatus | null,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  
+  // Companies state
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [showCreateCompanyDialog, setShowCreateCompanyDialog] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [newCompanyIsResidencyPartner, setNewCompanyIsResidencyPartner] = useState(false);
+  const [creatingCompany, setCreatingCompany] = useState(false);
   
   // Residency state
   const [residencies, setResidencies] = useState<Residency[]>([]);
@@ -63,7 +74,7 @@ const Index = () => {
         graduationYear: '',
         msc: false,
         jobTitle: '',
-        company: '',
+        companyId: null,
         bio: '',
         githubUrl: '',
         linkedinUrl: '',
@@ -108,7 +119,7 @@ const Index = () => {
             graduationYear: data.graduation_year?.toString() ?? '',
             msc: data.msc ?? false,
             jobTitle: data.job_title ?? '',
-            company: data.company ?? '',
+            companyId: (data as any).company_id ?? null,
             bio: data.bio ?? '',
             githubUrl: data.github_url ?? '',
             linkedinUrl: data.linkedin_url ?? '',
@@ -133,6 +144,19 @@ const Index = () => {
     useEffect(() => {
       fetchProfile();
     }, [fetchProfile]);
+
+    // Fetch companies
+    useEffect(() => {
+      const fetchCompanies = async () => {
+        try {
+          const companiesList = await getCompanies();
+          setCompanies(companiesList);
+        } catch (error) {
+          log.error("Error fetching companies:", error);
+        }
+      };
+      fetchCompanies();
+    }, []);
 
     // Fetch residency data
     const fetchResidencyData = useCallback(async () => {
@@ -188,6 +212,31 @@ const Index = () => {
     } catch (error) {
       log.error("Avatar upload error:", error);
       return null;
+    }
+  };
+
+  const handleCreateCompany = async () => {
+    if (!newCompanyName.trim()) return;
+    setCreatingCompany(true);
+    try {
+      const newCompany = await createCompany({ 
+        name: newCompanyName.trim(),
+        is_residency_partner: newCompanyIsResidencyPartner
+      });
+      if (newCompany) {
+        setCompanies(prev => [...prev, newCompany].sort((a, b) => a.name.localeCompare(b.name)));
+        setFormData(prev => ({ 
+          ...prev, 
+          companyId: newCompany.id
+        }));
+        setShowCreateCompanyDialog(false);
+        setNewCompanyName('');
+        setNewCompanyIsResidencyPartner(false);
+      }
+    } catch (error) {
+      log.error("Error creating company:", error);
+    } finally {
+      setCreatingCompany(false);
     }
   };
 
@@ -318,11 +367,11 @@ const Index = () => {
      const requiredFields = [
        profile.full_name,
        profile.bio,
-       profile.company,
+       (profile as any).company_id, // Check company_id instead of company
        profile.job_title
      ];
      
-     const completedFields = requiredFields.filter(field => field && field.trim() !== '').length;
+     const completedFields = requiredFields.filter(field => field && (typeof field === 'string' ? field.trim() !== '' : true)).length;
      return Math.round((completedFields / requiredFields.length) * 100);
    };
 
@@ -447,7 +496,35 @@ const Index = () => {
                  </div>
                  <div>
                    <label className="text-xs opacity-70">Company</label>
-                   <Input value={formData.company} onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))} placeholder="Company" />
+                   <div className="flex gap-2">
+                     <Select 
+                       value={formData.companyId || ''} 
+                       onValueChange={(value) => {
+                         if (value === 'create-new') {
+                           setShowCreateCompanyDialog(true);
+                         } else {
+                           setFormData(prev => ({ 
+                             ...prev, 
+                             companyId: value || null
+                           }));
+                         }
+                       }}
+                     >
+                       <SelectTrigger className="w-full">
+                         <SelectValue placeholder="Select or create company" />
+                       </SelectTrigger>
+                       <SelectContent className="max-h-[300px]">
+                         {companies.map((company) => (
+                           <SelectItem key={company.id} value={company.id}>
+                             {company.name}
+                           </SelectItem>
+                         ))}
+                         <SelectItem value="create-new" className="text-primary font-medium">
+                           + Create New Company
+                         </SelectItem>
+                       </SelectContent>
+                     </Select>
+                   </div>
                  </div>
                </div>
 
@@ -731,12 +808,12 @@ const Index = () => {
                    </div>
                  </div>
                  
-                 <div className={`p-3 rounded-lg border ${profile.company ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                 <div className={`p-3 rounded-lg border ${(profile as any).company_id ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                    <div className="flex items-center space-x-2">
-                     <span className={`font-medium ${profile.company ? 'text-green-700' : 'text-red-700'}`}>
+                     <span className={`font-medium ${(profile as any).company_id ? 'text-green-700' : 'text-red-700'}`}>
                        Company
                      </span>
-                     {profile.company ? (
+                     {(profile as any).company_id ? (
                        <span className="text-green-600">✓</span>
                      ) : (
                        <span className="text-red-600">✗</span>
@@ -773,6 +850,59 @@ const Index = () => {
            </CardContent>
          </Card>
        )}
+
+       {/* Create Company Dialog */}
+       <Dialog open={showCreateCompanyDialog} onOpenChange={setShowCreateCompanyDialog}>
+         <DialogContent>
+           <DialogHeader>
+             <DialogTitle>Create New Company</DialogTitle>
+           </DialogHeader>
+           <div className="space-y-4 py-4">
+             <div>
+               <Label htmlFor="company-name">Company Name</Label>
+               <Input
+                 id="company-name"
+                 value={newCompanyName}
+                 onChange={(e) => setNewCompanyName(e.target.value)}
+                 placeholder="Enter company name"
+                 onKeyDown={(e) => {
+                   if (e.key === 'Enter' && newCompanyName.trim()) {
+                     handleCreateCompany();
+                   }
+                 }}
+               />
+             </div>
+             <div className="flex items-center space-x-2">
+               <Checkbox
+                 id="is-residency-partner"
+                 checked={newCompanyIsResidencyPartner}
+                 onCheckedChange={(checked) => setNewCompanyIsResidencyPartner(checked === true)}
+               />
+               <Label 
+                 htmlFor="is-residency-partner" 
+                 className="text-sm font-normal cursor-pointer"
+               >
+                 This is a residency partner
+               </Label>
+             </div>
+           </div>
+           <DialogFooter>
+             <Button variant="outline" onClick={() => {
+               setShowCreateCompanyDialog(false);
+               setNewCompanyName('');
+               setNewCompanyIsResidencyPartner(false);
+             }}>
+               Cancel
+             </Button>
+             <Button 
+               onClick={handleCreateCompany}
+               disabled={!newCompanyName.trim() || creatingCompany}
+             >
+               {creatingCompany ? 'Creating...' : 'Create Company'}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
      </>
    );
  };

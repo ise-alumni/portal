@@ -40,7 +40,7 @@ export interface ProfileFormData {
   graduationYear: string;
   msc: boolean;
   jobTitle: string;
-  company: string;
+  companyId: string | null;
   bio: string;
   githubUrl: string;
   linkedinUrl: string;

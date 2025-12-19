@@ -26,6 +26,7 @@ export interface ResidencyPartner {
   logo_url: string | null;
   description: string | null;
   is_active: boolean;
+  is_residency_partner: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -53,5 +54,6 @@ export interface ResidencyStats {
 }
 
 // Re-export Supabase types for compatibility
-export type ResidencyPartnerTable = Database['public']['Tables']['residency_partners']['Row'];
+// Note: residency_partners table has been renamed to companies
+export type ResidencyPartnerTable = Database['public']['Tables']['companies']['Row'];
 export type ResidencyTable = Database['public']['Tables']['residencies']['Row'];
