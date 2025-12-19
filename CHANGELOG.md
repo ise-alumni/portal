@@ -1,3 +1,22 @@
+## [1.8.0](https://github.com/ise-alumni/portal/compare/v1.7.2...v1.8.0) (2025-12-19)
+
+### Features
+
+* **announcements, events, profiles:** add new functions for deleting announcements and events, fetching user-specific announcements and events, and profile management enhancements ([967a9db](https://github.com/ise-alumni/portal/commit/967a9db03742e367a6a8e3a68b82d5266a92212b))
+* **announcements, events, tags:** introduce helper functions for transforming data and managing tags ([f80ba6b](https://github.com/ise-alumni/portal/commit/f80ba6b5240535c017f62ba05e59228013418604))
+* **tests:** add comprehensive unit tests for admin, announcements, events, map, profiles, and image utilities ([e36f1e3](https://github.com/ise-alumni/portal/commit/e36f1e3b0bedcd1c60bbd33d550c067627647877))
+
+### Bug Fixes
+
+* **tests:** remove extraneous character in GawkEmploymentTab and disable eslint rule for explicit any in test files ([4f10aee](https://github.com/ise-alumni/portal/commit/4f10aee992a79948a7cb93a5c522e8622d7544a0))
+
+### Code Refactoring
+
+* **dashboard, gawk:** optimize components by converting to memoized functions for improved performance and encap tabs ([f5a74ca](https://github.com/ise-alumni/portal/commit/f5a74ca0bce2d984bf0638c0fbbd1ae545c29a8c))
+* **layout, dashboard:** simplify layout and modularize dashboard ([f27ae43](https://github.com/ise-alumni/portal/commit/f27ae43adb2d0f183f7662e3b60e76bf9ff8eed0))
+* **pages, components:** optimize component performance with useCallback and useMemo ([4f61cfa](https://github.com/ise-alumni/portal/commit/4f61cfa3d5124babf0890f92817d0b741cd7e7e5))
+* **user management, profiles:** remove password field from user creation and update email visibility handling ([12e896f](https://github.com/ise-alumni/portal/commit/12e896fc01797d7b5184c05b98cdea67510efb5f))
+
 ## [1.7.2](https://github.com/ise-alumni/portal/compare/v1.7.1...v1.7.2) (2025-12-18)
 
 ### Bug Fixes
