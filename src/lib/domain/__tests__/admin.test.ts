@@ -50,7 +50,6 @@ describe('Admin domain functions', () => {
     it('should create user and profile successfully', async () => {
       const profileData = {
         email: 'test@example.com',
-        password: 'password123',
         fullName: 'Test User',
         graduationYear: '2020',
         userType: 'Alum' as const,
@@ -91,7 +90,6 @@ describe('Admin domain functions', () => {
 
       expect(mockedSupabase.auth.signUp).toHaveBeenCalledWith({
         email: profileData.email,
-        password: profileData.password,
         options: {
           emailRedirectTo: 'http://localhost:8080/',
           data: {
@@ -106,7 +104,6 @@ describe('Admin domain functions', () => {
     it('should handle signup errors', async () => {
       const profileData = {
         email: 'test@example.com',
-        password: 'password123',
         fullName: 'Test User',
         userType: 'Alum' as const,
         msc: false
@@ -127,7 +124,6 @@ describe('Admin domain functions', () => {
     it('should handle profile fetch errors', async () => {
       const profileData = {
         email: 'test@example.com',
-        password: 'password123',
         fullName: 'Test User',
         userType: 'Alum' as const,
         msc: false
@@ -164,7 +160,6 @@ describe('Admin domain functions', () => {
     it('should handle profile update errors', async () => {
       const profileData = {
         email: 'test@example.com',
-        password: 'password123',
         fullName: 'Test User',
         userType: 'Alum' as const,
         msc: false
@@ -208,7 +203,6 @@ describe('Admin domain functions', () => {
     it('should handle unexpected errors', async () => {
       const profileData = {
         email: 'test@example.com',
-        password: 'password123',
         fullName: 'Test User',
         userType: 'Alum' as const,
         msc: false

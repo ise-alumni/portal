@@ -298,10 +298,8 @@ const Directory = () => {
                         .join(", ")}
                     </div>
                   )}
-                  {profile.email_visible && profile.email ? (
+                  {profile.email && (
                     <div className="text-sm">{profile.email}</div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">(email hidden)</div>
                   )}
                 </CardDescription>
                 {user && user.id === profile.id && (

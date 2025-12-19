@@ -14,8 +14,7 @@ export async function getAnnouncements(): Promise<Announcement[]> {
       organiser:organiser_profile_id (
         id,
         full_name,
-        email,
-        email_visible
+        email
       ),
       announcement_tags!inner(
         tag_id,
@@ -35,7 +34,7 @@ export async function getAnnouncements(): Promise<Announcement[]> {
 
   return data?.map((announcement) => {
     const ann = announcement as AnnouncementRow & { 
-      organiser?: { id: string; full_name: string | null; email: string; email_visible: boolean } | null;
+      organiser?: { id: string; full_name: string | null; email: string } | null;
       announcement_tags?: Array<{ 
         tag_id: string; 
         tags: { id: string; name: string; color: string } 
@@ -72,8 +71,7 @@ export async function getAnnouncementById(id: string): Promise<Announcement | nu
       organiser:organiser_profile_id (
         id,
         full_name,
-        email,
-        email_visible
+        email
       ),
       announcement_tags!inner(
         tag_id,
@@ -92,7 +90,7 @@ export async function getAnnouncementById(id: string): Promise<Announcement | nu
   }
 
   const announcement = data as AnnouncementRow & { 
-    organiser?: { id: string; full_name: string | null; email: string; email_visible: boolean } | null;
+    organiser?: { id: string; full_name: string | null; email: string } | null;
     announcement_tags?: Array<{ 
       tag_id: string; 
         tags: { id: string; name: string; color: string } 
@@ -176,7 +174,7 @@ export async function createAnnouncement(announcement: NewAnnouncement, userId: 
     }
 
     const announcementData = createdAnnouncement as AnnouncementRow & { 
-      organiser?: { id: string; full_name: string | null; email: string; email_visible: boolean } | null;
+      organiser?: { id: string; full_name: string | null; email: string } | null;
       announcement_tags?: Array<{ 
         tag_id: string; 
         tags: { id: string; name: string; color: string } 
@@ -235,8 +233,7 @@ export async function getAnnouncementsByUserId(userId: string): Promise<Announce
       organiser:organiser_profile_id (
         id,
         full_name,
-        email,
-        email_visible
+        email
       ),
       announcement_tags!inner(
         tag_id,
@@ -257,7 +254,7 @@ export async function getAnnouncementsByUserId(userId: string): Promise<Announce
 
   return data?.map((announcement) => {
     const ann = announcement as AnnouncementRow & { 
-      organiser?: { id: string; full_name: string | null; email: string; email_visible: boolean } | null;
+      organiser?: { id: string; full_name: string | null; email: string } | null;
       announcement_tags?: Array<{ 
         tag_id: string; 
         tags: { id: string; name: string; color: string } 

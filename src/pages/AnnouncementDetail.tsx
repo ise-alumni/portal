@@ -39,7 +39,6 @@ interface AnnouncementData {
     id: string;
     full_name: string | null;
     email: string | null;
-    email_visible: boolean | null;
   } | null;
   tags?: Array<{ id: string; name: string; color: string }>;
   creator?: ProfileRow | null;
@@ -348,7 +347,7 @@ const AnnouncementDetail = () => {
                   {announcement.creator?.full_name || 'Unknown'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {announcement.creator?.email_visible && announcement.creator?.email ? announcement.creator.email : 'Email hidden'}
+                  {announcement.creator?.email || 'No email available'}
                 </p>
               </div>
             </CardContent>

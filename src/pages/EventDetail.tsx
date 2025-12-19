@@ -41,7 +41,6 @@ interface EventData {
     id: string;
     full_name: string | null;
     email: string | null;
-    email_visible: boolean | null;
   };
 }
 
@@ -373,7 +372,7 @@ const EventDetail = () => {
                   {event.organiser?.full_name || 'Unknown Organiser'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {event.organiser?.email_visible && event.organiser?.email ? event.organiser.email : 'Email hidden'}
+                  {event.organiser?.email || 'No email available'}
                 </p>
               </div>
             </CardContent>

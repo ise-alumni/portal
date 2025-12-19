@@ -190,8 +190,7 @@ export async function getEventById(id: string): Promise<EventData | null> {
         organiser:organiser_profile_id (
           id,
           full_name,
-          email,
-          email_visible
+          email
         ),
         event_tags (
           tag_id,
@@ -219,7 +218,6 @@ export async function getEventById(id: string): Promise<EventData | null> {
         id: string;
         full_name: string | null;
         email: string | null;
-        email_visible: boolean | null;
       };
       event_tags?: Array<{
         tag_id: string;

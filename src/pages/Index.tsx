@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Profile, ProfileFormData, ProfessionalStatus } from '@/lib/types';
-import { getProfileByUserId, updateProfile, isProfileComplete, uploadAvatar } from '@/lib/domain/profiles';
+import { getProfileByUserId, updateProfile, isProfileComplete, uploadAvatar, calculateProfileCompletionPercentage } from '@/lib/domain/profiles';
 import { getUserResidencies, createResidency, updateResidency, deleteResidency, getResidencyPartners, getAvailablePhases, type Residency, type NewResidency, type ResidencyPhase } from '@/lib/domain/residency';
 import { type ResidencyPartner } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
@@ -37,7 +37,6 @@ const Index = () => {
     twitterUrl: '',
     websiteUrl: '',
     avatarUrl: '',
-    emailVisible: true,
     isRemote: false,
     isEntrepreneur: false,
     isIseChampion: false,
@@ -68,9 +67,8 @@ const Index = () => {
         linkedinUrl: '',
         twitterUrl: '',
         websiteUrl: '',
-        avatarUrl: '',
-        emailVisible: true,
-        isRemote: false,
+    avatarUrl: '',
+    isRemote: false,
         isEntrepreneur: false,
         isIseChampion: false,
         professionalStatus: null,
@@ -114,7 +112,6 @@ const Index = () => {
             twitterUrl: data.twitter_url ?? '',
             websiteUrl: data.website_url ?? '',
             avatarUrl: data.avatar_url ?? '',
-            emailVisible: data.email_visible ?? true,
             isRemote: data.is_remote ?? false,
             isEntrepreneur: data.is_entrepreneur ?? false,
             isIseChampion: data.is_ise_champion ?? false,
@@ -319,19 +316,10 @@ const Index = () => {
              <div className="text-sm text-muted-foreground">Loading profile…</div>
            ) : (
              <div className="space-y-4">
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 text-sm">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 text-sm">
                  <div><span className="opacity-70">Last signed in:</span> {lastSignedIn}</div>
-                 <div className="flex items-center gap-2">
-                   <span className="opacity-70">Email:</span> 
-                   <span>{formData.emailVisible ? displayEmail : 'Hidden'}</span>
-                   <Button 
-                     onClick={() => setFormData(prev => ({ ...prev, emailVisible: !prev.emailVisible }))} 
-                     size="sm"
-                     variant="outline"
-                     className="text-xs h-6 px-2"
-                   >
-                     {formData.emailVisible ? 'Hide' : 'Make Public'}
-                   </Button>
+                 <div>
+                   <span className="opacity-70">Email:</span> {displayEmail}
                  </div>
                </div>
 

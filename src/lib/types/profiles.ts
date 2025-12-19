@@ -8,7 +8,6 @@ export interface Profile {
   user_id: string;
   full_name: string | null;
   email: string | null;
-  email_visible: boolean | null;
   avatar_url: string | null;
   bio: string | null;
   city: string | null;
@@ -47,7 +46,6 @@ export interface ProfileFormData {
   twitterUrl: string;
   websiteUrl: string;
   avatarUrl: string;
-  emailVisible: boolean;
   isRemote: boolean;
   isEntrepreneur: boolean;
   isIseChampion: boolean;
