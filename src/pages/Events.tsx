@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useState, useEffect, useCallback } from "react";
+import { Tag as UITag } from "@/components/ui/tag";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { CalendarIcon, MapPinIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import NewEventModal from "@/components/NewEventModal";
 
 // Import centralized types and utilities
 import { type EventData, type Tag } from "@/lib/types";
-import { getEvents, getTags, isEventInPast, isEventUpcoming, isEventOngoing } from "@/lib/domain";
+import { getEvents, getTags, isEventInPast, isEventUpcoming, isEventOngoing, getProfileByUserId } from "@/lib/domain";
 import { formatDate } from "@/lib/utils/date";
 import { log } from '@/lib/utils/logger';
 import { canUserCreateEvents } from '@/lib/constants';
@@ -57,17 +57,11 @@ const ExistingEvent = ({ event }: { event: EventData }) => {
         {event.event_tags && event.event_tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
             {event.event_tags.map((eventTag) => (
-              <Badge 
+              <UITag 
                 key={eventTag.tags.id} 
-                style={{ 
-                  backgroundColor: eventTag.tags.color + '20',
-                  borderColor: eventTag.tags.color,
-                  color: eventTag.tags.color 
-                }}
-                className="text-xs"
-              >
-                {eventTag.tags.name}
-              </Badge>
+                tag={eventTag.tags}
+                variant="outline"
+              />
             ))}
           </div>
         )}
@@ -100,22 +94,11 @@ const Events = () => {
   });
 
   const fetchUserProfile = useCallback(async () => {
-    // This function can be removed or replaced with a domain service later
-    // For now, keeping it simple since user_type check is minimal
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_type')
-        .eq('user_id', user.id)
-        .single();
-    
-if (eventsError) {
-        throw error;
-      }
-
-      setUserProfile(data);
+      const profileData = await getProfileByUserId(user.id);
+      setUserProfile(profileData);
     } catch (err) {
       log.error('Error fetching user profile:', err);
     }
@@ -147,22 +130,22 @@ if (eventsError) {
   );
   const allPastEvents = (filteredData || []).filter(event => isEventInPast(event));
   
-  // Apply sorting
-  const upcomingEvents = allCurrentEvents.sort((a, b) => {
-    if (sortBy === 'date') {
-      return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
-    } else {
-      return a.title.localeCompare(b.title);
-    }
-  });
-  
-  const pastEvents = allPastEvents.sort((a, b) => {
-    if (sortBy === 'date') {
-      return new Date(b.start_at).getTime() - new Date(a.start_at).getTime(); // Past events sorted descending
-    } else {
-      return a.title.localeCompare(b.title);
-    }
-  });
+  // Memoize sorting function to prevent unnecessary re-sorting
+  const sortEvents = useCallback((events: EventData[], direction: 'asc' | 'desc' = 'asc') => {
+    return events.sort((a, b) => {
+      const aTime = new Date(a.start_at).getTime();
+      const bTime = new Date(b.start_at).getTime();
+      
+      if (sortBy === 'date') {
+        return direction === 'asc' ? aTime - bTime : bTime - aTime;
+      } else {
+        return a.title.localeCompare(b.title);
+      }
+    });
+  }, [sortBy]);
+
+  const upcomingEvents = useMemo(() => sortEvents(allCurrentEvents, 'asc'), [allCurrentEvents, sortEvents]);
+  const pastEvents = useMemo(() => sortEvents(allPastEvents, 'desc'), [allPastEvents, sortEvents]);
 
   // Debug logging
   log.debug('Total events:', events.length);

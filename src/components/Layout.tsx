@@ -4,9 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
 import { LogOut  } from "lucide-react";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerClose, DrawerTitle } from "@/components/ui/drawer";
-import { supabase } from '@/integrations/supabase/client';
-import { ProfileRow } from '@/integrations/supabase/types';
+import { Profile } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
+import { getProfileByUserId } from '@/lib/domain/profiles';
 
 interface LayoutProps {
   children: ReactNode;
@@ -15,21 +15,15 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) throw error;
-        setProfile(data);
+        const profileData = await getProfileByUserId(user.id);
+        setProfile(profileData);
       } catch (error) {
         log.error('Error fetching profile:', error);
       }

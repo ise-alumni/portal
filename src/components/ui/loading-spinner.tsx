@@ -1,26 +1,38 @@
 import React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
+const loadingSpinnerVariants = cva(
+  'animate-spin rounded-full border-b-2 border-primary',
+  {
+    variants: {
+      size: {
+        sm: 'h-4 w-4',
+        md: 'h-8 w-8',
+        lg: 'h-12 w-12'
+      }
+    },
+    defaultVariants: {
+      size: 'md'
+    }
+  }
+);
+
+export interface LoadingSpinnerProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof loadingSpinnerVariants> {
   text?: string;
 }
 
-const sizeClasses = {
-  sm: 'h-4 w-4',
-  md: 'h-8 w-8',
-  lg: 'h-12 w-12'
-};
-
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
-  size = 'md',
+  size,
   className,
-  text
+  text,
+  ...props
 }) => {
   return (
-    <div className={cn('flex items-center justify-center', className)}>
-      <div className={cn('animate-spin rounded-full border-b-2 border-primary', sizeClasses[size])} />
+    <div className={cn('flex items-center justify-center', className)} {...props}>
+      <div className={loadingSpinnerVariants({ size })} />
       {text && (
         <p className="text-muted-foreground ml-2">{text}</p>
       )}
