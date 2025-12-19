@@ -7,6 +7,9 @@ export const FEATURE_FLAGS = {
   // Authentication features
   SIGNUP_ENABLED: false, // Set to false to disable signup functionality
 
+  // Email features
+  WELCOME_EMAIL_SERIES_ENABLED: false, // Set to true to enable welcome email series
+
   // Add more feature flags here as needed
   // PROFILE_EDITING: true,
   // MESSAGING: true,
