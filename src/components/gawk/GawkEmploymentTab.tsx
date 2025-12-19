@@ -243,5 +243,5 @@ export const GawkEmploymentTab = memo(function GawkEmploymentTab({
       </div>
     </div>
   );
-}););
+});
 
