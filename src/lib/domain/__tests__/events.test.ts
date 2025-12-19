@@ -27,6 +27,9 @@ const mockedSupabase = vi.mocked(supabase)
 const {
   getEvents,
   getTags,
+  getEventById,
+  deleteEvent,
+  getEventsByUserId,
   isEventInPast,
   isEventUpcoming,
   isEventOngoing
@@ -377,6 +380,207 @@ describe('Events Domain', () => {
 
         expect(isEventOngoing(event)).toBe(true) // Event ending exactly now is still considered ongoing
       })
+    })
+  })
+
+  describe('getEventById', () => {
+    it('should fetch event by id successfully', async () => {
+      const mockEvent = {
+        id: '1',
+        title: 'Test Event',
+        description: 'Test description',
+        start_at: '2024-02-15T10:00:00Z',
+        end_at: '2024-02-15T12:00:00Z',
+        location: 'Test Location',
+        location_url: null,
+        registration_url: null,
+        organiser_profile_id: null,
+        created_by: 'user-1',
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        image_url: null,
+        organiser: null,
+        event_tags: []
+      }
+
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: mockEvent,
+        error: null
+      })
+      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getEventById('1')
+
+      expect(mockedSupabase.from).toHaveBeenCalledWith('events')
+      expect(result).toEqual({
+        ...mockEvent,
+        image_url: 'https://placehold.co/600x400',
+        event_tags: []
+      })
+    })
+
+    it('should return null when event not found', async () => {
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: null,
+        error: null
+      })
+      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getEventById('non-existent')
+
+      expect(result).toBeNull()
+    })
+
+    it('should handle database errors', async () => {
+      const mockError = new Error('Database error')
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: null,
+        error: mockError
+      })
+      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getEventById('1')
+
+      expect(log.error).toHaveBeenCalledWith('Error fetching event by ID:', mockError)
+      expect(result).toBeNull()
+    })
+
+    it('should handle unexpected errors', async () => {
+      mockedSupabase.from.mockImplementation(() => {
+        throw new Error('Network error')
+      })
+
+      const result = await getEventById('1')
+
+      expect(log.error).toHaveBeenCalledWith('Error in getEventById:', expect.any(Error))
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('deleteEvent', () => {
+    it('should delete event successfully', async () => {
+      const eventId = 'event-123'
+
+      const mockEq = vi.fn().mockResolvedValue({ error: null })
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq })
+      mockedSupabase.from.mockReturnValue({ delete: mockDelete })
+
+      const result = await deleteEvent(eventId)
+
+      expect(mockedSupabase.from).toHaveBeenCalledWith('events')
+      expect(mockDelete).toHaveBeenCalled()
+      expect(mockEq).toHaveBeenCalledWith('id', eventId)
+      expect(result).toBe(true)
+    })
+
+    it('should handle deletion errors', async () => {
+      const eventId = 'event-123'
+      const error = { message: 'Delete failed' }
+
+      const mockEq = vi.fn().mockResolvedValue({ error })
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq })
+      mockedSupabase.from.mockReturnValue({ delete: mockDelete })
+
+      const result = await deleteEvent(eventId)
+
+      expect(log.error).toHaveBeenCalledWith('Error deleting event:', error)
+      expect(result).toBe(false)
+    })
+
+    it('should handle unexpected errors', async () => {
+      const eventId = 'event-123'
+
+      mockedSupabase.from.mockImplementation(() => {
+        throw new Error('Network error')
+      })
+
+      const result = await deleteEvent(eventId)
+
+      expect(log.error).toHaveBeenCalledWith('Error in deleteEvent:', expect.any(Error))
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('getEventsByUserId', () => {
+    it('should fetch events by user id successfully', async () => {
+      const userId = 'user-123'
+      const mockEvents = [
+        createTestEvent({ id: '1', created_by: userId }),
+        createTestEvent({ id: '2', created_by: userId })
+      ]
+
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: mockEvents,
+        error: null
+      })
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getEventsByUserId(userId)
+
+      expect(mockedSupabase.from).toHaveBeenCalledWith('events')
+      expect(mockEq).toHaveBeenCalledWith('created_by', userId)
+      expect(result).toHaveLength(2)
+    })
+
+    it('should handle empty results', async () => {
+      const userId = 'user-123'
+
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: [],
+        error: null
+      })
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getEventsByUserId(userId)
+
+      expect(result).toEqual([])
+    })
+
+    it('should handle database errors', async () => {
+      const userId = 'user-123'
+      const mockError = new Error('Database error')
+
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: null,
+        error: mockError
+      })
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+
+      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+
+      const result = await getEventsByUserId(userId)
+
+      expect(log.error).toHaveBeenCalledWith('Error fetching events by user ID:', mockError)
+      expect(result).toEqual([])
+    })
+
+    it('should handle unexpected errors', async () => {
+      const userId = 'user-123'
+
+      mockedSupabase.from.mockImplementation(() => {
+        throw new Error('Network error')
+      })
+
+      const result = await getEventsByUserId(userId)
+
+      expect(log.error).toHaveBeenCalledWith('Error in getEventsByUserId:', expect.any(Error))
+      expect(result).toEqual([])
     })
   })
 })
