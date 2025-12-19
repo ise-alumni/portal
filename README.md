@@ -1,5 +1,7 @@
 # ISE Alumni Portal
 
+[![CD](https://github.com/ise-alumni/portal/actions/workflows/cd.yml/badge.svg)](https://github.com/ise-alumni/portal/actions/workflows/cd.yml)[![CI](https://github.com/ise-alumni/portal/actions/workflows/ci.yml/badge.svg)](https://github.com/ise-alumni/portal/actions/workflows/ci.yml)[![CodeQL](https://github.com/ise-alumni/portal/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/ise-alumni/portal/actions/workflows/github-code-scanning/codeql)[![Dependabot Updates](https://github.com/ise-alumni/portal/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/ise-alumni/portal/actions/workflows/dependabot/dependabot-updates)
+
 A portal for managing the alumni for ISE - facilitating events, announcements and the alumni's connection to the ISE programme.
 
 ## Overview
