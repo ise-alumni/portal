@@ -246,9 +246,6 @@ importers:
       jsdom:
         specifier: ^27.3.0
         version: 27.3.0
-      lovable-tagger:
-        specifier: ^1.1.13
-        version: 1.1.13(tsx@4.20.6)(vite@5.4.21(@types/node@25.0.3))
       pino:
         specifier: ^10.1.0
         version: 10.1.0
@@ -3785,11 +3782,6 @@ packages:
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
-
-  lovable-tagger@1.1.13:
-    resolution: {integrity: sha512-RBEYDxao7Xf8ya29L0cd+ocE7Gs80xPOIOwwck65Hoie8YDKViuXi3UYV14DoNWIvaJ7WVPf7SG3cc844nFqGA==}
-    peerDependencies:
-      vite: '>=5.0.0 <8.0.0'
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
@@ -8836,15 +8828,6 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
-
-  lovable-tagger@1.1.13(tsx@4.20.6)(vite@5.4.21(@types/node@25.0.3)):
-    dependencies:
-      esbuild: 0.25.12
-      tailwindcss: 3.4.18(tsx@4.20.6)
-      vite: 5.4.21(@types/node@25.0.3)
-    transitivePeerDependencies:
-      - tsx
-      - yaml
 
   lru-cache@10.4.3: {}
 
