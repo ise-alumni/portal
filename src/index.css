@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+     /* Brutalist Monospace Theme - Custom Colors */
+     --background: 0 0% 100%;
+     --foreground: 205 73% 17%; /* #0C314C */
+ 
+     --card: 0 0% 100%;
+     --card-foreground: 205 73% 17%;
+ 
+     --popover: 0 0% 100%;
+     --popover-foreground: 205 73% 17%;
+ 
+     --primary: 155 71% 37%; /* #1BA165 - Green */
+     --primary-foreground: 0 0% 98%;
+
+     --secondary: 205 73% 17%; /* #0C314C - Dark Blue */
+     --secondary-foreground: 0 0% 98%;
+ 
+     --muted: 220 13% 96%;
+     --muted-foreground: 205 73% 17%;
+ 
+     --accent: 165 72% 25%; /* #126E56 - Dark Green */
+     --accent-foreground: 0 0% 98%;
+ 
+     --destructive: 0 84% 60%;
+     --destructive-foreground: 0 0% 98%;
+ 
+     --border: 205 73% 17%; /* #0C314C */
+     --input: 220 13% 91%;
+     --ring: 155 71% 37%; /* #1BA165 */
+
+    /* Brutalist look: square corners, high contrast */
+    --radius: 0rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+   .dark {
+     --background: 205 73% 17%; /* #0C314C */
+     --foreground: 0 0% 98%;
+ 
+     --card: 205 73% 17%;
+     --card-foreground: 0 0% 98%;
+ 
+     --popover: 205 73% 17%;
+     --popover-foreground: 0 0% 98%;
+ 
+     --primary: 155 71% 37%; /* #1BA165 */
+     --primary-foreground: 0 0% 98%;
+ 
+     --secondary: 165 72% 25%; /* #126E56 */
+     --secondary-foreground: 0 0% 98%;
+ 
+     --muted: 205 73% 17%;
+     --muted-foreground: 0 0% 65%;
+ 
+     --accent: 155 71% 37%; /* #1BA165 */
+     --accent-foreground: 205 73% 17%;
+ 
+     --destructive: 0 62% 31%;
+     --destructive-foreground: 0 0% 98%;
+ 
+     --border: 155 71% 37%; /* #1BA165 */
+     --input: 205 73% 17%;
+     --ring: 155 71% 37%; /* #1BA165 */
+     --sidebar-background: 205 73% 17%;
+     --sidebar-foreground: 0 0% 98%;
+     --sidebar-primary: 155 71% 37%;
+     --sidebar-primary-foreground: 205 73% 17%;
+     --sidebar-accent: 165 72% 25%;
+     --sidebar-accent-foreground: 0 0% 98%;
+     --sidebar-border: 155 71% 37%;
+     --sidebar-ring: 155 71% 37%;
+   }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+}

@@ -1,0 +1,19 @@
+// Export all domain services from a central location
+
+// Event services
+export * from './events';
+
+// Announcement services
+export * from './announcements';
+
+// Profile services
+export * from './profiles';
+
+// Residency services
+export * from './residency';
+
+// Map services
+export * from './map';
+
+// Admin services
+export * from './admin';

@@ -1,0 +1,53 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { Analytics } from "@vercel/analytics/react";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+import { Announcements }  from "./pages/Announcements";
+import AnnouncementDetail from "./pages/AnnouncementDetail";
+import Map from "./pages/Map";
+import Events from "./pages/Events";
+import EventDetail from "./pages/EventDetail";
+import Directory from "./pages/Directory";
+import ProfilePage from "./pages/ProfilePage";
+import Dashboard from "./pages/Dashboard";
+import Gawk from "./pages/Gawk";
+import Layout from "@/components/Layout";
+
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<Layout><Index /></Layout>} />
+            <Route path="/announcements" element={<Layout><Announcements /></Layout>} />
+            <Route path="/announcements/:id" element={<Layout><AnnouncementDetail /></Layout>} />
+            <Route path="/map" element={<Layout><Map /></Layout>} />
+            <Route path="/events" element={<Layout><Events /></Layout>} />
+            <Route path="/events/:id" element={<Layout><EventDetail /></Layout>} />
+            <Route path="/directory" element={<Layout><Directory /></Layout>} />
+            <Route path="/profile/:id" element={<Layout><ProfilePage /></Layout>} />
+            <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+            <Route path="/gawk" element={<Layout><Gawk /></Layout>} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Analytics />
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
+
+export default App;
