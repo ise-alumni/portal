@@ -1,3 +1,29 @@
+## [1.8.1](https://github.com/ise-alumni/portal/compare/v1.8.0...v1.8.1) (2026-01-16)
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump @semantic-release/npm from 12.0.2 to 13.1.3 ([13fefef](https://github.com/ise-alumni/portal/commit/13fefefa82ac913af165570a4a955b6b75bf8bb4))
+* **deps-dev:** bump @testing-library/react from 16.3.0 to 16.3.1 ([37ac4be](https://github.com/ise-alumni/portal/commit/37ac4bef6d8b984a4788e92c289803272052d355))
+* **deps-dev:** bump @vitejs/plugin-react-swc from 3.11.0 to 4.2.2 ([a42c09e](https://github.com/ise-alumni/portal/commit/a42c09e7b2be17c1b6123b31b0d5aae143d79b16))
+* **deps-dev:** bump @vitest/coverage-v8 from 4.0.10 to 4.0.16 ([cd4a503](https://github.com/ise-alumni/portal/commit/cd4a503b8efd822ca6f01e85b044b83f5ebe1d63))
+* **deps-dev:** bump eslint-plugin-react-refresh from 0.4.23 to 0.4.26 ([de282f9](https://github.com/ise-alumni/portal/commit/de282f9599a0e32acf64e2f2359b183fe4f99295))
+* **deps-dev:** bump jsdom from 27.2.0 to 27.3.0 ([215b6c7](https://github.com/ise-alumni/portal/commit/215b6c72780037fa0930e3fd70e040e0d2bd8e97))
+* **deps-dev:** bump jsdom from 27.3.0 to 27.4.0 ([eac7ddc](https://github.com/ise-alumni/portal/commit/eac7ddc1c01298aaa652a98661570334d9676a70))
+* **deps-dev:** bump vite from 5.4.21 to 7.3.1 ([3d04200](https://github.com/ise-alumni/portal/commit/3d04200c3224e3c605c61bc1edf6ebbcdbd6bfa2))
+* **deps:** bump @radix-ui/react-avatar from 1.1.10 to 1.1.11 ([0b9daf6](https://github.com/ise-alumni/portal/commit/0b9daf6aff084e39d1edd6b2a24c81e2699fd79a))
+* **deps:** bump @radix-ui/react-slot from 1.2.3 to 1.2.4 ([135a494](https://github.com/ise-alumni/portal/commit/135a4945e2a032a5088d30d2cb99d8b2d776e247))
+* **deps:** bump @supabase/supabase-js from 2.58.0 to 2.90.0 ([08e7a32](https://github.com/ise-alumni/portal/commit/08e7a32b5c7c266baeaac9ea0ec8c9a375ab1865))
+* **deps:** bump lucide-react from 0.462.0 to 0.562.0 ([a0335ce](https://github.com/ise-alumni/portal/commit/a0335cee9709b2990a349e8700e2e6adf6073f7f))
+* **deps:** bump mapbox-gl from 3.16.0 to 3.17.0 ([10c9552](https://github.com/ise-alumni/portal/commit/10c95523bdac7cd83a7fd2188322dfa4b7b73f86))
+* **deps:** bump preact in the npm_and_yarn group across 1 directory ([2e2a800](https://github.com/ise-alumni/portal/commit/2e2a800b2cbd6150c167cca0449d514856d6251e))
+* **deps:** bump react-router-dom from 6.30.1 to 7.12.0 ([dc242bc](https://github.com/ise-alumni/portal/commit/dc242bc46864ddccfe3a44380ec2804da0da0399))
+* **deps:** bump sonner from 1.7.4 to 2.0.7 ([9643c6e](https://github.com/ise-alumni/portal/commit/9643c6e348a76cd0290ec82d70bdb4705891ae46))
+* **deps:** bump tailwind-merge from 2.6.0 to 3.4.0 ([41f5990](https://github.com/ise-alumni/portal/commit/41f59909338c9d0030b38ab24b7715e80a9d45a5))
+* **deps:** bump vaul from 0.9.9 to 1.1.2 ([9be8983](https://github.com/ise-alumni/portal/commit/9be8983ba1d7aa3b0be1f708db9cae66a7a9961b))
+* **deps:** bump zod from 3.25.76 to 4.2.1 ([64f0a37](https://github.com/ise-alumni/portal/commit/64f0a373ba4f2328912b23bc61126e23213970ff))
+* **deps:** bump zod from 4.2.1 to 4.3.4 ([46d3472](https://github.com/ise-alumni/portal/commit/46d3472a7e22833143f17946370cfed31ecac406))
+* **releaserc:** add CHANGELOG entries for chore commits ([e89951e](https://github.com/ise-alumni/portal/commit/e89951e7e8fb077dc2ba41da3ef9528b67e495bc))
+
 ## [1.8.0](https://github.com/ise-alumni/portal/compare/v1.7.2...v1.8.0) (2025-12-19)
 
 ### Features
