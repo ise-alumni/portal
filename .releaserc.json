@@ -15,7 +15,7 @@
           { "type": "build", "release": "patch" },
           { "type": "docs", "release": false },
           { "type": "style", "release": false },
-          { "type": "chore", "release": false },
+          { "type": "chore", "release": "patch" },
           { "type": "test", "release": false },
           { "type": "ci", "release": false },
           { "breaking": true, "release": "major" }
