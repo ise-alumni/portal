@@ -1,3 +1,9 @@
+## [1.8.3](https://github.com/ise-alumni/portal/compare/v1.8.2...v1.8.3) (2026-01-22)
+
+### Miscellaneous Chores
+
+* **deps:** bump lodash in the npm_and_yarn group across 1 directory ([440c796](https://github.com/ise-alumni/portal/commit/440c796e4a01b66693a006300e1dc8843364e109))
+
 ## [1.8.2](https://github.com/ise-alumni/portal/compare/v1.8.1...v1.8.2) (2026-01-22)
 
 ### Miscellaneous Chores
