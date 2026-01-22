@@ -53,7 +53,7 @@ const Index = () => {
 
   // Reset form state when user changes
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       setFormData({
         fullName: '',
         city: '',
@@ -82,13 +82,13 @@ const Index = () => {
       setEditingResidency(null);
       setResidencyLoading(true);
     }
-  }, [user.id]);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user?.id) {
       navigate('/auth');
     }
-  }, [user.id, loading, navigate]);
+  }, [user?.id, loading, navigate]);
 
     const fetchProfile = useCallback(async () => {
       if (!user || isFetching.current) return;
@@ -132,7 +132,7 @@ const Index = () => {
 
     // Fetch residency data
     const fetchResidencyData = useCallback(async () => {
-      if (!user) return;
+      if (!user?.id) return;
       setResidencyLoading(true);
       try {
         const [userResidencies, partners] = await Promise.all([
@@ -163,7 +163,7 @@ const Index = () => {
    }, [profileLoading]);
 
   const handleAvatarUpload = useCallback(async (file: File) => {
-    if (!user) return null;
+    if (!user?.id) return null;
 
     const publicUrl = await uploadAvatar(user.id, file);
     if (publicUrl) {
@@ -173,7 +173,7 @@ const Index = () => {
   }, [user?.id]);
 
   const handleSaveProfile = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
     setSaving(true);
     try {
       let avatarUrlToSave = formData.avatarUrl;

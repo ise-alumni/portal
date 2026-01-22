@@ -74,10 +74,10 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user?.id) {
       navigate("/");
     }
-  }, [user.id, loading, navigate]);
+  }, [user?.id, loading, navigate]);
 
   const onLogin = async (data: LoginForm) => {
     setIsSubmitting(true);

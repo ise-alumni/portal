@@ -111,13 +111,13 @@ export const Announcements = () => {
 
   // Fetch user profile
   const fetchUserProfile = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
     
     const userType = await getUserProfileType(user.id);
     if (userType) {
       setUserProfile({ user_type: userType });
     }
-  }, [user.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchUserProfile();
@@ -176,12 +176,12 @@ export const Announcements = () => {
   }, [selectedTag, sortBy, upcomingPagination, pastPagination]);
 
   const handleCreateAnnouncement = useCallback(async (data: unknown) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     log.info('Announcement created successfully');
     setIsModalOpen(false);
     refetch(); // Refresh announcements list
-  }, [user.id, refetch]);
+  }, [user?.id, refetch]);
 
   const canCreateAnnouncement = useMemo(() => 
     canUserCreateAnnouncements(userProfile?.user_type || null),
