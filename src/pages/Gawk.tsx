@@ -93,7 +93,7 @@ const Gawk = () => {
       setAnalyticsLoading(false);
       setDataLoading(false);
     }
-  }, [user, profile]);
+  }, [user.id, profile]);
 
   useEffect(() => {
     fetchAnalytics();

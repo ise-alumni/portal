@@ -172,7 +172,7 @@ const Dashboard = () => {
     if (!loading && !user) {
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user.id, loading, navigate]);
 
 
   // Fetch dashboard data, analytics, and tags (consolidated - all have same dependencies)
@@ -233,7 +233,7 @@ const Dashboard = () => {
     };
 
     fetchAllData();
-  }, [user, profile]);
+  }, [user.id, profile]);
 
   // Calculate statistics with useMemo
   const stats = useMemo(() => {
@@ -326,7 +326,7 @@ const Dashboard = () => {
     };
 
     fetchResidencyData();
-  }, [user, profile, profiles]);
+  }, [user.id, profile, profiles]);
 
   // Residency partner handlers with useCallback
   const handleCreatePartner = useCallback(async () => {

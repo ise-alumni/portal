@@ -117,7 +117,7 @@ export const Announcements = () => {
     if (userType) {
       setUserProfile({ user_type: userType });
     }
-  }, [user]);
+  }, [user.id]);
 
   useEffect(() => {
     fetchUserProfile();
@@ -181,7 +181,7 @@ export const Announcements = () => {
     log.info('Announcement created successfully');
     setIsModalOpen(false);
     refetch(); // Refresh announcements list
-  }, [user, refetch]);
+  }, [user.id, refetch]);
 
   const canCreateAnnouncement = useMemo(() => 
     canUserCreateAnnouncements(userProfile?.user_type || null),

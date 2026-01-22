@@ -109,14 +109,14 @@ const Events = () => {
     } catch (err) {
       log.error('Error fetching user profile:', err);
     }
-  }, [user]);
+  }, [user.id]);
 
   useEffect(() => {
     refetchEvents();
     if (user) {
       fetchUserProfile();
     }
-  }, [user, fetchUserProfile, refetchEvents]);
+  }, [user.id, fetchUserProfile, refetchEvents]);
 
   const handleEventCreated = useCallback(() => {
     refetchEvents(); // Refresh events list
@@ -125,7 +125,7 @@ const Events = () => {
   // Check if user can create events (admin only) - memoized
   const canCreateEvents = useMemo(() => 
     user && userProfile && canUserCreateEvents(userProfile.user_type),
-    [user, userProfile]
+    [user.id, userProfile]
   );
 
   // Apply tag filter

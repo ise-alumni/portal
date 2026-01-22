@@ -77,7 +77,7 @@ const Auth = () => {
     if (!loading && user) {
       navigate("/");
     }
-  }, [user, loading, navigate]);
+  }, [user.id, loading, navigate]);
 
   const onLogin = async (data: LoginForm) => {
     setIsSubmitting(true);

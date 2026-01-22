@@ -82,13 +82,13 @@ const Index = () => {
       setEditingResidency(null);
       setResidencyLoading(true);
     }
-  }, [user]);
+  }, [user.id]);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user.id, loading, navigate]);
 
     const fetchProfile = useCallback(async () => {
       if (!user || isFetching.current) return;
@@ -124,7 +124,7 @@ const Index = () => {
         setProfileLoading(false);
         isFetching.current = false;
       }
-    }, [user]);
+    }, [user?.id]);
 
     useEffect(() => {
       fetchProfile();
@@ -146,7 +146,7 @@ const Index = () => {
       } finally {
         setResidencyLoading(false);
       }
-    }, [user]);
+    }, [user?.id]);
 
     useEffect(() => {
       fetchResidencyData();
@@ -164,13 +164,13 @@ const Index = () => {
 
   const handleAvatarUpload = useCallback(async (file: File) => {
     if (!user) return null;
-    
+
     const publicUrl = await uploadAvatar(user.id, file);
     if (publicUrl) {
       setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
     }
     return publicUrl;
-  }, [user]);
+  }, [user?.id]);
 
   const handleSaveProfile = useCallback(async () => {
     if (!user) return;
@@ -201,7 +201,7 @@ const Index = () => {
     } finally {
       setSaving(false);
     }
-  }, [user, formData, avatarFile, handleAvatarUpload]);
+  }, [user?.id, formData, avatarFile, handleAvatarUpload]);
 
   const handleForgotPassword = async () => {
     if (!user?.email) {
