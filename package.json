@@ -55,7 +55,7 @@
     "i18n-iso-countries": "^7.14.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.562.0",
-    "mapbox-gl": "^3.17.0",
+    "mapbox-gl": "^3.18.0",
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
