@@ -1,3 +1,13 @@
+## [1.8.2](https://github.com/ise-alumni/portal/compare/v1.8.1...v1.8.2) (2026-01-22)
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump globals from 16.5.0 to 17.0.0 ([2acefc6](https://github.com/ise-alumni/portal/commit/2acefc6e02cac63dbb42a205f57ce28ff454c3dd))
+* **deps:** bump @radix-ui/react-aspect-ratio from 1.1.7 to 1.1.8 ([cc4d35a](https://github.com/ise-alumni/portal/commit/cc4d35ae9c2814b2875557b29cc54a8b982c84df))
+* **deps:** bump lodash-es in the npm_and_yarn group across 1 directory ([3d0efd5](https://github.com/ise-alumni/portal/commit/3d0efd59b6210a2956aa8139ecc12682e376f353))
+* **deps:** bump mapbox-gl from 3.17.0 to 3.18.0 ([70db929](https://github.com/ise-alumni/portal/commit/70db9297127b9f890bbb586ee22e2b4b62964ad8))
+* **deps:** bump react-hook-form from 7.63.0 to 7.71.1 ([d63e92d](https://github.com/ise-alumni/portal/commit/d63e92dc5c2659b65d05e2d1e29208ac9fada155))
+
 ## [1.8.1](https://github.com/ise-alumni/portal/compare/v1.8.0...v1.8.1) (2026-01-16)
 
 ### Miscellaneous Chores
