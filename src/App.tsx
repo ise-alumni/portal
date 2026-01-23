@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Analytics } from "@vercel/analytics/react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import UpdatePassword from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
 import { Announcements }  from "./pages/Announcements";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
@@ -30,6 +31,7 @@ const App = () => (
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/update-password" element={<UpdatePassword />} />
             <Route path="/" element={<Layout><Index /></Layout>} />
             <Route path="/announcements" element={<Layout><Announcements /></Layout>} />
             <Route path="/announcements/:id" element={<Layout><AnnouncementDetail /></Layout>} />
