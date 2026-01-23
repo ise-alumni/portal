@@ -52,7 +52,7 @@ const Gawk = () => {
 
 
   const fetchAnalytics = useCallback(async () => {
-    if (!user || !profile) return;
+    if (!user?.id || !profile) return;
 
     try {
       setAnalyticsLoading(true);
@@ -93,7 +93,7 @@ const Gawk = () => {
       setAnalyticsLoading(false);
       setDataLoading(false);
     }
-  }, [user, profile]);
+  }, [user?.id, profile]);
 
   useEffect(() => {
     fetchAnalytics();

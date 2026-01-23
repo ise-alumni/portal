@@ -53,7 +53,7 @@ const Index = () => {
 
   // Reset form state when user changes
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       setFormData({
         fullName: '',
         city: '',
@@ -82,13 +82,13 @@ const Index = () => {
       setEditingResidency(null);
       setResidencyLoading(true);
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user?.id) {
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user?.id, loading, navigate]);
 
     const fetchProfile = useCallback(async () => {
       if (!user || isFetching.current) return;
@@ -124,7 +124,7 @@ const Index = () => {
         setProfileLoading(false);
         isFetching.current = false;
       }
-    }, [user]);
+    }, [user?.id]);
 
     useEffect(() => {
       fetchProfile();
@@ -132,7 +132,7 @@ const Index = () => {
 
     // Fetch residency data
     const fetchResidencyData = useCallback(async () => {
-      if (!user) return;
+      if (!user?.id) return;
       setResidencyLoading(true);
       try {
         const [userResidencies, partners] = await Promise.all([
@@ -146,7 +146,7 @@ const Index = () => {
       } finally {
         setResidencyLoading(false);
       }
-    }, [user]);
+    }, [user?.id]);
 
     useEffect(() => {
       fetchResidencyData();
@@ -163,17 +163,17 @@ const Index = () => {
    }, [profileLoading]);
 
   const handleAvatarUpload = useCallback(async (file: File) => {
-    if (!user) return null;
-    
+    if (!user?.id) return null;
+
     const publicUrl = await uploadAvatar(user.id, file);
     if (publicUrl) {
       setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
     }
     return publicUrl;
-  }, [user]);
+  }, [user?.id]);
 
   const handleSaveProfile = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
     setSaving(true);
     try {
       let avatarUrlToSave = formData.avatarUrl;
@@ -201,7 +201,7 @@ const Index = () => {
     } finally {
       setSaving(false);
     }
-  }, [user, formData, avatarFile, handleAvatarUpload]);
+  }, [user?.id, formData, avatarFile, handleAvatarUpload]);
 
   const handleForgotPassword = async () => {
     if (!user?.email) {

@@ -169,16 +169,16 @@ const Dashboard = () => {
 
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user?.id) {
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user?.id, loading, navigate]);
 
 
   // Fetch dashboard data, analytics, and tags (consolidated - all have same dependencies)
   useEffect(() => {
     const fetchAllData = async () => {
-      if (!user || !profile) return;
+      if (!user?.id || !profile) return;
       
       try {
         // Set all loading states
@@ -233,7 +233,7 @@ const Dashboard = () => {
     };
 
     fetchAllData();
-  }, [user, profile]);
+  }, [user?.id, profile]);
 
   // Calculate statistics with useMemo
   const stats = useMemo(() => {
@@ -307,7 +307,7 @@ const Dashboard = () => {
   // Fetch residency data (separate effect - depends on profiles)
   useEffect(() => {
     const fetchResidencyData = async () => {
-      if (!user || !profile || profiles.length === 0) return;
+      if (!user?.id || !profile || profiles.length === 0) return;
       
       try {
         setResidencyLoading(true);
@@ -326,7 +326,7 @@ const Dashboard = () => {
     };
 
     fetchResidencyData();
-  }, [user, profile, profiles]);
+  }, [user?.id, profile, profiles]);
 
   // Residency partner handlers with useCallback
   const handleCreatePartner = useCallback(async () => {
