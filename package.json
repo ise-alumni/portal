@@ -4,6 +4,11 @@
   "version": "1.9.0",
   "type": "module",
   "scripts": {
+    "setup": "./scripts/setup",
+    "start": "./scripts/start",
+    "stop": "./scripts/stop",
+    "seed": "./scripts/seed-sample-data",
+    "start:prod": "./scripts/start-with-prod",
     "dev": "vite",
     "dev:scan": "VITE_REACT_SCAN_ENABLED=true vite",
     "build": "vite build",

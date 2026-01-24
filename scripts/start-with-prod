@@ -1,0 +1,65 @@
+#!/bin/bash
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${RED}⚠️  WARNING: PRODUCTION DATABASE MODE ⚠️${NC}\n"
+echo -e "${YELLOW}You are about to start the development server connected to the PRODUCTION Supabase instance.${NC}"
+echo -e "${YELLOW}Any changes you make will affect REAL DATA.${NC}\n"
+echo -e "${RED}This should only be used for:${NC}"
+echo -e "  • Testing production data locally"
+echo -e "  • Debugging production-only issues"
+echo -e "  • Emergency fixes\n"
+echo -e "${BLUE}For normal development, use: ${GREEN}./scripts/start${NC}\n"
+
+# Ask for confirmation
+read -p "$(echo -e ${YELLOW}Are you sure you want to continue? Type YES in all caps: ${NC})" CONFIRM
+
+if [ "$CONFIRM" != "YES" ]; then
+    echo -e "${GREEN}Cancelled. Good choice! Use ./scripts/start for local development.${NC}"
+    exit 0
+fi
+
+echo -e "\n${RED}Last chance! Type the project name 'ise-alumni' to confirm:${NC}"
+read -p "" PROJECT_NAME
+
+if [ "$PROJECT_NAME" != "ise-alumni" ]; then
+    echo -e "${GREEN}Cancelled.${NC}"
+    exit 0
+fi
+
+# Cleanup function to restore .env.local
+cleanup() {
+    echo ""
+    echo -e "${YELLOW}🛑 Shutting down production mode...${NC}"
+    if [ -f ".env.local.backup" ]; then
+        mv .env.local.backup .env.local 2>/dev/null || true
+        echo -e "${GREEN}✓ Restored .env.local${NC}"
+    fi
+    exit 0
+}
+
+# Set up trap to catch Ctrl+C and EXIT
+trap cleanup EXIT SIGINT SIGTERM
+
+# Temporarily disable .env.local by renaming it
+if [ -f ".env.local" ]; then
+    echo -e "\n${YELLOW}Temporarily disabling .env.local...${NC}"
+    mv .env.local .env.local.backup
+fi
+
+echo -e "\n${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${RED}🔴 PRODUCTION MODE - CONNECTED TO LIVE DATA${NC}"
+echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "Supabase URL: ${YELLOW}$(grep VITE_SUPABASE_URL .env | cut -d '=' -f2)${NC}"
+echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+
+echo -e "${GREEN}Starting frontend dev server...${NC}\n"
+
+# Start the frontend (this will block)
+bun run dev

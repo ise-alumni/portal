@@ -37,6 +37,31 @@ INSERT INTO auth.users (
   ''
 );
 
+-- Create identity for the test user (required for authentication to work)
+INSERT INTO auth.identities (
+  id,
+  user_id,
+  provider_id,
+  identity_data,
+  provider,
+  last_sign_in_at,
+  created_at,
+  updated_at
+) VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  '00000000-0000-0000-0000-000000000000',
+  '00000000-0000-0000-0000-000000000000',
+  jsonb_build_object(
+    'sub', '00000000-0000-0000-0000-000000000000',
+    'email', 'test@example.com',
+    'email_verified', true
+  ),
+  'email',
+  now(),
+  now(),
+  now()
+);
+
 -- Create test events with the dummy user
 INSERT INTO public.events (
   title,
@@ -47,9 +72,8 @@ INSERT INTO public.events (
   start_at,
   end_at,
   organiser_profile_id,
-  created_by,
-  tags
-) VALUES 
+  created_by
+) VALUES
 (
   'Alumni Dinner    ',
   'Join us for our annual alumni dinner. This is a great opportunity to catch up with fellow alumni and network.',
@@ -59,20 +83,18 @@ INSERT INTO public.events (
   '2025-11-15 18:00:00+00',
   '2025-11-15 22:00:00+00',
   null,
-  '00000000-0000-0000-0000-000000000000',
-  ARRAY['Networking', 'In-Person', 'Alumni']
+  '00000000-0000-0000-0000-000000000000'
 ),
 (
   'Hack Night at DogPatch Labs',
   'Here is the github link, [here](https://github.com). A collaborative coding night where alumni come together to work on projects, share knowledge, and build something amazing. Bring your laptop and ideas!',
   'DogPatch Labs',
-  'https://maps.google.com/', 
+  'https://maps.google.com/',
   'https://forms.google.com',
   '2025-09-05 19:00:00+00',
   '2025-09-05 23:00:00+00',
   null,
-  '00000000-0000-0000-0000-000000000000',
-  ARRAY['Free Food', 'Hackathon', 'In-Person', 'Social']
+  '00000000-0000-0000-0000-000000000000'
 ),
 (
   'Career Roundtable',
@@ -83,7 +105,6 @@ INSERT INTO public.events (
   '2025-11-05 17:00:00+00',
   '2025-11-05 19:00:00+00',
   null,
-  '00000000-0000-0000-0000-000000000000',
-  ARRAY['Career', 'Networking', 'Online', 'Alumni']
+  '00000000-0000-0000-0000-000000000000'
 );
 
