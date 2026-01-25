@@ -15,8 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PORTAL_RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.PORTAL_RELEASE_BOT_PRIVATE_KEY }}
+
       - name: Checkout
-        uses: actions/checkout@v4       
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -52,13 +62,6 @@ jobs:
       - name: Build
         run: pnpm build
         
-      - name: Generate token
-        id: generate-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.PORTAL_RELEASE_BOT_APP_ID }}
-          private-key: ${{ secrets.PORTAL_RELEASE_BOT_PRIVATE_KEY }}
-
       - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
