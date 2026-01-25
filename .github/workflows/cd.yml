@@ -52,9 +52,16 @@ jobs:
       - name: Build
         run: pnpm build
         
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PORTAL_RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.PORTAL_RELEASE_BOT_PRIVATE_KEY }}
+
       - name: Semantic Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           pnpm add -D semantic-release @semantic-release/github @semantic-release/commit-analyzer @semantic-release/release-notes-generator conventional-changelog-conventionalcommits
           npx semantic-release
