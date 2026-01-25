@@ -1,3 +1,9 @@
+## [1.9.1](https://github.com/ise-alumni/portal/compare/v1.9.0...v1.9.1) (2026-01-25)
+
+### Miscellaneous Chores
+
+* **dx:** Improve local development setup with automated scripts and tooling ([6b8ceea](https://github.com/ise-alumni/portal/commit/6b8ceead737050f73bda2c2fbf4f23316b5b3c9c))
+
 ## [1.9.0](https://github.com/ise-alumni/portal/compare/v1.8.3...v1.9.0) (2026-01-25)
 
 ### Features
