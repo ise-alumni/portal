@@ -1,3 +1,19 @@
+## [1.9.0](https://github.com/ise-alumni/portal/compare/v1.8.3...v1.9.0) (2026-01-25)
+
+### Features
+
+* **auth:** user-initiated password resets from login page ([#95](https://github.com/ise-alumni/portal/issues/95)) ([331215b](https://github.com/ise-alumni/portal/commit/331215b5028946bf0621d02913cf705e0ebff44a))
+
+### Bug Fixes
+
+* **hooks:** Use user id instead of user in dependency arrays ([#96](https://github.com/ise-alumni/portal/issues/96)) ([9fadd38](https://github.com/ise-alumni/portal/commit/9fadd38cc8959a8b79b827cc7bb2212831dc9491))
+
+### Miscellaneous Chores
+
+* **cicd:** Update the CD workflow to use a GitHub app for semantic release authentication ([a75a652](https://github.com/ise-alumni/portal/commit/a75a6526ac296958803c1875d2f9fb9af5ad2452))
+* **cicd:** use a GitHub app credentials for checkout also ([d487226](https://github.com/ise-alumni/portal/commit/d48722673c1c64ec3f42ef487d600ea780f59902))
+* **github:** Add issue template for devex suggestions ([#99](https://github.com/ise-alumni/portal/issues/99)) ([6844a74](https://github.com/ise-alumni/portal/commit/6844a74cdda581930a565b0937fc6ac4ff0959cd))
+
 ## [1.8.3](https://github.com/ise-alumni/portal/compare/v1.8.2...v1.8.3) (2026-01-22)
 
 ### Miscellaneous Chores
