@@ -95,7 +95,7 @@
     "@vitejs/plugin-react-swc": "^4.2.2",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.9",
-    "autoprefixer": "^10.4.21",
+    "autoprefixer": "^10.4.23",
     "conventional-changelog-conventionalcommits": "^8.0.0",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
