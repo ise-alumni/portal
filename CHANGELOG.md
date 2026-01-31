@@ -1,3 +1,9 @@
+## [1.9.3](https://github.com/ise-alumni/portal/compare/v1.9.2...v1.9.3) (2026-01-31)
+
+### Miscellaneous Chores
+
+* **dx:** Add VITE_MAPBOX_TOKEN token to .env.example ([31628fd](https://github.com/ise-alumni/portal/commit/31628fd63f1d7c4891288e11fbc05fea830d2cf6))
+
 ## [1.9.2](https://github.com/ise-alumni/portal/compare/v1.9.1...v1.9.2) (2026-01-31)
 
 ### Miscellaneous Chores
