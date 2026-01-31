@@ -1,3 +1,13 @@
+## [1.9.2](https://github.com/ise-alumni/portal/compare/v1.9.1...v1.9.2) (2026-01-31)
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump @vitest/coverage-v8 from 4.0.16 to 4.0.18 ([b963bb3](https://github.com/ise-alumni/portal/commit/b963bb33bed1b44a79b680b58c4cafb060322384))
+* **deps-dev:** bump autoprefixer from 10.4.21 to 10.4.23 ([4aa8c2a](https://github.com/ise-alumni/portal/commit/4aa8c2abaa592fb4e8a9625db689046b65838ef7))
+* **deps-dev:** bump typescript-eslint from 8.45.0 to 8.54.0 ([79449b6](https://github.com/ise-alumni/portal/commit/79449b6267b1bb83ced5174ed5f7ef05a22bc1ed))
+* **deps:** bump @tanstack/react-query from 5.90.12 to 5.90.20 ([b2e756b](https://github.com/ise-alumni/portal/commit/b2e756b511c551ec9d537e8676b209a05c6104f7))
+* **deps:** bump zod from 4.3.4 to 4.3.6 ([79cee78](https://github.com/ise-alumni/portal/commit/79cee786e867e1a1e11a9fe3ed8acc3e6cdce9c8))
+
 ## [1.9.1](https://github.com/ise-alumni/portal/compare/v1.9.0...v1.9.1) (2026-01-25)
 
 ### Miscellaneous Chores
