@@ -36,32 +36,42 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!activeSession) return;
       const u = activeSession.user;
       if (!u) return;
-      
+
       // Check if user is removed
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('removed')
         .eq('user_id', u.id)
         .single();
-      
+
       if (!profileError && profile?.removed) {
         // Sign out removed user
         await supabase.auth.signOut();
         return;
       }
-      
+
       const fullName = (u.user_metadata as Record<string, unknown>)?.full_name as string | null ?? null;
+
+      // Build upsert payload - only include full_name if it's not null
+      const upsertData: {
+        user_id: string;
+        email: string | null;
+        full_name?: string;
+        removed: boolean;
+      } = {
+        user_id: u.id,
+        email: u.email ?? null,
+        removed: false,
+      };
+
+      // Only set full_name if we have a value (don't overwrite existing with null)
+      if (fullName) {
+        upsertData.full_name = fullName;
+      }
+
       await supabase
         .from('profiles')
-        .upsert(
-          {
-            user_id: u.id,
-            email: u.email ?? null,
-            full_name: fullName,
-            removed: false, // Ensure removed is false for new/upserted profiles
-          },
-          { onConflict: 'user_id' }
-        );
+        .upsert(upsertData, { onConflict: 'user_id' });
     } catch (_) {
       // no-op: avoid blocking auth flow
     }
