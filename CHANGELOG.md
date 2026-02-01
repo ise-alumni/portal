@@ -1,3 +1,9 @@
+## [1.10.0](https://github.com/ise-alumni/portal/compare/v1.9.5...v1.10.0) (2026-02-01)
+
+### Features
+
+* **email:** Add email infrastructure with SMTP support ([503226b](https://github.com/ise-alumni/portal/commit/503226b2ab54813ab36002f9f7de942588408ac5))
+
 ## [1.9.5](https://github.com/ise-alumni/portal/compare/v1.9.4...v1.9.5) (2026-02-01)
 
 ### Bug Fixes
