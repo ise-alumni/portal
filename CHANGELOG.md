@@ -1,3 +1,9 @@
+## [1.10.1](https://github.com/ise-alumni/portal/compare/v1.10.0...v1.10.1) (2026-02-01)
+
+### Build System
+
+* **scripts:** Use proper task runner via just to improve QoL ([e40b94b](https://github.com/ise-alumni/portal/commit/e40b94b99e5a6b520864f26320bc2ceb2571fc57))
+
 ## [1.10.0](https://github.com/ise-alumni/portal/compare/v1.9.5...v1.10.0) (2026-02-01)
 
 ### Features
