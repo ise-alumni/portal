@@ -38,9 +38,48 @@ echo -e "${GREEN}🚀 Starting ISE Alumni Portal (Local Development)${NC}\n"
 
 # Check if .env.local exists
 if [ ! -f ".env.local" ]; then
-    echo -e "${YELLOW}⚠️  .env.local not found. Run ./scripts/setup first!${NC}"
+    echo -e "${RED}❌ .env.local not found. Run ./scripts/setup first!${NC}"
     exit 1
 fi
+
+# Validate required environment variables
+echo "Validating environment variables..."
+MISSING_REQUIRED=()
+
+# Source the .env.local file to check variables
+set -a
+source .env.local
+set +a
+
+# Check for truly required variables (Supabase config)
+if [ -z "$VITE_SUPABASE_URL" ]; then
+    MISSING_REQUIRED+=("VITE_SUPABASE_URL")
+fi
+
+if [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+    MISSING_REQUIRED+=("VITE_SUPABASE_ANON_KEY")
+fi
+
+# Report missing required variables and exit
+if [ ${#MISSING_REQUIRED[@]} -gt 0 ]; then
+    echo -e "${RED}❌ Missing required environment variables in .env.local:${NC}"
+    for var in "${MISSING_REQUIRED[@]}"; do
+        echo -e "   ${YELLOW}• $var${NC}"
+    done
+    echo ""
+    echo -e "${YELLOW}Re-run ./scripts/setup to regenerate Supabase configuration.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Required environment variables are set${NC}"
+
+# Warn about optional but useful variables
+if [ -z "$VITE_MAPBOX_TOKEN" ]; then
+    echo -e "${YELLOW}⚠️  VITE_MAPBOX_TOKEN is not set${NC}"
+    echo -e "${YELLOW}   Map features will not work. Get a token at: https://account.mapbox.com/access-tokens/${NC}"
+fi
+
+echo ""
 
 # Check if Docker is running
 if ! docker info &> /dev/null; then
@@ -66,10 +105,30 @@ echo -e "Supabase Studio: ${YELLOW}http://127.0.0.1:54323${NC}"
 echo -e "Database URL:     ${YELLOW}postgresql://postgres:postgres@127.0.0.1:54322/postgres${NC}"
 echo -e "Frontend:         ${YELLOW}http://localhost:5173${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}🔑 Test User (Basic Seed)${NC}"
+echo -e "${GREEN}🔑 Test Users (All passwords: password123)${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "Email:    ${YELLOW}test@example.com${NC}"
-echo -e "Password: ${YELLOW}password123${NC}"
+
+# Fetch one user of each type from the database
+ADMIN_EMAIL=$(docker exec supabase_db_ise-alumni psql -U postgres -t -c "SELECT u.email FROM auth.users u JOIN public.profiles p ON u.id = p.user_id WHERE p.user_type = 'Admin' LIMIT 1;" 2>/dev/null | tr -d ' ')
+STAFF_EMAIL=$(docker exec supabase_db_ise-alumni psql -U postgres -t -c "SELECT u.email FROM auth.users u JOIN public.profiles p ON u.id = p.user_id WHERE p.user_type = 'Staff' LIMIT 1;" 2>/dev/null | tr -d ' ')
+ALUM_EMAIL=$(docker exec supabase_db_ise-alumni psql -U postgres -t -c "SELECT u.email FROM auth.users u JOIN public.profiles p ON u.id = p.user_id WHERE p.user_type = 'Alum' LIMIT 1;" 2>/dev/null | tr -d ' ')
+
+# Display users if they exist
+if [ -n "$ADMIN_EMAIL" ]; then
+  echo -e "Admin: ${YELLOW}$ADMIN_EMAIL${NC}"
+fi
+if [ -n "$STAFF_EMAIL" ]; then
+  echo -e "Staff: ${YELLOW}$STAFF_EMAIL${NC}"
+fi
+if [ -n "$ALUM_EMAIL" ]; then
+  echo -e "Alum:  ${YELLOW}$ALUM_EMAIL${NC}"
+fi
+
+# Fallback to basic seed user if no users found
+if [ -z "$ADMIN_EMAIL" ] && [ -z "$STAFF_EMAIL" ] && [ -z "$ALUM_EMAIL" ]; then
+  echo -e "Email: ${YELLOW}test@example.com${NC}"
+fi
+
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}💡 Want realistic data?${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
