@@ -1,3 +1,9 @@
+## [1.9.4](https://github.com/ise-alumni/portal/compare/v1.9.3...v1.9.4) (2026-02-01)
+
+### Miscellaneous Chores
+
+* **dx:** Improve dev scripts for better developer experience ([548e91d](https://github.com/ise-alumni/portal/commit/548e91dfb6b4e155663099ea6b9cf71170de58b9))
+
 ## [1.9.3](https://github.com/ise-alumni/portal/compare/v1.9.2...v1.9.3) (2026-01-31)
 
 ### Miscellaneous Chores
