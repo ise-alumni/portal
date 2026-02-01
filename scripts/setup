@@ -158,25 +158,40 @@ if [ -f ".env.local" ]; then
     echo -e "${YELLOW}⚠️  .env.local already exists. Skipping creation to preserve your customizations.${NC}"
     echo -e "${YELLOW}   If you need to regenerate it, delete .env.local and run this script again.${NC}"
 else
-    ANON_KEY=$(supabase status | grep "anon key" | awk '{print $3}')
-    API_URL=$(supabase status | grep "API URL" | awk '{print $3}')
+    # Get Supabase configuration from local instance
+    ANON_KEY=$(supabase status | grep "Publishable" | awk -F '│' '{print $3}' | tr -d ' ')
+    API_URL=$(supabase status | grep "Project URL" | awk -F '│' '{print $3}' | tr -d ' ')
 
     # Get Mapbox token from .env if it exists
     MAPBOX_TOKEN=""
     if [ -f ".env" ]; then
-        MAPBOX_TOKEN=$(grep VITE_MAPBOX_TOKEN .env | cut -d '=' -f2)
+        MAPBOX_TOKEN=$(grep VITE_MAPBOX_TOKEN .env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
     fi
 
+    # Prompt for Mapbox token if not found
+    if [ -z "$MAPBOX_TOKEN" ]; then
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${YELLOW}Mapbox Token Required${NC}"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "The application requires a Mapbox token for map functionality."
+        echo -e "You can get a free token at: ${YELLOW}https://account.mapbox.com/access-tokens/${NC}"
+        echo ""
+        echo -e "Enter your Mapbox token (or press Enter to skip and set it later):"
+        read -p "> " MAPBOX_TOKEN
+        echo ""
+    fi
+
+    # Create .env.local with auto-filled values
     cat > .env.local << EOF
 # Local Development Environment Variables
 # This file overrides .env for local development
 # DO NOT commit this file to git
 
-# Local Supabase Configuration
+# Local Supabase Configuration (auto-generated)
 VITE_SUPABASE_URL=$API_URL
 VITE_SUPABASE_ANON_KEY=$ANON_KEY
 
-# Mapbox Token (from .env)
+# Mapbox Token
 VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN
 
 # Log Level (more verbose locally)
@@ -186,6 +201,13 @@ VITE_LOG_LEVEL=debug
 VITE_REACT_SCAN_ENABLED=true
 EOF
     echo -e "${GREEN}✓ Created .env.local${NC}"
+
+    # Warn if Mapbox token is still empty
+    if [ -z "$MAPBOX_TOKEN" ]; then
+        echo -e "${YELLOW}⚠️  VITE_MAPBOX_TOKEN is not set in .env.local${NC}"
+        echo -e "${YELLOW}   The app may not work fully until you add your Mapbox token.${NC}"
+        echo -e "${YELLOW}   Edit .env.local and set VITE_MAPBOX_TOKEN=your_token_here${NC}"
+    fi
 fi
 echo ""
 
