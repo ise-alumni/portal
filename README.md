@@ -231,6 +231,17 @@ git push origin your-branch-name
 
 Some features may not be released to users but pushed regardless (they may be toggled over time). Feature flags are configured in [features.ts](./src/config/features.ts).
 
+## Email Infrastructure
+
+Email is sent via SMTP using [Resend](https://resend.com) in production and [Inbucket](http://127.0.0.1:54324) locally.
+
+| Environment | Provider | View Emails |
+|-------------|----------|-------------|
+| Local | Inbucket | http://127.0.0.1:54324 |
+| Production | Resend | [Resend Dashboard](https://resend.com/emails) |
+
+Edge functions use a shared email service at `supabase/functions/_shared/email.ts`. See [`supabase/functions/README.md`](./supabase/functions/README.md) for setup and usage details.
+
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/bxrne/ise-alumni/issues)
