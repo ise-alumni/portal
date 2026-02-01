@@ -1,49 +1,6 @@
-#!/bin/bash
-set -e
-
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Default count
-ALUMNI_COUNT=100
-
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --count)
-      ALUMNI_COUNT="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown option: $1"
-      echo "Usage: $0 [--count NUMBER]"
-      exit 1
-      ;;
-  esac
-done
-
-echo -e "${BLUE}🌱 Seeding sample data for ISE Alumni Portal${NC}\n"
-echo -e "${YELLOW}Generating ${ALUMNI_COUNT} alumni profiles...${NC}\n"
-
-# Check if Supabase is running
-if ! docker ps | grep -q "supabase_db_ise-alumni"; then
-    echo -e "${YELLOW}Supabase is not running. Please run ./scripts/start first.${NC}"
-    exit 1
-fi
-
-# Get the test admin user ID for created_by fields
-ADMIN_USER_ID="00000000-0000-0000-0000-000000000000"
-
-# Generate SQL file - use unquoted EOF to allow variable substitution
-SQL_FILE=$(mktemp)
-trap "rm -f $SQL_FILE" EXIT
-
-cat > "$SQL_FILE" << EOF
 -- Seed sample data for ISE Alumni Portal
 -- This script generates realistic test data for development
+-- Usage: Run via `just seed [count]` where count defaults to 100
 
 -- Create tags first (needed for events and announcements)
 INSERT INTO public.tags (name, color) VALUES
@@ -64,7 +21,7 @@ INSERT INTO public.tags (name, color) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Generate alumni profiles, events, and announcements
-DO \$\$
+DO $$
 DECLARE
   v_networking_tag_id uuid;
   v_career_tag_id uuid;
@@ -150,8 +107,8 @@ BEGIN
   SELECT id INTO v_important_tag_id FROM public.tags WHERE name = 'Important';
   SELECT id INTO v_deadline_tag_id FROM public.tags WHERE name = 'Deadline';
 
-  -- Generate alumni
-  FOR i IN 1..${ALUMNI_COUNT} LOOP
+  -- Generate alumni (count controlled by justfile parameter)
+  FOR i IN 1..100 LOOP
     -- Generate random data
     v_full_name := first_names[1 + floor(random() * array_length(first_names, 1))] || ' ' ||
                    last_names[1 + floor(random() * array_length(last_names, 1))];
@@ -166,9 +123,6 @@ BEGIN
     v_is_msc := random() > 0.5;
 
     -- Set graduation year based on degree type
-    -- Note: cohort will be auto-calculated by trigger
-    -- BSc: cohort = grad_year - 2024 (2025=1, 2026=2, etc.) - must be >= 2025
-    -- MSc: cohort = grad_year - 2025 (2026=1, 2027=2, etc.) - must be >= 2026
     IF v_is_msc THEN
       v_grad_year := 2026 + floor(random() * 5); -- 2026-2030 (cohorts 1-5)
     ELSE
@@ -243,7 +197,6 @@ BEGIN
     );
 
     -- Profile will be created by trigger, then update it with additional data
-    -- Note: cohort is auto-calculated by trigger based on graduation_year and msc
     UPDATE public.profiles SET
       full_name = v_full_name,
       city = v_city,
@@ -432,25 +385,4 @@ BEGIN
   RAISE NOTICE 'Alumni profiles: %', (SELECT COUNT(*) FROM public.profiles WHERE user_id != '00000000-0000-0000-0000-000000000000');
   RAISE NOTICE 'Events: %', (SELECT COUNT(*) FROM public.events);
   RAISE NOTICE 'Announcements: %', (SELECT COUNT(*) FROM public.announcements);
-END \$\$;
-EOF
-
-echo -e "${YELLOW}Executing SQL...${NC}"
-
-# Execute the SQL
-docker exec -i supabase_db_ise-alumni psql -U postgres < "$SQL_FILE"
-
-echo ""
-echo -e "${GREEN}✅ Sample data seeded successfully!${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "Generated:"
-echo -e "  • ${ALUMNI_COUNT} alumni profiles (BSc and MSc mix)"
-echo -e "  • 50 events (40 past, 10 upcoming)"
-echo -e "  • 50 announcements (with varied deadlines)"
-echo -e "  • 14 tags for categorization"
-echo -e "  • 3 residency partners"
-echo -e "  • Residency records"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e ""
-echo -e "All generated users have the password: ${YELLOW}password123${NC}"
-echo -e "Test user (test@example.com) has been ${YELLOW}removed${NC} - use any generated user to log in"
+END $$;
