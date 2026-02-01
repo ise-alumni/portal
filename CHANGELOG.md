@@ -1,3 +1,9 @@
+## [1.9.5](https://github.com/ise-alumni/portal/compare/v1.9.4...v1.9.5) (2026-02-01)
+
+### Bug Fixes
+
+* **auth:** Prevent profile full_name overwrite when user_metadata is missing ([3557355](https://github.com/ise-alumni/portal/commit/3557355236903b2b6a6c6e6800de0ffa76dd0369))
+
 ## [1.9.4](https://github.com/ise-alumni/portal/compare/v1.9.3...v1.9.4) (2026-02-01)
 
 ### Miscellaneous Chores
