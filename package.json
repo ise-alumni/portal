@@ -1,7 +1,7 @@
 {
   "name": "ise_alumni_portal",
   "private": true,
-  "version": "1.10.1",
+  "version": "1.10.2",
   "type": "module",
   "scripts": {
     "setup": "./scripts/setup",
@@ -69,7 +69,7 @@
     "react-map-gl": "^7.1.7",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.6.0",
-    "react-router-dom": "^7.12.0",
+    "react-router-dom": "^7.13.0",
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",

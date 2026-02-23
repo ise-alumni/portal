@@ -1,3 +1,9 @@
+## [1.10.2](https://github.com/ise-alumni/portal/compare/v1.10.1...v1.10.2) (2026-02-23)
+
+### Miscellaneous Chores
+
+* **deps:** bump the npm_and_yarn group across 1 directory with 2 updates ([f26d36b](https://github.com/ise-alumni/portal/commit/f26d36bc9419cc1488dcb82fc27615ef44ba3623))
+
 ## [1.10.1](https://github.com/ise-alumni/portal/compare/v1.10.0...v1.10.1) (2026-02-01)
 
 ### Build System
