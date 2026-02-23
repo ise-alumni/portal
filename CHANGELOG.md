@@ -1,3 +1,9 @@
+## [1.10.3](https://github.com/ise-alumni/portal/compare/v1.10.2...v1.10.3) (2026-02-23)
+
+### Miscellaneous Chores
+
+* **deps:** bump react-router-dom from 7.12.0 to 7.13.0 ([fba1ec4](https://github.com/ise-alumni/portal/commit/fba1ec497fddea140df90063abd7e4347cea44b7))
+
 ## [1.10.2](https://github.com/ise-alumni/portal/compare/v1.10.1...v1.10.2) (2026-02-23)
 
 ### Miscellaneous Chores
