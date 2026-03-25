@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,10 +41,9 @@ type UpdatePasswordForm = z.infer<typeof updatePasswordSchema>;
 const UpdatePassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session, loading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isValidSession, setIsValidSession] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
 
   const form = useForm<UpdatePasswordForm>({
     resolver: zodResolver(updatePasswordSchema),
@@ -53,47 +53,37 @@ const UpdatePassword = () => {
     },
   });
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsValidSession(!!session);
-      setIsChecking(false);
-
-      if (!session) {
-        toast({
-          title: "Invalid or expired link",
-          description: "Please request a new password reset link.",
-          variant: "destructive",
-        });
-        setTimeout(() => navigate("/auth"), 2000);
-      }
-    };
-
-    checkSession();
-  }, [navigate, toast]);
+  if (!loading && !session) {
+    toast({
+      title: "Invalid or expired link",
+      description: "Please request a new password reset link.",
+      variant: "destructive",
+    });
+    setTimeout(() => navigate("/auth"), 2000);
+  }
 
   const onSubmit = async (data: UpdatePasswordForm) => {
     setIsSubmitting(true);
     setError(null);
 
-    const { error } = await supabase.auth.updateUser({
-      password: data.password,
-    });
-
-    if (error) {
-      setError(error.message);
-    } else {
+    try {
+      await authClient.changePassword({
+        newPassword: data.password,
+        currentPassword: '',
+      });
       toast({
         title: "Password updated!",
         description: "Your password has been successfully changed.",
       });
       navigate("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update password. This feature may not be fully configured yet.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
-  if (isChecking) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
         <div className="text-center">
@@ -104,7 +94,7 @@ const UpdatePassword = () => {
     );
   }
 
-  if (!isValidSession) {
+  if (!session) {
     return null;
   }
 

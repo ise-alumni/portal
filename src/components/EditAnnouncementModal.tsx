@@ -6,15 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, ExternalLinkIcon, CalendarIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { log } from '@/lib/utils/logger';
 import { getEventTagOptions } from '@/lib/constants';
-import type { Database } from '@/integrations/supabase/types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-
 
 interface Announcement {
   id: string;
@@ -58,7 +55,6 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
   const [imageUrl, setImageUrl] = useState<string>("");
   const { user } = useAuth();
 
-  // Initialize form with announcement data when modal opens
   useEffect(() => {
     if (announcement && isOpen) {
       setTitle(announcement.title);
@@ -87,26 +83,35 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       setIsUpdating(true);
       setError(null);
 
-      // Convert selected tag names to UUIDs first
+      const allTags = await api.get<Array<{ id: string; name: string; color: string }>>('/api/tags');
       const tagIds: string[] = [];
-      
-      for (const tagName of selectedTags) {
-        // Find existing tag
-        const { data: existingTag } = await supabase
-          .from('tags')
-          .select('id')
-          .eq('name', tagName)
-          .single();
 
-        if (existingTag && (existingTag as { id: string }).id) {
-          tagIds.push((existingTag as { id: string }).id);
+      for (const tagName of selectedTags) {
+        const found = allTags.find(t => t.name === tagName);
+        if (found) {
+          tagIds.push(found.id);
         } else {
           log.error('Tag not found in database:', tagName);
         }
       }
 
+      await api.put(`/api/announcements/${announcement.id}`, {
+        title,
+        content: content || null,
+        external_url: externalUrl || null,
+        deadline: deadline || null,
+        image_url: imageUrl || null,
+      });
+
+      await api.delete(`/api/announcements/${announcement.id}/tags`);
+      for (const tagId of tagIds) {
+        await api.post(`/api/announcements/${announcement.id}/tags`, {
+          tag_id: tagId,
+        });
+      }
+
       const data = {
-        title: title,
+        title,
         content: content || null,
         external_url: externalUrl || null,
         deadline: deadline || null,
@@ -114,50 +119,6 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
         tag_ids: tagIds,
       };
 
-      const { error: updateError } = await (supabase as any)
-        .from('announcements')
-        .update({
-          title: title,
-          content: content || null,
-          external_url: externalUrl || null,
-          deadline: deadline || null,
-          image_url: imageUrl || null,
-        })
-        .eq('id', announcement.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-      
-      // Update tag associations
-      if (tagIds.length > 0) {
-        // First delete existing tag associations
-        const { error: deleteError } = await (supabase as any)
-          .from('announcement_tags')
-          .delete()
-          .eq('announcement_id', announcement.id);
-
-        if (deleteError) {
-          throw deleteError;
-        }
-
-        // Then insert new tag associations
-        const tagRelations = tagIds.map(tagId => ({
-          announcement_id: announcement.id,
-          tag_id: tagId
-        }));
-        
-        const { error: tagInsertError } = await (supabase as any)
-          .from('announcement_tags')
-          .insert(tagRelations);
-
-        if (tagInsertError) {
-          throw tagInsertError;
-        }
-      }
-      
       onSubmit(data);
       onClose();
     } catch (err) {
@@ -179,15 +140,8 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
       setIsDeleting(true);
       setError(null);
 
-      const { error: deleteError } = await (supabase
-        .from('announcements') as any)
-        .delete()
-        .eq('id', announcement.id);
+      await api.delete(`/api/announcements/${announcement.id}`);
 
-      if (deleteError) {
-        throw deleteError;
-      }
-      
       onDelete();
       onClose();
     } catch (err) {
@@ -211,14 +165,12 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Error Display */}
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
-          {/* Title - Full Width */}
           <div className="space-y-2">
             <Label htmlFor="title" className="text-sm font-medium">Announcement Title *</Label>
             <Input
@@ -231,13 +183,11 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
             />
           </div>
 
-          {/* Tag Selection */}
           <div className="space-y-2">
             <Label className="text-sm font-medium flex items-center gap-2">
               Tags
             </Label>
             <div className="space-y-2">
-              {/* Available tags */}
               <div className="flex flex-wrap gap-2">
                 {getEventTagOptions().map((tag) => {
                   const isSelected = selectedTags.includes(tag.value);
@@ -278,7 +228,6 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
             </div>
           </div>
 
-          {/* Deadline */}
           <div className="space-y-2">
             <Label htmlFor="deadline" className="text-sm font-medium flex items-center gap-2">
               <CalendarIcon className="w-4 h-4" />
@@ -293,7 +242,6 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
             />
           </div>
 
-          {/* External URL */}
           <div className="space-y-2">
             <Label htmlFor="external-url" className="text-sm font-medium flex items-center gap-2">
               <ExternalLinkIcon className="w-4 h-4" />
@@ -309,7 +257,6 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
             />
           </div>
 
-          {/* Image URL */}
           <div className="space-y-2">
             <Label htmlFor="image-url" className="text-sm font-medium flex items-center gap-2">
               <ImageIcon className="w-4 h-4" />
@@ -328,7 +275,6 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
             </p>
           </div>
 
-          {/* Content */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="content" className="text-sm font-medium flex items-center gap-2">
@@ -382,7 +328,6 @@ const EditAnnouncementModal = ({ isOpen, onClose, onSubmit, onDelete, announceme
           </div>
         </div>
 
-        {/* Footer Actions */}
         <div className="flex justify-between gap-3 pt-4 border-t">
           <div className="flex gap-3">
             <Button

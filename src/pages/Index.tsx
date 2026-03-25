@@ -283,7 +283,7 @@ const Index = () => {
   }
 
    const displayEmail = user?.email || profile?.email || '—';
-   const lastSignedIn = user?.last_sign_in_at || '—';
+   const lastSignedIn = '—';
 
    // Calculate profile completion using domain function
    const profileCompletion = calculateProfileCompletionPercentage(profile);

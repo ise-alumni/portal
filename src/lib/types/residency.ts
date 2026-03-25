@@ -1,5 +1,3 @@
-import { Database } from '@/integrations/supabase/types';
-
 export type ResidencyPhase = 'R1' | 'R2' | 'R3' | 'R4' | 'R5';
 
 export interface Residency {
@@ -51,7 +49,3 @@ export interface ResidencyStats {
     percentage: number;
   }[];
 }
-
-// Re-export Supabase types for compatibility
-export type ResidencyPartnerTable = Database['public']['Tables']['residency_partners']['Row'];
-export type ResidencyTable = Database['public']['Tables']['residencies']['Row'];

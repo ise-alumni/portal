@@ -1,10 +1,9 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { createContext, useContext, ReactNode } from 'react';
+import { authClient, useSession } from '@/lib/auth-client';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: { id: string; email: string; name: string } | null;
+  session: { token: string } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error?: string }>;
@@ -27,139 +26,63 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: sessionData, isPending } = useSession();
 
-  const ensureProfileForSession = async (activeSession: Session | null) => {
-    try {
-      if (!activeSession) return;
-      const u = activeSession.user;
-      if (!u) return;
-
-      // Check if user is removed
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('removed')
-        .eq('user_id', u.id)
-        .single();
-
-      if (!profileError && profile?.removed) {
-        // Sign out removed user
-        await supabase.auth.signOut();
-        return;
+  const user = sessionData?.user
+    ? {
+        id: sessionData.user.id,
+        email: sessionData.user.email,
+        name: sessionData.user.name,
       }
+    : null;
 
-      const fullName = (u.user_metadata as Record<string, unknown>)?.full_name as string | null ?? null;
-
-      // Build upsert payload - only include full_name if it's not null
-      const upsertData: {
-        user_id: string;
-        email: string | null;
-        full_name?: string;
-        removed: boolean;
-      } = {
-        user_id: u.id,
-        email: u.email ?? null,
-        removed: false,
-      };
-
-      // Only set full_name if we have a value (don't overwrite existing with null)
-      if (fullName) {
-        upsertData.full_name = fullName;
-      }
-
-      await supabase
-        .from('profiles')
-        .upsert(upsertData, { onConflict: 'user_id' });
-    } catch (_) {
-      // no-op: avoid blocking auth flow
-    }
-  };
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false); // Always set loading to false after first check
-
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        ensureProfileForSession(session);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  const session = sessionData?.session
+    ? { token: sessionData.session.token }
+    : null;
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
-
-    // Check if user is removed
-    if (data.user) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('removed')
-        .eq('user_id', data.user.id)
-        .single();
-
-      if (profileError) {
-        // Sign out user if profile check fails
-        await supabase.auth.signOut();
-        return { error: 'Failed to verify user status' };
+    try {
+      const { error } = await authClient.signIn.email({ email, password });
+      if (error) {
+        return { error: error.message ?? 'Sign in failed' };
       }
-
-      if (profile?.removed) {
-        // Sign out removed user
-        await supabase.auth.signOut();
-        return { error: 'Account has been deactivated' };
-      }
+      return {};
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Sign in failed' };
     }
-
-    return { error: undefined };
   };
 
   const signUp = async (email: string, password: string, fullName?: string): Promise<{ error?: string }> => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: {
-          full_name: fullName || email.split('@')[0],
-        }
+    try {
+      const { error } = await authClient.signUp.email({
+        email,
+        password,
+        name: fullName || email.split('@')[0],
+      });
+      if (error) {
+        return { error: error.message ?? 'Sign up failed' };
       }
-    });
-    return { error: error?.message };
+      return {};
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Sign up failed' };
+    }
   };
 
-  const signOut = async (): Promise<void> => {
-    // Let onAuthStateChange handle the state updates
-    await supabase.auth.signOut();
+  const handleSignOut = async (): Promise<void> => {
+    await authClient.signOut();
   };
 
-  const resetPassword = async (email: string): Promise<{ error?: string }> => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`,
-    });
-    return { error: error?.message };
+  const resetPassword = async (_email: string): Promise<{ error?: string }> => {
+    return { error: 'Password reset not yet configured' };
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     session,
-    loading,
+    loading: isPending,
     signIn,
     signUp,
-    signOut,
+    signOut: handleSignOut,
     resetPassword,
   };
 

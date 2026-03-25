@@ -1,110 +1,56 @@
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { type Profile, type ProfileFormData } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
 
-export async function getProfiles(): Promise<Profile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('removed', false)
-    .order('full_name', { ascending: true });
+export async function uploadAvatar(_userId: string, _file: File): Promise<string | null> {
+  log.warn('Avatar upload not yet implemented with local storage');
+  return null;
+}
 
-  if (error) {
+export async function getProfiles(): Promise<Profile[]> {
+  try {
+    return await api.get<Profile[]>('/api/profiles');
+  } catch (error) {
     log.error('Error fetching profiles:', error);
     return [];
   }
-
-  return data || [];
 }
 
 export async function getAlumniProfiles(): Promise<Profile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('is_public', true)
-    .eq('removed', false)
-    .in('user_type', ['Alum', 'Admin']) // Include alumni and admin, exclude Staff
-    .order('full_name', { ascending: true });
-
-  if (error) {
+  try {
+    return await api.get<Profile[]>('/api/profiles/alumni');
+  } catch (error) {
     log.error('Error fetching alumni profiles:', error);
     return [];
   }
-
-  return data || [];
 }
 
 export async function getProfileByUserId(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('removed', false)
-    .single();
-
-  if (error) {
+  try {
+    return await api.get<Profile>(`/api/profiles/user/${userId}`);
+  } catch (error) {
     log.error('Error fetching profile by user ID:', error);
     return null;
   }
-
-  return data;
 }
 
 export async function getProfileById(profileId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', profileId)
-    .eq('removed', false)
-    .single();
-
-  if (error) {
-    log.error('Error fetching profile by ID:', error);
-    return null;
-  }
-
-  return data;
-}
-
-export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
   try {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      log.error('Error uploading avatar:', uploadError);
-      return null;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+    return await api.get<Profile>(`/api/profiles/${profileId}`);
   } catch (error) {
-    log.error('Error in uploadAvatar:', error);
+    log.error('Error fetching profile by ID:', error);
     return null;
   }
 }
 
 export async function getUserProfileType(userId: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('user_type')
-    .eq('user_id', userId)
-    .single();
-
-  if (error) {
+  try {
+    const data = await api.get<{ user_type: string }>(`/api/profiles/type/${userId}`);
+    return data?.user_type || null;
+  } catch (error) {
     log.error('Error fetching user profile type:', error);
     return null;
   }
-
-  return data?.user_type || null;
 }
 
 export async function updateProfile(userId: string, formData: ProfileFormData): Promise<Profile | null> {
@@ -130,21 +76,9 @@ export async function updateProfile(userId: string, formData: ProfileFormData): 
       avatar_url: formData.avatarUrl || undefined,
     };
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updatePayload)
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      log.error('Error updating profile:', error);
-      return null;
-    }
-
-    return data;
+    return await api.put<Profile>(`/api/profiles/${userId}`, updatePayload);
   } catch (error) {
-    log.error('Error in updateProfile:', error);
+    log.error('Error updating profile:', error);
     return null;
   }
 }
@@ -152,20 +86,12 @@ export async function updateProfile(userId: string, formData: ProfileFormData): 
 export async function searchProfiles(query: string): Promise<Profile[]> {
   if (!query.trim()) return [];
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('is_public', true)
-    .eq('removed', false)
-    .or(`full_name.ilike.%${query}%,bio.ilike.%${query}%,company.ilike.%${query}%`)
-    .order('full_name', { ascending: true });
-
-  if (error) {
+  try {
+    return await api.get<Profile[]>(`/api/profiles/search?q=${encodeURIComponent(query)}`);
+  } catch (error) {
     log.error('Error searching profiles:', error);
     return [];
   }
-
-  return data || [];
 }
 
 export function isProfileComplete(profile: Profile): boolean {
@@ -179,14 +105,14 @@ export function isProfileComplete(profile: Profile): boolean {
 
 export function calculateProfileCompletionPercentage(profile: Profile | null): number {
   if (!profile) return 0;
-  
+
   const requiredFields = [
     profile.full_name,
     profile.bio,
     profile.company,
     profile.job_title
   ];
-  
+
   const completedFields = requiredFields.filter(field => field && field.trim() !== '').length;
   return Math.round((completedFields / requiredFields.length) * 100);
 }
@@ -202,15 +128,13 @@ export interface UserActivity {
 
 export async function getUserActivity(): Promise<UserActivity[]> {
   try {
-    // Get all profiles - use profile data as primary source
-    const profiles = await getProfiles();
-    
-    // Create user activity from profile data
-    const userActivity: UserActivity[] = profiles.map(profile => ({
+    const data = await getProfiles();
+
+    const userActivity: UserActivity[] = data.map(profile => ({
       id: profile.id,
       userId: profile.user_id,
       email: profile.email || '',
-      lastSignInAt: profile.updated_at, // Use updated_at as proxy for last activity
+      lastSignInAt: profile.updated_at,
       createdAt: profile.created_at,
       profile: profile
     }));
@@ -258,25 +182,12 @@ export interface ProfileHistory {
 
 export async function getProfileHistory(profileId?: string): Promise<ProfileHistory[]> {
   try {
-    let query = supabase
-      .from('profiles_history')
-      .select('*')
-      .order('changed_at', { ascending: true });
-
-    if (profileId) {
-      query = query.eq('profile_id', profileId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      log.error('Error fetching profile history:', error);
-      return [];
-    }
-
-    return data || [];
+    const path = profileId
+      ? `/api/profiles/history/${profileId}`
+      : '/api/profiles/history';
+    return await api.get<ProfileHistory[]>(path);
   } catch (error) {
-    log.error('Error in getProfileHistory:', error);
+    log.error('Error fetching profile history:', error);
     return [];
   }
 }
@@ -289,20 +200,15 @@ export async function getProfileHistoryStats(): Promise<{
 }> {
   try {
     const history = await getProfileHistory();
-    const profiles = await getProfiles();
-    
-    // Include all profiles for comprehensive stats
-    const eligibleProfiles = profiles;
-    const eligibleProfileIds = new Set(eligibleProfiles.map(p => p.id));
-    
-    // Filter history to only include changes from eligible profiles
+    const profilesList = await getProfiles();
+
+    const eligibleProfileIds = new Set(profilesList.map(p => p.id));
     const filteredHistory = history.filter(change => eligibleProfileIds.has(change.profile_id));
-    
-    // Group by month
+
     const changesByMonth = filteredHistory.reduce((acc, change) => {
-      const month = new Date(change.changed_at).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short' 
+      const month = new Date(change.changed_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short'
       });
       const existing = acc.find(item => item.month === month);
       if (existing) {
@@ -313,7 +219,6 @@ export async function getProfileHistoryStats(): Promise<{
       return acc;
     }, [] as { month: string; count: number }[]);
 
-    // Group by type
     const changesByType = filteredHistory.reduce((acc, change) => {
       const existing = acc.find(item => item.type === change.change_type);
       if (existing) {
@@ -324,7 +229,6 @@ export async function getProfileHistoryStats(): Promise<{
       return acc;
     }, [] as { type: string; count: number }[]);
 
-    // Count field changes (simplified - in real implementation you'd track specific fields)
     const topChangedFields = [
       { field: 'job_title', count: filteredHistory.filter(h => h.job_title !== null).length },
       { field: 'company', count: filteredHistory.filter(h => h.company !== null).length },
@@ -337,7 +241,7 @@ export async function getProfileHistoryStats(): Promise<{
 
     return {
       totalChanges: filteredHistory.length,
-      changesByMonth: changesByMonth.slice(-12), // Last 12 months
+      changesByMonth: changesByMonth.slice(-12),
       changesByType,
       topChangedFields
     };
@@ -359,12 +263,10 @@ export interface SignInData {
 
 export async function getSignInsOverTime(days: number = 30): Promise<SignInData[]> {
   try {
-    const profiles = await getProfiles();
-
+    const profilesList = await getProfiles();
     const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // Group sign-ins by date label, using updated_at as proxy for last activity
-    const map = profiles.reduce(
+    const map = profilesList.reduce(
       (acc, profile) => {
         const updatedAt = profile.updated_at ? new Date(profile.updated_at) : null;
         if (!updatedAt || updatedAt < cutoffDate) return acc;
@@ -410,112 +312,41 @@ export interface FieldChange {
 export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]> {
   try {
     const history = await getProfileHistory();
-    const profiles = await getProfiles();
-    
-    // Filter out staff members - only include alumni and admin
-    const eligibleProfiles = profiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
-    
-    // Map history to field changes with user details
+    const allProfiles = await getProfiles();
+
+    const eligibleProfiles = allProfiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
     const fieldChanges: FieldChange[] = [];
-    
+
     for (const change of history) {
       const profile = eligibleProfiles.find(p => p.id === change.profile_id);
       if (!profile) continue;
-      
-      // Add changes for each field that has a value
-      if (change.job_title) {
-        fieldChanges.push({
-          id: `${change.id}_job_title`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Job Title',
-          oldValue: null, // We don't track old values in current schema
-          newValue: change.job_title,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.company) {
-        fieldChanges.push({
-          id: `${change.id}_company`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Company',
-          oldValue: null,
-          newValue: change.company,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.city) {
-        fieldChanges.push({
-          id: `${change.id}_city`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'City',
-          oldValue: null,
-          newValue: change.city,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.country) {
-        fieldChanges.push({
-          id: `${change.id}_country`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Country',
-          oldValue: null,
-          newValue: change.country,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.professional_status) {
-        fieldChanges.push({
-          id: `${change.id}_professional_status`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Professional Status',
-          oldValue: null,
-          newValue: change.professional_status,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.is_remote !== null) {
-        fieldChanges.push({
-          id: `${change.id}_is_remote`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Remote Work',
-          oldValue: null,
-          newValue: change.is_remote ? 'Yes' : 'No',
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.is_ise_champion !== null) {
-        fieldChanges.push({
-          id: `${change.id}_is_ise_champion`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'ISE Champion',
-          oldValue: null,
-          newValue: change.is_ise_champion ? 'Yes' : 'No',
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
+
+      const fields: Array<[string, string | null]> = [
+        ['Job Title', change.job_title],
+        ['Company', change.company],
+        ['City', change.city],
+        ['Country', change.country],
+        ['Professional Status', change.professional_status],
+        ['Remote Work', change.is_remote !== null ? (change.is_remote ? 'Yes' : 'No') : null],
+        ['ISE Champion', change.is_ise_champion !== null ? (change.is_ise_champion ? 'Yes' : 'No') : null],
+      ];
+
+      for (const [fieldName, value] of fields) {
+        if (value) {
+          fieldChanges.push({
+            id: `${change.id}_${fieldName.toLowerCase().replace(' ', '_')}`,
+            userName: profile.full_name || 'Unknown',
+            userEmail: profile.email || 'Unknown',
+            fieldName,
+            oldValue: null,
+            newValue: value,
+            changedAt: change.changed_at,
+            changeType: change.change_type
+          });
+        }
       }
     }
-    
-    // Sort by most recent and limit
+
     return fieldChanges
       .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime())
       .slice(0, limit);
@@ -528,114 +359,41 @@ export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]
 export async function getAllFieldChanges(): Promise<FieldChange[]> {
   try {
     const history = await getProfileHistory();
-    const profiles = await getProfiles();
-    
-    // Include all profiles (including staff) for dashboard display
-    const eligibleProfiles = profiles;
-    
-    // Map history to field changes with user details
+    const allProfiles = await getProfiles();
+
     const fieldChanges: FieldChange[] = [];
-    
+
     for (const change of history) {
-      const profile = eligibleProfiles.find(p => p.id === change.profile_id);
+      const profile = allProfiles.find(p => p.id === change.profile_id);
       if (!profile) continue;
-      
-      // Add changes for each field that has a value
-      if (change.job_title) {
-        fieldChanges.push({
-          id: `${change.id}_job_title`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Job Title',
-          oldValue: null,
-          newValue: change.job_title,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.company) {
-        fieldChanges.push({
-          id: `${change.id}_company`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Company',
-          oldValue: null,
-          newValue: change.company,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.city) {
-        fieldChanges.push({
-          id: `${change.id}_city`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'City',
-          oldValue: null,
-          newValue: change.city,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.country) {
-        fieldChanges.push({
-          id: `${change.id}_country`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Country',
-          oldValue: null,
-          newValue: change.country,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.professional_status) {
-        fieldChanges.push({
-          id: `${change.id}_professional_status`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Professional Status',
-          oldValue: null,
-          newValue: change.professional_status,
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.is_remote !== null) {
-        fieldChanges.push({
-          id: `${change.id}_is_remote`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'Remote Work',
-          oldValue: null,
-          newValue: change.is_remote ? 'Yes' : 'No',
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
-      }
-      
-      if (change.is_ise_champion !== null) {
-        fieldChanges.push({
-          id: `${change.id}_is_ise_champion`,
-          userName: profile.full_name || 'Unknown',
-          userEmail: profile.email || 'Unknown',
-          fieldName: 'ISE Champion',
-          oldValue: null,
-          newValue: change.is_ise_champion ? 'Yes' : 'No',
-          changedAt: change.changed_at,
-          changeType: change.change_type
-        });
+
+      const fields: Array<[string, string | null]> = [
+        ['Job Title', change.job_title],
+        ['Company', change.company],
+        ['City', change.city],
+        ['Country', change.country],
+        ['Professional Status', change.professional_status],
+        ['Remote Work', change.is_remote !== null ? (change.is_remote ? 'Yes' : 'No') : null],
+        ['ISE Champion', change.is_ise_champion !== null ? (change.is_ise_champion ? 'Yes' : 'No') : null],
+      ];
+
+      for (const [fieldName, value] of fields) {
+        if (value) {
+          fieldChanges.push({
+            id: `${change.id}_${fieldName.toLowerCase().replace(' ', '_')}`,
+            userName: profile.full_name || 'Unknown',
+            userEmail: profile.email || 'Unknown',
+            fieldName,
+            oldValue: null,
+            newValue: value,
+            changedAt: change.changed_at,
+            changeType: change.change_type
+          });
+        }
       }
     }
-    
-    // Sort by most recent (no limit)
-    return fieldChanges
-      .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
+
+    return fieldChanges.sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
   } catch (error) {
     log.error('Error in getAllFieldChanges:', error);
     return [];
@@ -646,7 +404,7 @@ export async function getRecentFieldChanges(days: number = 7, limit: number = 10
   try {
     const allChanges = await getAllFieldChanges();
     const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    
+
     return allChanges
       .filter(change => new Date(change.changedAt) >= cutoffDate)
       .slice(0, limit);

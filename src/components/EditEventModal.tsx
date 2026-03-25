@@ -7,16 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { log } from '@/lib/utils/logger';
-import { getEventTagsSync, getEventTagOptions } from '@/lib/constants';
-
-// Temporary type to bypass Supabase complex typing
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseAny = any;
+import { getEventTagOptions } from '@/lib/constants';
 
 interface Event {
   id: string;
@@ -112,12 +108,10 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
       setIsUpdating(true);
       setError(null);
 
-      // Combine date and time for start_at
       const startDateTime = new Date(date.from);
       const [startHour, startMinute] = startTime.split(':');
       startDateTime.setHours(parseInt(startHour), parseInt(startMinute));
 
-      // Combine date and time for end_at (if provided)
       let endDateTime = null;
       const endDate = date.to || date.from;
       if (endDate && endTime) {
@@ -125,25 +119,18 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
         const [endHour, endMinute] = endTime.split(':');
         endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
       } else if (endTime) {
-        // If only end time is provided, use same date as start
         endDateTime = new Date(date.from);
         const [endHour, endMinute] = endTime.split(':');
         endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
       }
 
-      // Convert selected tag names to UUIDs
+      const allTags = await api.get<{ id: string; name: string }[]>('/api/tags');
       const tagIds: string[] = [];
-      
-      for (const tagName of selectedTags) {
-        // Find existing tag
-        const { data: existingTag } = await supabase
-          .from('tags')
-          .select('id')
-          .eq('name', tagName)
-          .single();
 
-        if (existingTag && (existingTag as { id: string }).id) {
-          tagIds.push((existingTag as { id: string }).id);
+      for (const tagName of selectedTags) {
+        const found = allTags?.find(t => t.name === tagName);
+        if (found) {
+          tagIds.push(found.id);
         } else {
           log.error('Tag not found in database:', tagName);
         }
@@ -159,45 +146,13 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
         image_url: imageUrl || null,
       };
 
-      // Update event without tags first
-      const { error: updateError } = await (supabase as SupabaseAny)
-        .from('events')
-        .update(eventData)
-        .eq('id', event.id)
-        .select()
-        .single();
+      await api.put('/api/events/' + event.id, eventData);
 
-      if (updateError) {
-        throw updateError;
+      await api.delete('/api/events/' + event.id + '/tags');
+      for (const tagId of tagIds) {
+        await api.post('/api/events/' + event.id + '/tags', { tag_id: tagId });
       }
 
-      // Update tag relationships: delete existing and insert new ones
-      if (tagIds.length > 0) {
-        // Delete existing tag relationships
-        const { error: deleteError } = await (supabase as SupabaseAny)
-          .from('event_tags')
-          .delete()
-          .eq('event_id', event.id);
-
-        if (deleteError) {
-          throw deleteError;
-        }
-
-        // Insert new tag relationships
-        const eventTagRelations = tagIds.map(tagId => ({
-          event_id: event.id,
-          tag_id: tagId
-        }));
-
-        const { error: tagInsertError } = await (supabase as SupabaseAny)
-          .from('event_tags')
-          .insert(eventTagRelations);
-
-        if (tagInsertError) {
-          throw tagInsertError;
-        }
-      }
-      
       onSubmit({ ...eventData, tags: tagIds });
       onClose();
     } catch (err) {
@@ -219,14 +174,7 @@ const EditEventModal = ({ isOpen, onClose, onSubmit, onDelete, event }: EditEven
       setIsDeleting(true);
       setError(null);
 
-      const { error: deleteError } = await supabase
-        .from('events')
-        .delete()
-        .eq('id', event.id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
+      await api.delete('/api/events/' + event.id);
       
       onDelete();
       onClose();

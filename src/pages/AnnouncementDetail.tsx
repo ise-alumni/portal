@@ -41,7 +41,7 @@ interface AnnouncementData {
     email: string | null;
   } | null;
   tags?: Array<{ id: string; name: string; color: string }>;
-  creator?: ProfileRow | null;
+  creator?: { id: string; full_name: string | null; email: string | null } | null;
 }
 
 const AnnouncementDetail = () => {

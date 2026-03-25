@@ -1,4 +1,3 @@
-import { Database } from '@/integrations/supabase/types';
 import { UserRole } from './common';
 
 export type ProfessionalStatus = 'employed' | 'entrepreneur' | 'open_to_work';
@@ -28,6 +27,8 @@ export interface Profile {
   professional_status: ProfessionalStatus | null;
   user_type: UserRole;
   removed: boolean;
+  lat?: number | null;
+  lng?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,8 +52,3 @@ export interface ProfileFormData {
   isIseChampion: boolean;
   professionalStatus: ProfessionalStatus | null;
 }
-
-
-
-// Re-export Supabase types for compatibility
-export type ProfileTable = Database['public']['Tables']['profiles']['Row'];

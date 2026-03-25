@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import { Dialog, DialogTitle, DialogHeader, DialogContent, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,12 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, MapPinIcon, LinkIcon, ClockIcon, FileTextIcon, EyeIcon, EditIcon, Loader2Icon, ImageIcon, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { log } from '@/lib/utils/logger';
-import { getEventTagsSync, isValidEventTag, getEventTagOptions } from '@/lib/constants';
+import { getEventTagOptions } from '@/lib/constants';
 
 interface EventData {
   title: string;
@@ -85,22 +84,27 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
       setIsCreating(true);
       setError(null);
 
-      // Get current user's profile to set as organiser (used for both events and announcements)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      const profile = await api.get<{ id: string }>('/api/profiles/user/' + user.id);
+
+      const allTags = await api.get<{ id: string; name: string }[]>('/api/tags');
+
+      const tagIds: string[] = [];
+      for (const tagName of selectedTags) {
+        const found = allTags?.find(t => t.name === tagName);
+        if (found) {
+          tagIds.push(found.id);
+        } else {
+          log.error('Tag not found in database:', tagName);
+        }
+      }
 
       let data: EventData | AnnouncementData;
 
       if (mode === 'event') {
-        // Combine date and time for start_at
         const startDateTime = new Date(date.from);
         const [startHour, startMinute] = startTime.split(':');
         startDateTime.setHours(parseInt(startHour), parseInt(startMinute));
 
-        // Combine date and time for end_at (if provided)
         let endDateTime = null;
         const endDate = date.to || date.from;
         if (endDate && endTime) {
@@ -108,31 +112,11 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           const [endHour, endMinute] = endTime.split(':');
             endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
         } else if (endTime) {
-          // If only end time is provided, use same date as start
           endDateTime = new Date(date.from);
           const [endHour, endMinute] = endTime.split(':');
             endDateTime.setHours(parseInt(endHour), parseInt(endMinute));
         }
 
-        // Convert selected tag names to UUIDs
-        const tagIds: string[] = [];
-        
-        for (const tagName of selectedTags) {
-          // Find existing tag
-          const { data: existingTag } = await supabase
-            .from('tags')
-            .select('id')
-            .eq('name', tagName)
-            .single();
-
-          if (existingTag && (existingTag as { id: string }).id) {
-            tagIds.push((existingTag as { id: string }).id);
-          } else {
-            log.error('Tag not found in database:', tagName);
-          }
-        }
-
-        // Create event without tags first
         const eventData = {
           title: eventName,
           description: description || null,
@@ -140,92 +124,36 @@ const NewEventModal = ({ isOpen, onClose, onSubmit, mode }: NewEventModalProps) 
           location_url: link || null,
           start_at: startDateTime.toISOString(),
           end_at: endDateTime?.toISOString() || null,
-          organiser_profile_id: (profile as { id: string })?.id || null,
+          organiser_profile_id: profile?.id || null,
           created_by: user.id,
           image_url: imageUrl || null,
         };
 
-        const { data: createdEvent, error: insertError } = await (supabase as any)
-          .from('events')
-          .insert(eventData)
-          .select()
-          .single();
+        const createdEvent = await api.post<{ id: string }>('/api/events', eventData);
 
-        if (insertError) {
-          throw insertError;
-        }
-
-        // Now insert tag relationships into event_tags junction table
         if (tagIds.length > 0 && createdEvent?.id) {
-          const eventTagRelations = tagIds.map(tagId => ({
-            event_id: createdEvent.id,
-            tag_id: tagId
-          }));
-
-          const { error: tagInsertError } = await (supabase as any)
-            .from('event_tags')
-            .insert(eventTagRelations);
-
-          if (tagInsertError) {
-            throw tagInsertError;
+          for (const tagId of tagIds) {
+            await api.post(`/api/events/${createdEvent.id}/tags`, { tag_id: tagId });
           }
         }
 
         data = eventData;
       } else {
-        // Announcement mode
-        // Convert selected tag names to UUIDs
-        const tagIds: string[] = [];
-        
-        for (const tagName of selectedTags) {
-          // Find existing tag
-          const { data: existingTag } = await supabase
-            .from('tags')
-            .select('id')
-            .eq('name', tagName)
-            .single();
-
-          if (existingTag && (existingTag as { id: string }).id) {
-            tagIds.push((existingTag as { id: string }).id);
-          } else {
-            log.error('Tag not found in database:', tagName);
-          }
-        }
-
-        // Create announcement without tags first
         const announcementData = {
           title: eventName,
           content: description || null,
           external_url: externalUrl || null,
           deadline: deadline || null,
           image_url: imageUrl || null,
-          organiser_profile_id: (profile as { id: string })?.id || null,
+          organiser_profile_id: profile?.id || null,
           created_by: user.id,
         };
 
-        const { data: createdAnnouncement, error: insertError } = await (supabase as any)
-          .from('announcements')
-          .insert(announcementData)
-          .select()
-          .single();
+        const createdAnnouncement = await api.post<{ id: string }>('/api/announcements', announcementData);
 
-        if (insertError) {
-          throw insertError;
-        }
-
-        // Now insert tag relationships into announcement_tags junction table
         if (tagIds.length > 0 && createdAnnouncement?.id) {
-          const announcementTagRelations = tagIds.map(tagId => ({
-            announcement_id: createdAnnouncement.id,
-            tag_id: tagId
-          }));
-
-          const { error: tagInsertError } = await (supabase as any)
-            .from('announcement_tags')
-            .insert(announcementTagRelations);
-
-          if (tagInsertError) {
-            throw tagInsertError;
+          for (const tagId of tagIds) {
+            await api.post(`/api/announcements/${createdAnnouncement.id}/tags`, { tag_id: tagId });
           }
         }
 
