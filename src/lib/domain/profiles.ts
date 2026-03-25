@@ -2,6 +2,11 @@ import { api } from '@/lib/api';
 import { type Profile, type ProfileFormData } from '@/lib/types';
 import { log } from '@/lib/utils/logger';
 
+function boolToYesNo(value: boolean | null): string | null {
+  if (value === null) return null;
+  return value ? 'Yes' : 'No';
+}
+
 export async function uploadAvatar(_userId: string, _file: File): Promise<string | null> {
   log.warn('Avatar upload not yet implemented with local storage');
   return null;
@@ -327,8 +332,8 @@ export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]
         ['City', change.city],
         ['Country', change.country],
         ['Professional Status', change.professional_status],
-        ['Remote Work', change.is_remote !== null ? (change.is_remote ? 'Yes' : 'No') : null],
-        ['ISE Champion', change.is_ise_champion !== null ? (change.is_ise_champion ? 'Yes' : 'No') : null],
+        ['Remote Work', boolToYesNo(change.is_remote)],
+        ['ISE Champion', boolToYesNo(change.is_ise_champion)],
       ];
 
       for (const [fieldName, value] of fields) {
@@ -373,8 +378,8 @@ export async function getAllFieldChanges(): Promise<FieldChange[]> {
         ['City', change.city],
         ['Country', change.country],
         ['Professional Status', change.professional_status],
-        ['Remote Work', change.is_remote !== null ? (change.is_remote ? 'Yes' : 'No') : null],
-        ['ISE Champion', change.is_ise_champion !== null ? (change.is_ise_champion ? 'Yes' : 'No') : null],
+        ['Remote Work', boolToYesNo(change.is_remote)],
+        ['ISE Champion', boolToYesNo(change.is_ise_champion)],
       ];
 
       for (const [fieldName, value] of fields) {

@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
 import { authClient, useSession } from '@/lib/auth-client';
 
 interface AuthContextType {
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     ? { token: sessionData.session.token }
     : null;
 
-  const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+  const signIn = useCallback(async (email: string, password: string): Promise<{ error?: string }> => {
     try {
       const { error } = await authClient.signIn.email({ email, password });
       if (error) {
@@ -50,9 +50,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Sign in failed' };
     }
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string): Promise<{ error?: string }> => {
+  const signUp = useCallback(async (email: string, password: string, fullName?: string): Promise<{ error?: string }> => {
     try {
       const { error } = await authClient.signUp.email({
         email,
@@ -66,17 +66,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Sign up failed' };
     }
-  };
+  }, []);
 
-  const handleSignOut = async (): Promise<void> => {
+  const handleSignOut = useCallback(async (): Promise<void> => {
     await authClient.signOut();
-  };
+  }, []);
 
-  const resetPassword = async (_email: string): Promise<{ error?: string }> => {
+  const resetPassword = useCallback(async (_email: string): Promise<{ error?: string }> => {
     return { error: 'Password reset not yet configured' };
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  const value = useMemo<AuthContextType>(() => ({
     user,
     session,
     loading: isPending,
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signUp,
     signOut: handleSignOut,
     resetPassword,
-  };
+  }), [user?.id, session?.token, isPending, signIn, signUp, handleSignOut, resetPassword]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
