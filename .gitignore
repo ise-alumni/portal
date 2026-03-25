@@ -18,6 +18,7 @@ dist-ssr
 
 # Database (ephemeral, recreated by seed)
 data.db
+test-integration.db*
 
 # Editor
 .vscode/*

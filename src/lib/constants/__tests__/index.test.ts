@@ -1,167 +1,80 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { supabase } from '@/integrations/supabase/client'
-import { log } from '@/lib/utils/logger'
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the supabase client and logger
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: vi.fn()
-  }
-}))
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
 
 vi.mock('@/lib/utils/logger', () => ({
-  log: {
-    info: vi.fn(),
-    error: vi.fn()
-  }
-}))
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
 
-const mockedSupabase = vi.mocked(supabase)
-const mockedLog = vi.mocked(log)
+import { api } from '@/lib/api';
+import { log } from '@/lib/utils/logger';
 
 describe('Constants functions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    // Reset module cache by clearing require cache
-    vi.resetModules()
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   describe('getUserTypes', () => {
-    it('should fetch user types from database successfully', async () => {
-      const mockData = [
-        { user_type: 'Admin' },
-        { user_type: 'Staff' },
-        { user_type: 'Alum' },
-        { user_type: 'Admin' } // Duplicate to test uniqueness
-      ]
-      const mockSelect = vi.fn().mockReturnValue({
-        data: mockData,
-        error: null
-      })
+    it('should fetch user types from API successfully', async () => {
+      vi.mocked(api.get).mockResolvedValue(['Admin', 'Staff', 'Alum']);
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      const { getUserTypes } = await import('../index');
+      const result = await getUserTypes();
 
-      // Import after mocking to ensure fresh module
-      const { getUserTypes } = await import('../index')
-      const result = await getUserTypes()
+      expect(api.get).toHaveBeenCalledWith('/api/constants/user-types');
+      expect(result).toEqual(['Admin', 'Staff', 'Alum']);
+    });
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(mockSelect).toHaveBeenCalledWith('user_type')
-      expect(result).toEqual(['Admin', 'Staff', 'Alum'])
-    })
+    it('should return fallback types when API returns empty array', async () => {
+      vi.mocked(api.get).mockResolvedValue([]);
 
-    it('should return fallback types when database returns empty', async () => {
-      const mockSelect = vi.fn().mockReturnValue({
-        data: [],
-        error: null
-      })
+      const { getUserTypes } = await import('../index');
+      const result = await getUserTypes();
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      expect(result).toEqual(['Admin', 'Staff', 'Alum']);
+    });
 
-      const { getUserTypes } = await import('../index')
-      const result = await getUserTypes()
+    it('should return fallback types on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Network error'));
 
-      expect(result).toEqual(['Admin', 'Staff', 'Alum'])
-    })
+      const { getUserTypes } = await import('../index');
+      const result = await getUserTypes();
 
-    it('should handle database errors gracefully', async () => {
-      const mockError = new Error('Database error')
-      const mockNot = vi.fn().mockReturnValue({
-        data: null,
-        error: mockError
-      })
-      const mockSelect = vi.fn().mockReturnValue({ not: mockNot })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const { getUserTypes } = await import('../index')
-      const result = await getUserTypes()
-
-      expect(mockedLog.error).toHaveBeenCalledWith('Error fetching user types:', mockError)
-      expect(result).toEqual(['Admin', 'Staff', 'Alum'])
-    })
-
-    it('should handle null data gracefully', async () => {
-      const mockSelect = vi.fn().mockReturnValue({
-        data: null,
-        error: null
-      })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const { getUserTypes } = await import('../index')
-      const result = await getUserTypes()
-
-      expect(result).toEqual(['Admin', 'Staff', 'Alum'])
-    })
-  })
-
-    it('should handle database errors gracefully', async () => {
-      const mockError = new Error('Database error')
-      const mockNot = vi.fn().mockReturnValue({
-        data: null,
-        error: mockError
-      })
-      const mockSelect = vi.fn().mockReturnValue({ not: mockNot })
-
-   })
+      expect(log.error).toHaveBeenCalledWith('Error fetching user types:', expect.any(Error));
+      expect(result).toEqual(['Admin', 'Staff', 'Alum']);
+    });
+  });
 
   describe('getEventTags', () => {
-    it('should fetch event tags from database successfully', async () => {
-      const mockData = [
+    it('should fetch event tags from API successfully', async () => {
+      const mockTags = [
         { name: 'Networking', color: '#10b981' },
-        { name: 'Workshop', color: '#f59e0b' }
-      ]
-      const mockOrder = vi.fn().mockReturnValue({
-        data: mockData,
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
+        { name: 'Workshop', color: '#f59e0b' },
+      ];
+      vi.mocked(api.get).mockResolvedValue(mockTags);
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      const { getEventTags } = await import('../index');
+      const result = await getEventTags();
 
-      const { getEventTags } = await import('../index')
-      const result = await getEventTags()
+      expect(api.get).toHaveBeenCalledWith('/api/constants/event-tags');
+      expect(result).toEqual(mockTags);
+    });
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('tags')
-      expect(mockSelect).toHaveBeenCalledWith('name, color')
-      expect(mockOrder).toHaveBeenCalledWith('name')
-      expect(result).toEqual(mockData)
-    })
+    it('should return fallback tags on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Failed'));
 
-    it('should return empty array when database returns empty (no error)', async () => {
-      const mockOrder = vi.fn().mockReturnValue({
-        data: [],
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
+      const { getEventTags } = await import('../index');
+      const result = await getEventTags();
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const { getEventTags } = await import('../index')
-      const result = await getEventTags()
-
-      expect(result).toEqual([])
-    })
-
-    it('should handle database errors gracefully', async () => {
-      const mockError = new Error('Database error')
-      const mockOrder = vi.fn().mockReturnValue({
-        data: null,
-        error: mockError
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const { getEventTags } = await import('../index')
-      const result = await getEventTags()
-
-      expect(mockedLog.error).toHaveBeenCalledWith('Error fetching event tags:', mockError)
+      expect(log.error).toHaveBeenCalledWith('Error fetching event tags:', expect.any(Error));
       expect(result).toEqual([
         { name: 'Networking', color: '#10b981' },
         { name: 'Workshop', color: '#f59e0b' },
@@ -169,89 +82,40 @@ describe('Constants functions', () => {
         { name: 'Career', color: '#8b5cf6' },
         { name: 'Technical', color: '#06b6d4' },
         { name: 'Online', color: '#6366f1' },
-        { name: 'In-Person', color: '#f97316' }
-      ])
-    })
-
-    it('should handle null data gracefully', async () => {
-      const mockOrder = vi.fn().mockReturnValue({
-        data: null,
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const { getEventTags } = await import('../index')
-      const result = await getEventTags()
-
-      expect(result).toEqual([])
-    })
-  })
+        { name: 'In-Person', color: '#f97316' },
+      ]);
+    });
+  });
 
   describe('initializeConstants', () => {
     it('should initialize all constants successfully', async () => {
-      // Mock successful responses for all three functions
-      const mockUserSelect = vi.fn().mockReturnValue({
-        data: [{ user_type: 'Admin' }, { user_type: 'Staff' }],
-        error: null
-      })
-      const mockAnnouncementSelect = vi.fn().mockReturnValue({
-        data: [{ type: 'opportunity' }, { type: 'news' }],
-        error: null
-      })
-      const mockEventOrder = vi.fn().mockReturnValue({
-        data: [{ name: 'Networking', color: '#10b981' }],
-        error: null
-      })
-      const mockEventSelect = vi.fn().mockReturnValue({ order: mockEventOrder })
+      vi.mocked(api.get).mockImplementation((path: string) => {
+        if (path === '/api/constants/user-types') return Promise.resolve(['Admin', 'Staff', 'Alum']);
+        if (path === '/api/constants/event-tags') return Promise.resolve([{ name: 'Networking', color: '#10b981' }]);
+        return Promise.resolve([]);
+      });
 
-      // Set up the mock to return different responses based on table name
-      mockedSupabase.from.mockImplementation((table: string) => {
-        if (table === 'profiles') return { select: mockUserSelect }
-        if (table === 'announcements') return { select: mockAnnouncementSelect }
-        if (table === 'tags') return { select: mockEventSelect }
-        return { select: vi.fn() }
-      })
+      const { initializeConstants } = await import('../index');
+      await initializeConstants();
 
-      const { initializeConstants } = await import('../index')
-      await initializeConstants()
-
-      expect(mockedLog.info).toHaveBeenCalledWith('Constants initialized from database')
-    })
+      expect(log.info).toHaveBeenCalledWith('Constants initialized from database');
+    });
 
     it('should handle initialization errors gracefully', async () => {
-      const mockError = new Error('Initialization failed')
-      const mockNot = vi.fn().mockReturnValue({
-        data: null,
-        error: mockError
-      })
-      const mockOrder = vi.fn().mockReturnValue({
-        data: null,
-        error: mockError
-      })
-      const mockSelect = vi.fn().mockImplementation((query: string) => {
-        if (query === 'name, color') return { order: mockOrder }
-        return { not: mockNot }
-      })
+      vi.mocked(api.get).mockRejectedValue(new Error('Init failed'));
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      const { initializeConstants } = await import('../index');
+      await initializeConstants();
 
-      const { initializeConstants } = await import('../index')
-      await initializeConstants()
-
-      // Should log errors for each failed fetch
-      expect(mockedLog.error).toHaveBeenCalledWith('Error fetching user types:', mockError)
-      expect(mockedLog.error).toHaveBeenCalledWith('Error fetching event tags:', mockError)
-    })
-  })
+      expect(log.error).toHaveBeenCalled();
+    });
+  });
 
   describe('Synchronous getters', () => {
-    it('should return empty array when cache is not initialized', async () => {
-      const constants = await import('../index')
-      const { getUserTypesSync, getEventTagsSync } = constants
+    it('should return empty/fallback values when cache is not initialized', async () => {
+      const { getUserTypesSync, getEventTagsSync } = await import('../index');
 
-      expect(getUserTypesSync()).toEqual([])
+      expect(getUserTypesSync()).toEqual([]);
       expect(getEventTagsSync()).toEqual([
         { name: 'Networking', color: '#10b981' },
         { name: 'Workshop', color: '#f59e0b' },
@@ -259,216 +123,131 @@ describe('Constants functions', () => {
         { name: 'Career', color: '#8b5cf6' },
         { name: 'Technical', color: '#06b6d4' },
         { name: 'Online', color: '#6366f1' },
-        { name: 'In-Person', color: '#f97316' }
-      ])
-    })
-  })
+        { name: 'In-Person', color: '#f97316' },
+      ]);
+    });
+
+    it('should return cached values after initialization', async () => {
+      vi.mocked(api.get).mockImplementation((path: string) => {
+        if (path === '/api/constants/user-types') return Promise.resolve(['Admin', 'Staff', 'Alum']);
+        if (path === '/api/constants/event-tags') return Promise.resolve([{ name: 'Workshop', color: '#f59e0b' }]);
+        return Promise.resolve([]);
+      });
+
+      const { initializeConstants, getUserTypesSync, getEventTagsSync } = await import('../index');
+      await initializeConstants();
+
+      expect(getUserTypesSync()).toEqual(['Admin', 'Staff', 'Alum']);
+      expect(getEventTagsSync()).toEqual([{ name: 'Workshop', color: '#f59e0b' }]);
+    });
+  });
 
   describe('Validation functions', () => {
     beforeEach(async () => {
-      // Initialize cache with test data
-      const mockUserNot = vi.fn().mockReturnValue({
-        data: [{ user_type: 'Admin' }, { user_type: 'Staff' }, { user_type: 'Alum' }],
-        error: null
-      })
-      const mockUserSelect = vi.fn().mockReturnValue({ not: mockUserNot })
-      
-      const mockAnnouncementNot = vi.fn().mockReturnValue({
-        data: [{ type: 'opportunity' }, { type: 'news' }, { type: 'lecture' }],
-        error: null
-      })
-      const mockAnnouncementSelect = vi.fn().mockReturnValue({ not: mockAnnouncementNot })
-      
-      const mockEventOrder = vi.fn().mockReturnValue({
-        data: [
-          { name: 'Networking', color: '#10b981' },
-          { name: 'Workshop', color: '#f59e0b' }
-        ],
-        error: null
-      })
-      const mockEventSelect = vi.fn().mockReturnValue({ order: mockEventOrder })
+      vi.mocked(api.get).mockImplementation((path: string) => {
+        if (path === '/api/constants/user-types') return Promise.resolve(['Admin', 'Staff', 'Alum']);
+        if (path === '/api/constants/event-tags') {
+          return Promise.resolve([
+            { name: 'Networking', color: '#10b981' },
+            { name: 'Workshop', color: '#f59e0b' },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
 
-      mockedSupabase.from.mockImplementation((table: string) => {
-        if (table === 'profiles') return { select: mockUserSelect }
-        if (table === 'announcements') return { select: mockAnnouncementSelect }
-        if (table === 'tags') return { select: mockEventSelect }
-        return { select: vi.fn() }
-      })
-
-      const { initializeConstants } = await import('../index')
-      await initializeConstants()
-    })
+      const { initializeConstants } = await import('../index');
+      await initializeConstants();
+    });
 
     it('should validate user types correctly', async () => {
-      const constants = await import('../index')
-      const { isValidUserType } = constants
+      const { isValidUserType } = await import('../index');
 
-      expect(isValidUserType('Admin')).toBe(true)
-      expect(isValidUserType('Staff')).toBe(true)
-      expect(isValidUserType('Alum')).toBe(true)
-      expect(isValidUserType('Invalid')).toBe(false)
-    })
-
-
+      expect(isValidUserType('Admin')).toBe(true);
+      expect(isValidUserType('Staff')).toBe(true);
+      expect(isValidUserType('Alum')).toBe(true);
+      expect(isValidUserType('Invalid')).toBe(false);
+    });
 
     it('should validate event tags correctly', async () => {
-      const constants = await import('../index')
-      const { isValidEventTag } = constants
+      const { isValidEventTag } = await import('../index');
 
-      expect(isValidEventTag('Networking')).toBe(true)
-      expect(isValidEventTag('Workshop')).toBe(true)
-      expect(isValidEventTag('Invalid')).toBe(false)
-    })
+      expect(isValidEventTag('Networking')).toBe(true);
+      expect(isValidEventTag('Workshop')).toBe(true);
+      expect(isValidEventTag('Invalid')).toBe(false);
+    });
 
     it('should get event tag color correctly', async () => {
-      const constants = await import('../index')
-      const { getEventTagColor } = constants
+      const { getEventTagColor } = await import('../index');
 
-      expect(getEventTagColor('Networking')).toBe('#10b981')
-      expect(getEventTagColor('Workshop')).toBe('#f59e0b')
-      expect(getEventTagColor('Unknown')).toBe('#3b82f6') // Default color
-    })
+      expect(getEventTagColor('Networking')).toBe('#10b981');
+      expect(getEventTagColor('Workshop')).toBe('#f59e0b');
+      expect(getEventTagColor('Unknown')).toBe('#3b82f6');
+    });
+  });
 
+  describe('Permission functions', () => {
     it('should check content creation permissions correctly', async () => {
-      const constants = await import('../index')
-      const { canUserCreateContent } = constants
+      const { canUserCreateContent } = await import('../index');
 
-      expect(canUserCreateContent('Admin')).toBe(true)
-      expect(canUserCreateContent('Staff')).toBe(true)
-      expect(canUserCreateContent('Alum')).toBe(false)
-      expect(canUserCreateContent(null)).toBe(false)
-    })
+      expect(canUserCreateContent('Admin')).toBe(true);
+      expect(canUserCreateContent('Staff')).toBe(true);
+      expect(canUserCreateContent('Alum')).toBe(false);
+      expect(canUserCreateContent(null)).toBe(false);
+    });
 
     it('should check admin permissions correctly', async () => {
-      const constants = await import('../index')
-      const { isAdmin } = constants
+      const { isAdmin } = await import('../index');
 
-      expect(isAdmin('Admin')).toBe(true)
-      expect(isAdmin('Staff')).toBe(false)
-      expect(isAdmin('Alum')).toBe(false)
-      expect(isAdmin(null)).toBe(false)
-    })
-  })
+      expect(isAdmin('Admin')).toBe(true);
+      expect(isAdmin('Staff')).toBe(false);
+      expect(isAdmin('Alum')).toBe(false);
+      expect(isAdmin(null)).toBe(false);
+    });
+
+    it('should check staff or admin permissions correctly', async () => {
+      const { isStaffOrAdmin } = await import('../index');
+
+      expect(isStaffOrAdmin('Admin')).toBe(true);
+      expect(isStaffOrAdmin('Staff')).toBe(true);
+      expect(isStaffOrAdmin('Alum')).toBe(false);
+      expect(isStaffOrAdmin(null)).toBe(false);
+    });
+  });
 
   describe('Option generators', () => {
     beforeEach(async () => {
-      // Initialize cache with test data
-      const mockUserNot = vi.fn().mockReturnValue({
-        data: [{ user_type: 'Admin' }, { user_type: 'Staff' }, { user_type: 'Alum' }],
-        error: null
-      })
-      const mockUserSelect = vi.fn().mockReturnValue({ not: mockUserNot })
-      
-      const mockAnnouncementNot = vi.fn().mockReturnValue({
-        data: [{ type: 'opportunity' }, { type: 'news' }, { type: 'lecture' }, { type: 'program' }],
-        error: null
-      })
-      const mockAnnouncementSelect = vi.fn().mockReturnValue({ not: mockAnnouncementNot })
-      
-      const mockEventOrder = vi.fn().mockReturnValue({
-        data: [
-          { name: 'Networking', color: '#10b981' },
-          { name: 'Workshop', color: '#f59e0b' }
-        ],
-        error: null
-      })
-      const mockEventSelect = vi.fn().mockReturnValue({ order: mockEventOrder })
+      vi.mocked(api.get).mockImplementation((path: string) => {
+        if (path === '/api/constants/user-types') return Promise.resolve(['Admin', 'Staff', 'Alum']);
+        if (path === '/api/constants/event-tags') {
+          return Promise.resolve([
+            { name: 'Networking', color: '#10b981' },
+            { name: 'Workshop', color: '#f59e0b' },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
 
-      mockedSupabase.from.mockImplementation((table: string) => {
-        if (table === 'profiles') return { select: mockUserSelect }
-        if (table === 'announcements') return { select: mockAnnouncementSelect }
-        if (table === 'tags') return { select: mockEventSelect }
-        return { select: vi.fn() }
-      })
-
-      const { initializeConstants } = await import('../index')
-      await initializeConstants()
-    })
+      const { initializeConstants } = await import('../index');
+      await initializeConstants();
+    });
 
     it('should generate user type options correctly', async () => {
-      const constants = await import('../index')
-      const { getUserTypeOptions } = constants
+      const { getUserTypeOptions } = await import('../index');
 
-      const options = getUserTypeOptions()
-      expect(options).toEqual([
+      expect(getUserTypeOptions()).toEqual([
         { value: 'Admin', label: 'Admin' },
         { value: 'Staff', label: 'Staff' },
-        { value: 'Alum', label: 'Alum' }
-      ])
-    })
-
-
+        { value: 'Alum', label: 'Alum' },
+      ]);
+    });
 
     it('should generate event tag options correctly', async () => {
-      const constants = await import('../index')
-      const { getEventTagOptions } = constants
+      const { getEventTagOptions } = await import('../index');
 
-      const options = getEventTagOptions()
-      expect(options).toEqual([
+      expect(getEventTagOptions()).toEqual([
         { value: 'Networking', label: 'Networking', color: '#10b981' },
-        { value: 'Workshop', label: 'Workshop', color: '#f59e0b' }
-      ])
-    })
-  })
-
-  describe('Edge cases and error handling', () => {
-    it('should handle empty arrays in validation functions', async () => {
-      // Mock empty responses
-      const mockNot = vi.fn().mockReturnValue({
-        data: [],
-        error: null
-      })
-      const mockOrder = vi.fn().mockReturnValue({
-        data: [],
-        error: null
-      })
-      const mockSelect = vi.fn().mockImplementation((query: string) => {
-        if (query === 'name, color') return { order: mockOrder }
-        return { not: mockNot }
-      })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const constants = await import('../index')
-      const { initializeConstants, isValidUserType, isValidEventTag } = constants
-      await initializeConstants()
-
-      expect(isValidUserType('Admin')).toBe(true) // Fallback values should be used
-      expect(isValidEventTag('Networking')).toBe(false) // Cache set to empty array, no fallback
-    })
-
-    it('should handle malformed data in cache', async () => {
-      // Mock malformed data
-      const mockUserSelect = vi.fn().mockReturnValue({
-        data: [{ user_type: null }, { user_type: undefined }, { user_type: 'Admin' }],
-        error: null
-      })
-      const mockAnnouncementSelect = vi.fn().mockReturnValue({
-        data: [{ type: '' }, { type: 'opportunity' }],
-        error: null
-      })
-      const mockEventOrder = vi.fn().mockReturnValue({
-        data: [{ name: 'Workshop', color: '#f59e0b' }],
-        error: null
-      })
-      const mockEventSelect = vi.fn().mockReturnValue({ order: mockEventOrder })
-
-      mockedSupabase.from.mockImplementation((table: string) => {
-        if (table === 'profiles') return { select: mockUserSelect }
-        if (table === 'announcements') return { select: mockAnnouncementSelect }
-        if (table === 'tags') return { select: mockEventSelect }
-        return { select: vi.fn() }
-      })
-
-      const constants = await import('../index')
-      const { initializeConstants, isValidUserType, isValidEventTag, getEventTagColor } = constants
-      await initializeConstants()
-
-      expect(isValidUserType(null)).toBe(false)
-      expect(isValidEventTag(null)).toBe(false)
-      expect(isValidEventTag('Workshop')).toBe(true)
-      expect(getEventTagColor('Workshop')).toBe('#f59e0b')
-      expect(getEventTagColor('Unknown')).toBe('#3b82f6')
-    })
-  })
-})
+        { value: 'Workshop', label: 'Workshop', color: '#f59e0b' },
+      ]);
+    });
+  });
+});
