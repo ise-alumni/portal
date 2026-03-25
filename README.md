@@ -1,84 +1,81 @@
 # ISE Alumni Portal
 
-A portal for managing the alumni for ISE - facilitating events, announcements and the alumni's connection to the ISE programme.
-
-## Overview
-
-The ISE Alumni Portal is a comprehensive platform designed to help Immersive Software Engineering (ISE) alumni stay connected with the program, manage events, share announcements, and maintain their professional network.
-
-## Features
-
-- **Alumni Directory**: Searchable directory of ISE alumni with profile information
-- **Events Management**: Create, manage, and RSVP to alumni events
-- **Announcements**: Share and view important announcements
-- **Interactive Map**: Visualize alumni locations and movement paths
-- **Profile Management**: Update and maintain your alumni profile
-- **Dashboard**: Admin dashboard for managing users and content
-
-## Tech Stack
-
-- **Frontend**: Vite + React + TypeScript
-- **UI Components**: ShadCN UI + Radix UI
-- **Backend/Database**: Supabase (PostgreSQL)
-- **State Management**: TanStack Query (React Query)
-- **Styling**: Tailwind CSS
-- **Testing**: Vitest + Testing Library
-- **Package Manager**: Bun
-- **Task Runner**: Just
+A platform for Immersive Software Engineering alumni to stay connected with the program, find each other, and keep up with events and announcements.
 
 ## Quick Start
 
-### Prerequisites
-
-- **Docker Desktop** ([macOS](https://docs.docker.com/desktop/install/mac-install/) | [Windows](https://docs.docker.com/desktop/install/windows-install/) | [Linux](https://docs.docker.com/desktop/install/linux-install/))
-- **Just** command runner ([Installation Guide](https://github.com/casey/just#installation))
-- **Access to the ISE Alumni Supabase project** (request from maintainers)
-
-### Setup
+You need [Node.js](https://nodejs.org/) (v20+), [pnpm](https://pnpm.io/), and [just](https://github.com/casey/just).
 
 ```bash
-# Clone the repository
 git clone https://github.com/bxrne/ise-alumni.git
 cd ise-alumni
-
-# Run the automated setup (one-time only)
 just setup
-# This will install Bun, Supabase CLI, and configure your environment
-
-# Start development (Supabase + Frontend)
-just start
+just dev
 ```
 
-The development server will be available at `http://localhost:5173` and Supabase Studio at `http://127.0.0.1:54323`.
+The frontend runs at `http://localhost:8080` and the API at `http://localhost:3000`.
 
-## Development
+Five test accounts are seeded automatically. All share the password `password123`:
 
-For detailed information about development workflows, database migrations, testing, and contributing guidelines, see **[CONTRIBUTING.md](./CONTRIBUTING.md)**.
+| Role   | Email                     |
+| ------ | ------------------------- |
+| Admin  | admin@example.com         |
+| Alumni | sarah.johnson@example.com |
+| Alumni | michael.chen@example.com  |
+| Alumni | emma.wilson@example.com   |
+| Staff  | staff@example.com         |
 
-### Common Commands
+## Stack
 
-| Command | Description |
-|---------|-------------|
-| `just start` | Start Supabase + frontend dev server |
-| `just stop` | Stop all services |
-| `just seed` | Add sample data for testing |
-| `just test` | Run tests in watch mode |
-| `just build` | Build for production |
+| Layer    | Technology                                |
+| -------- | ----------------------------------------- |
+| Frontend | React, TypeScript, Vite, Tailwind, ShadCN |
+| API      | Hono (Node.js)                            |
+| Auth     | Better Auth (email/password)              |
+| ORM      | Drizzle                                   |
+| Database | SQLite (local), Turso (production)        |
+| Testing  | Vitest, Testing Library                   |
 
-Run `just` to see all available commands.
+## Common Commands
 
-## Email Infrastructure
+Run `just` to list everything. The essentials:
 
-Email is sent via SMTP using [Resend](https://resend.com) in production and [Inbucket](http://127.0.0.1:54324) locally.
+```
+just setup          # first-time install, migrate, seed
+just dev            # start API + frontend
+just db-reset       # wipe and reseed the local database
+just test           # run tests in watch mode
+just lint           # run ESLint
+just build          # production build
+```
 
-| Environment | Provider | View Emails |
-|-------------|----------|-------------|
-| Local | Inbucket | http://127.0.0.1:54324 |
-| Production | Resend | [Resend Dashboard](https://resend.com/emails) |
+## Project Layout
 
-Edge functions use a shared email service at `supabase/functions/_shared/email.ts`. See [`supabase/functions/README.md`](./supabase/functions/README.md) for setup and usage details.
+```
+server/             API server (Hono, Better Auth, Drizzle)
+  index.ts          entry point
+  auth.ts           Better Auth config
+  db.ts             database client
+  routes.ts         REST endpoints
+  migrate.ts        schema migrations
+  seed.ts           test data
+src/
+  components/       React components
+  hooks/            custom hooks (useAuth, etc.)
+  lib/
+    api.ts          fetch wrapper for the API
+    auth-client.ts  Better Auth client
+    db/             Drizzle schema
+    domain/         data-access functions
+  pages/            route pages
+docs/               architecture and deployment notes
+```
 
-## Support
+## Documentation
 
-- **Issues**: [GitHub Issues](https://github.com/bxrne/ise-alumni/issues)
-- **Contributing**: See [CONTRIBUTING.md](./CONTRIBUTING.md)
+Further details live in `docs/`:
+
+- [Architecture](docs/architecture.md)
+- [Local Development](docs/local-development.md)
+- [Deployment](docs/deployment.md)
+- [Contributing](docs/contributing.md)
