@@ -1,5 +1,6 @@
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { log } from '@/lib/utils/logger';
+import { signUp } from '@/lib/auth-client';
 import { getProfiles, getUserActivity } from './profiles';
 
 export interface CreateUserProfileData {
@@ -15,23 +16,14 @@ export interface CreateUserResult {
   error?: string;
 }
 
-/**
- * Creates a new user account and profile
- * Handles the full flow: auth signup -> wait for profile trigger -> update profile fields
- */
 export async function createUserWithProfile(
   profileData: CreateUserProfileData
 ): Promise<CreateUserResult> {
   try {
-    // Create auth user without password - they will receive an email to set their password
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { error: signUpError } = await signUp.email({
       email: profileData.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: {
-          full_name: profileData.fullName,
-        },
-      },
+      password: crypto.randomUUID(),
+      name: profileData.fullName,
     });
 
     if (signUpError) {
@@ -42,83 +34,55 @@ export async function createUserWithProfile(
       };
     }
 
-    // Wait a moment for the profile to be created by the trigger
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Get created user's profile and update it
-    const { data: profileDataResult, error: profileFetchError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', profileData.email)
-      .single();
+    const profiles = await getProfiles();
+    const createdProfile = profiles.find(p => p.email === profileData.email);
 
-    if (profileFetchError || !profileDataResult) {
-      log.error('Profile fetch error:', profileFetchError);
+    if (!createdProfile) {
       return {
         success: false,
         error: 'User created but profile not found. Please try again.',
       };
     }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
+    try {
+      await api.put(`/api/profiles/${createdProfile.user_id}`, {
         user_type: profileData.userType,
         graduation_year: profileData.graduationYear
           ? parseInt(profileData.graduationYear)
           : null,
         msc: profileData.msc,
         is_public: true,
-      })
-      .eq('id', profileDataResult.id);
-
-    if (profileError) {
+      });
+    } catch (profileError) {
       log.error('Profile update error:', profileError);
       return {
         success: false,
-        error: `Profile update failed: ${profileError.message}`,
+        error: `Profile update failed: ${profileError instanceof Error ? profileError.message : 'Unknown error'}`,
       };
     }
 
-    return {
-      success: true,
-    };
+    return { success: true };
   } catch (error) {
     log.error('Error in createUserWithProfile:', error);
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : 'Unknown error occurred',
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
     };
   }
 }
 
-/**
- * Soft deletes a user by marking their profile as removed
- */
 export async function removeUser(profileId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ removed: true })
-      .eq('id', profileId);
-
-    if (error) {
-      log.error('Error removing user:', error);
-      return false;
-    }
-
+    await api.put(`/api/profiles/remove/${profileId}`, {});
     return true;
   } catch (error) {
-    log.error('Error in removeUser:', error);
+    log.error('Error removing user:', error);
     return false;
   }
 }
 
-/**
- * Refreshes user-related data after user management operations
- * Returns updated profiles and user activity
- */
 export async function refreshUserData(): Promise<{
   profiles: Awaited<ReturnType<typeof getProfiles>>;
   userActivity: Awaited<ReturnType<typeof getUserActivity>>;
@@ -129,16 +93,9 @@ export async function refreshUserData(): Promise<{
       getUserActivity(),
     ]);
 
-    return {
-      profiles,
-      userActivity,
-    };
+    return { profiles, userActivity };
   } catch (error) {
     log.error('Error refreshing user data:', error);
-    return {
-      profiles: [],
-      userActivity: [],
-    };
+    return { profiles: [], userActivity: [] };
   }
 }
-

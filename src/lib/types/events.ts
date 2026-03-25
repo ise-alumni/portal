@@ -1,5 +1,3 @@
-import { Database } from '@/integrations/supabase/types';
-
 export interface Tag {
   id: string;
   name: string;
@@ -20,6 +18,7 @@ export interface EventOrganiser {
 export interface EventData {
   id: string;
   title: string;
+  slug?: string | null;
   description: string | null;
   location: string | null;
   location_url: string | null;
@@ -30,7 +29,8 @@ export interface EventData {
   created_by: string;
   created_at: string;
   updated_at: string;
-  image_url: string | null;
+  image_url?: string | null;
+  tags?: Tag[];
   event_tags?: EventTag[];
   organiser?: EventOrganiser;
 }
@@ -50,8 +50,3 @@ export interface NewEvent {
 
 export type EventSortBy = 'date' | 'title';
 export type EventView = 'upcoming' | 'past';
-
-// Re-export Supabase types for compatibility
-export type EventTable = Database['public']['Tables']['events']['Row'];
-export type TagTable = Database['public']['Tables']['tags']['Row'];
-export type EventTagTable = Database['public']['Tables']['event_tags']['Row'];

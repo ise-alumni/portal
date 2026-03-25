@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { log } from '@/lib/utils/logger';
 
 export type CurrentMapDataRow = {
@@ -9,8 +9,8 @@ export type CurrentMapDataRow = {
   lat: number;
   lng: number;
   graduation_year: number | null;
-  cohort: string | null;
-  msc: string | null;
+  cohort: number | null;
+  msc: boolean | null;
   city: string | null;
   country: string | null;
 };
@@ -29,37 +29,18 @@ export type OvertimeMapDataRow = {
 
 export async function getMapDataCurrent(): Promise<CurrentMapDataRow[]> {
   try {
-    const { data, error } = await supabase.rpc('rpc_get_map_data', {
-      view_mode: 'current',
-    });
-
-    if (error) {
-      log.error('Error fetching current map data:', error);
-      throw error;
-    }
-
-    return (data as CurrentMapDataRow[]) || [];
+    return await api.get<CurrentMapDataRow[]>('/api/map/current');
   } catch (error) {
-    log.error('Error in getMapDataCurrent:', error);
+    log.error('Error fetching current map data:', error);
     return [];
   }
 }
 
 export async function getMapDataOvertime(): Promise<OvertimeMapDataRow[]> {
   try {
-    const { data, error } = await supabase.rpc('rpc_get_map_data', {
-      view_mode: 'overtime',
-    });
-
-    if (error) {
-      log.error('Error fetching overtime map data:', error);
-      throw error;
-    }
-
-    return (data as OvertimeMapDataRow[]) || [];
+    return await api.get<OvertimeMapDataRow[]>('/api/map/overtime');
   } catch (error) {
-    log.error('Error in getMapDataOvertime:', error);
+    log.error('Error fetching overtime map data:', error);
     return [];
   }
 }
-

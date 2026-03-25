@@ -1,9 +1,6 @@
 .env
-
-
 AGENTS.md
 *.csv
-
 *.ts.html
 coverage
 
@@ -11,18 +8,18 @@ coverage
 logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
+# Build output
 node_modules
 dist
 dist-ssr
 *.local
-bun.lock
 
-# Editor directories and files
+# Database (ephemeral, recreated by seed)
+data.db
+
+# Editor
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -32,3 +29,4 @@ bun.lock
 *.njsproj
 *.sln
 *.sw?
+augur/conversations.json
