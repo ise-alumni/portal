@@ -3,12 +3,12 @@ import { db } from './db';
 import { auth } from './auth';
 import {
   profiles, profilesHistory, tags, events, eventTags,
-  announcements, announcementTags, residencyPartners, residencies, reminders,
+  announcements, announcementTags, residencyPartners, residencies,
   generateId,
 } from '../src/lib/db/turso-schema';
 
 const NOW = new Date().toISOString();
-const TEST_PASSWORD = 'password123';
+const TEST_PASSWORD = process.env.SEED_PASSWORD ?? 'password123';
 
 interface SeedUser {
   email: string;
@@ -135,7 +135,4 @@ async function seed() {
   console.log('  Staff:  staff@example.com');
 }
 
-seed().catch((err) => {
-  console.error('Seed failed:', err);
-  process.exit(1);
-});
+await seed();

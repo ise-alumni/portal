@@ -101,9 +101,6 @@ export function canUserCreateAnnouncements(userType: string | null): boolean {
   return isStaffOrAdmin(userType);
 }
 
-export type UserType = string;
-export type EventTagName = string;
-export type EventTagColor = string;
 
 export function getUserTypeOptions(): Array<{ value: string; label: string }> {
   return getUserTypesSync().map(type => ({

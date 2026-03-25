@@ -200,23 +200,16 @@ CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reminders_unique_user_target ON reminders(user_id, target_type, target_id);
 `;
 
-async function migrate() {
-  console.log('Running migrations...');
+console.log('Running migrations...');
 
-  const statements = SCHEMA_SQL
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
+const statements = SCHEMA_SQL
+  .split(';')
+  .map(s => s.trim())
+  .filter(s => s.length > 0);
 
-  for (const stmt of statements) {
-    await client.execute(stmt);
-  }
-
-  console.log(`Executed ${statements.length} statements`);
-  console.log('Migration complete');
+for (const stmt of statements) {
+  await client.execute(stmt);
 }
 
-migrate().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+console.log(`Executed ${statements.length} statements`);
+console.log('Migration complete');

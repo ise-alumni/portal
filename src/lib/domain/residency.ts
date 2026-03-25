@@ -3,13 +3,13 @@ import {
   type ResidencyPartner,
   type ResidencyStats,
   type NewResidencyPartner,
-  type ResidencyPhase,
 } from '@/lib/types';
 import type { Residency, NewResidency } from '@/lib/types/residency';
 import { type Profile } from '@/lib/types/profiles';
 import { log } from '@/lib/utils/logger';
 
-export type { Residency, NewResidency, ResidencyPhase };
+export type { Residency, NewResidency } from '@/lib/types/residency';
+export type { ResidencyPhase } from '@/lib/types';
 
 export async function getResidencyPartners(): Promise<ResidencyPartner[]> {
   try {

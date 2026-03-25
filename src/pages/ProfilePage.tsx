@@ -6,11 +6,10 @@ import { Calendar, Mail, ArrowLeft, ExternalLink, MapPin, Briefcase, GraduationC
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate } from '@/lib/utils/date';
 import { log } from '@/lib/utils/logger';
-import { Profile, ProfessionalStatus } from '@/lib/types';
+import { Profile, ProfessionalStatus, type ResidencyPartner, type Announcement } from '@/lib/types';
 import { EventData } from '@/lib/types/events';
 import { getUserResidencies, getResidencyPartners } from '@/lib/domain/residency';
 import type { Residency } from '@/lib/types/residency';
-import type { ResidencyPartner } from '@/lib/types';
 import { getProfileById } from '@/lib/domain/profiles';
 import { getAnnouncementsByUserId } from '@/lib/domain/announcements';
 import { getEventsByUserId } from '@/lib/domain/events';
@@ -22,8 +21,6 @@ import { TagBadge } from '@/components/ui/tag-badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CompanyLogo } from '@/components/CompanyLogo';
 import { buildCompanyLogoMap, getCompanyLogoUrl } from '@/lib/utils/companyLogo';
-
-import { type Announcement } from '@/lib/types';
 
 const ProfilePage = () => {
   const { id } = useParams<{ id: string }>();
