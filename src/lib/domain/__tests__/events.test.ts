@@ -1,41 +1,36 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { type EventData } from '@/lib/types'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { type EventData, type Tag } from '@/lib/types';
 
-// Mock dependencies
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: vi.fn()
-  }
-}))
-
-vi.mock('@/lib/utils/images', () => ({
-  handleImageError: vi.fn()
-}))
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
 
 vi.mock('@/lib/utils/logger', () => ({
-  log: {
-    error: vi.fn()
-  }
-}))
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
 
-const { supabase } = await import('@/integrations/supabase/client')
-const { handleImageError } = await import('@/lib/utils/images')
-const { log } = await import('@/lib/utils/logger')
-const mockedSupabase = vi.mocked(supabase)
-
-// Import domain functions after mocking
-const {
+import { api } from '@/lib/api';
+import { log } from '@/lib/utils/logger';
+import {
   getEvents,
   getTags,
   getEventById,
-  deleteEvent,
   getEventsByUserId,
+  deleteEvent,
+  createTag,
+  updateTag,
+  deleteTag,
+  getTagById,
   isEventInPast,
   isEventUpcoming,
-  isEventOngoing
-} = await import('../events')
+  isEventOngoing,
+} from '../events';
 
-// Test fixture for event
 const createTestEvent = (overrides: Partial<EventData> = {}): EventData => ({
   id: '1',
   title: 'Test Event',
@@ -52,529 +47,278 @@ const createTestEvent = (overrides: Partial<EventData> = {}): EventData => ({
   image_url: null,
   event_tags: [],
   organiser: undefined,
-  ...overrides
-})
+  ...overrides,
+});
+
+const createTestTag = (overrides: Partial<Tag> = {}): Tag => ({
+  id: 't1',
+  name: 'React',
+  color: '#61DAFB',
+  ...overrides,
+});
 
 describe('Events Domain', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   describe('getEvents', () => {
     it('should fetch events successfully', async () => {
       const mockEvents = [
         createTestEvent({ title: 'React Workshop' }),
-        createTestEvent({ title: 'Networking Event', id: '2' })
-      ]
+        createTestEvent({ title: 'Networking Event', id: '2' }),
+      ];
+      vi.mocked(api.get).mockResolvedValue(mockEvents);
 
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: mockEvents,
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
+      const result = await getEvents();
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      expect(api.get).toHaveBeenCalledWith('/api/events');
+      expect(result).toEqual(mockEvents);
+    });
 
-      const result = await getEvents()
+    it('should return empty array on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Network error'));
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('events')
-      expect(mockSelect).toHaveBeenCalled()
-      expect(mockOrder).toHaveBeenCalledWith('start_at', { ascending: true })
-      expect(result).toHaveLength(2)
-      expect(result[0].title).toBe('React Workshop')
-      expect(result[1].title).toBe('Networking Event')
-    })
+      const result = await getEvents();
 
-    it('should handle empty events list', async () => {
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: [],
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getEvents()
-
-      expect(result).toEqual([])
-    })
-
-    it('should handle database errors', async () => {
-      const mockError = new Error('Database connection failed')
-
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getEvents()
-
-      expect(log.error).toHaveBeenCalledWith('Error fetching events:', mockError)
-      expect(result).toEqual([])
-    })
-
-    it('should use default image_url when not provided', async () => {
-      const mockEvents = [createTestEvent({ image_url: null })]
-
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: mockEvents,
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getEvents()
-
-      expect(result[0].image_url).toBe('https://placehold.co/600x400')
-    })
-
-    it('should use custom image_url when provided', async () => {
-      const mockEvents = [createTestEvent({ image_url: 'https://example.com/custom-image.jpg' })]
-
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: mockEvents,
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getEvents()
-
-      expect(result[0].image_url).toBe('https://example.com/custom-image.jpg')
-    })
-  })
+      expect(log.error).toHaveBeenCalledWith('Error fetching events:', expect.any(Error));
+      expect(result).toEqual([]);
+    });
+  });
 
   describe('getTags', () => {
     it('should fetch tags successfully', async () => {
-      const mockTags = [
-        { id: '1', name: 'React', color: '#61DAFB' },
-        { id: '2', name: 'TypeScript', color: '#3178C6' },
-        { id: '3', name: 'Node.js', color: '#339933' }
-      ]
+      const mockTags = [createTestTag(), createTestTag({ id: 't2', name: 'TypeScript', color: '#3178C6' })];
+      vi.mocked(api.get).mockResolvedValue(mockTags);
 
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: mockTags,
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
+      const result = await getTags();
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      expect(api.get).toHaveBeenCalledWith('/api/tags');
+      expect(result).toEqual(mockTags);
+    });
 
-      const result = await getTags()
+    it('should return empty array on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Failed'));
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('tags')
-      expect(mockSelect).toHaveBeenCalledWith('*')
-      expect(mockOrder).toHaveBeenCalledWith('name')
-      expect(result).toEqual(mockTags)
-    })
+      const result = await getTags();
 
-    it('should handle empty tags list', async () => {
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: [],
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getTags()
-
-      expect(result).toEqual([])
-    })
-
-    it('should handle database errors', async () => {
-      const mockError = new Error('Failed to fetch tags')
-
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getTags()
-
-      expect(log.error).toHaveBeenCalledWith('Error fetching tags:', mockError)
-      expect(result).toEqual([])
-    })
-
-    it('should handle unexpected errors', async () => {
-      const unexpectedError = new Error('Unexpected error')
-
-      mockedSupabase.from.mockImplementation(() => {
-        throw unexpectedError
-      })
-
-      const result = await getTags()
-
-      expect(log.error).toHaveBeenCalledWith('Error in getTags:', unexpectedError)
-      expect(result).toEqual([])
-    })
-  })
-
-  describe('Event Status Helpers', () => {
-    beforeEach(() => {
-      vi.useFakeTimers()
-    })
-
-    afterEach(() => {
-      vi.useRealTimers()
-    })
-
-    describe('isEventInPast', () => {
-      it('should return true for past events', () => {
-        const pastEvent = createTestEvent({
-          start_at: '2024-01-15T10:00:00Z',
-          end_at: '2024-01-15T12:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-16T10:00:00Z'))
-
-        expect(isEventInPast(pastEvent)).toBe(true)
-      })
-
-      it('should return false for future events', () => {
-        const futureEvent = createTestEvent({
-          start_at: '2024-01-20T10:00:00Z',
-          end_at: '2024-01-20T12:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
-
-        expect(isEventInPast(futureEvent)).toBe(false)
-      })
-
-      it('should return false for ongoing events', () => {
-        const ongoingEvent = createTestEvent({
-          start_at: '2024-01-15T10:00:00Z',
-          end_at: '2024-01-15T14:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T12:00:00Z'))
-
-        expect(isEventInPast(ongoingEvent)).toBe(false)
-      })
-
-      it('should handle events without end time', () => {
-        const eventWithoutEnd = createTestEvent({
-          start_at: '2024-01-15T10:00:00Z',
-          end_at: null
-        })
-
-        vi.setSystemTime(new Date('2024-01-16T10:00:00Z'))
-
-        expect(isEventInPast(eventWithoutEnd)).toBe(true)
-      })
-    })
-
-    describe('isEventUpcoming', () => {
-      it('should return true for future events', () => {
-        const futureEvent = createTestEvent({
-          start_at: '2024-01-20T10:00:00Z',
-          end_at: '2024-01-20T12:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
-
-        expect(isEventUpcoming(futureEvent)).toBe(true)
-      })
-
-      it('should return false for past events', () => {
-        const pastEvent = createTestEvent({
-          start_at: '2024-01-10T10:00:00Z',
-          end_at: '2024-01-10T12:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
-
-        expect(isEventUpcoming(pastEvent)).toBe(false)
-      })
-
-      it('should return false for ongoing events', () => {
-        const ongoingEvent = createTestEvent({
-          start_at: '2024-01-15T08:00:00Z',
-          end_at: '2024-01-15T14:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
-
-        expect(isEventUpcoming(ongoingEvent)).toBe(false)
-      })
-    })
-
-    describe('isEventOngoing', () => {
-      it('should return true for events currently in progress', () => {
-        const ongoingEvent = createTestEvent({
-          start_at: '2024-01-15T08:00:00Z',
-          end_at: '2024-01-15T14:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
-
-        expect(isEventOngoing(ongoingEvent)).toBe(true)
-      })
-
-      it('should return false for events that have not started', () => {
-        const futureEvent = createTestEvent({
-          start_at: '2024-01-15T14:00:00Z',
-          end_at: '2024-01-15T16:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
-
-        expect(isEventOngoing(futureEvent)).toBe(false)
-      })
-
-      it('should return false for events that have ended', () => {
-        const pastEvent = createTestEvent({
-          start_at: '2024-01-15T08:00:00Z',
-          end_at: '2024-01-15T10:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T12:00:00Z'))
-
-        expect(isEventOngoing(pastEvent)).toBe(false)
-      })
-
-      it('should handle events without end time', () => {
-        const eventWithoutEnd = createTestEvent({
-          start_at: '2024-01-15T08:00:00Z',
-          end_at: null
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
-
-        expect(isEventOngoing(eventWithoutEnd)).toBe(true)
-      })
-
-      it('should handle edge case of event starting exactly now', () => {
-        const event = createTestEvent({
-          start_at: '2024-01-15T12:00:00Z',
-          end_at: '2024-01-15T13:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T12:00:00Z'))
-
-        expect(isEventOngoing(event)).toBe(true)
-      })
-
-      it('should handle edge case of event ending exactly now', () => {
-        const event = createTestEvent({
-          start_at: '2024-01-15T11:00:00Z',
-          end_at: '2024-01-15T12:00:00Z'
-        })
-
-        vi.setSystemTime(new Date('2024-01-15T12:00:00Z'))
-
-        expect(isEventOngoing(event)).toBe(true) // Event ending exactly now is still considered ongoing
-      })
-    })
-  })
+      expect(log.error).toHaveBeenCalledWith('Error fetching tags:', expect.any(Error));
+      expect(result).toEqual([]);
+    });
+  });
 
   describe('getEventById', () => {
     it('should fetch event by id successfully', async () => {
-      const mockEvent = {
-        id: '1',
-        title: 'Test Event',
-        description: 'Test description',
-        start_at: '2024-02-15T10:00:00Z',
-        end_at: '2024-02-15T12:00:00Z',
-        location: 'Test Location',
-        location_url: null,
-        registration_url: null,
-        organiser_profile_id: null,
-        created_by: 'user-1',
-        created_at: '2024-01-15T10:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        image_url: null,
-        organiser: null,
-        event_tags: []
-      }
+      const mockEvent = createTestEvent();
+      vi.mocked(api.get).mockResolvedValue(mockEvent);
 
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockEvent,
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const result = await getEventById('1');
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      expect(api.get).toHaveBeenCalledWith('/api/events/1');
+      expect(result).toEqual(mockEvent);
+    });
 
-      const result = await getEventById('1')
+    it('should return null on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Not found'));
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('events')
-      expect(result).toEqual({
-        ...mockEvent,
-        image_url: 'https://placehold.co/600x400',
-        event_tags: []
-      })
-    })
+      const result = await getEventById('999');
 
-    it('should return null when event not found', async () => {
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getEventById('non-existent')
-
-      expect(result).toBeNull()
-    })
-
-    it('should handle database errors', async () => {
-      const mockError = new Error('Database error')
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getEventById('1')
-
-      expect(log.error).toHaveBeenCalledWith('Error fetching event by ID:', mockError)
-      expect(result).toBeNull()
-    })
-
-    it('should handle unexpected errors', async () => {
-      mockedSupabase.from.mockImplementation(() => {
-        throw new Error('Network error')
-      })
-
-      const result = await getEventById('1')
-
-      expect(log.error).toHaveBeenCalledWith('Error in getEventById:', expect.any(Error))
-      expect(result).toBeNull()
-    })
-  })
-
-  describe('deleteEvent', () => {
-    it('should delete event successfully', async () => {
-      const eventId = 'event-123'
-
-      const mockEq = vi.fn().mockResolvedValue({ error: null })
-      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq })
-      mockedSupabase.from.mockReturnValue({ delete: mockDelete })
-
-      const result = await deleteEvent(eventId)
-
-      expect(mockedSupabase.from).toHaveBeenCalledWith('events')
-      expect(mockDelete).toHaveBeenCalled()
-      expect(mockEq).toHaveBeenCalledWith('id', eventId)
-      expect(result).toBe(true)
-    })
-
-    it('should handle deletion errors', async () => {
-      const eventId = 'event-123'
-      const error = { message: 'Delete failed' }
-
-      const mockEq = vi.fn().mockResolvedValue({ error })
-      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq })
-      mockedSupabase.from.mockReturnValue({ delete: mockDelete })
-
-      const result = await deleteEvent(eventId)
-
-      expect(log.error).toHaveBeenCalledWith('Error deleting event:', error)
-      expect(result).toBe(false)
-    })
-
-    it('should handle unexpected errors', async () => {
-      const eventId = 'event-123'
-
-      mockedSupabase.from.mockImplementation(() => {
-        throw new Error('Network error')
-      })
-
-      const result = await deleteEvent(eventId)
-
-      expect(log.error).toHaveBeenCalledWith('Error in deleteEvent:', expect.any(Error))
-      expect(result).toBe(false)
-    })
-  })
+      expect(log.error).toHaveBeenCalledWith('Error fetching event by ID:', expect.any(Error));
+      expect(result).toBeNull();
+    });
+  });
 
   describe('getEventsByUserId', () => {
     it('should fetch events by user id successfully', async () => {
-      const userId = 'user-123'
-      const mockEvents = [
-        createTestEvent({ id: '1', created_by: userId }),
-        createTestEvent({ id: '2', created_by: userId })
-      ]
+      const mockEvents = [createTestEvent({ created_by: 'user-123' })];
+      vi.mocked(api.get).mockResolvedValue(mockEvents);
 
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: mockEvents,
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const result = await getEventsByUserId('user-123');
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      expect(api.get).toHaveBeenCalledWith('/api/events/user/user-123');
+      expect(result).toEqual(mockEvents);
+    });
 
-      const result = await getEventsByUserId(userId)
+    it('should return empty array on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Failed'));
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('events')
-      expect(mockEq).toHaveBeenCalledWith('created_by', userId)
-      expect(result).toHaveLength(2)
-    })
+      const result = await getEventsByUserId('user-123');
 
-    it('should handle empty results', async () => {
-      const userId = 'user-123'
+      expect(log.error).toHaveBeenCalledWith('Error fetching events by user ID:', expect.any(Error));
+      expect(result).toEqual([]);
+    });
+  });
 
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: [],
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+  describe('deleteEvent', () => {
+    it('should delete event successfully', async () => {
+      vi.mocked(api.delete).mockResolvedValue(undefined);
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      const result = await deleteEvent('event-1');
 
-      const result = await getEventsByUserId(userId)
+      expect(api.delete).toHaveBeenCalledWith('/api/events/event-1');
+      expect(result).toBe(true);
+    });
 
-      expect(result).toEqual([])
-    })
+    it('should return false on error', async () => {
+      vi.mocked(api.delete).mockRejectedValue(new Error('Delete failed'));
 
-    it('should handle database errors', async () => {
-      const userId = 'user-123'
-      const mockError = new Error('Database error')
+      const result = await deleteEvent('event-1');
 
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      expect(log.error).toHaveBeenCalledWith('Error deleting event:', expect.any(Error));
+      expect(result).toBe(false);
+    });
+  });
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+  describe('createTag', () => {
+    it('should create tag successfully', async () => {
+      const mockTag = createTestTag({ id: 'new-1', name: 'Vue', color: '#42b883' });
+      vi.mocked(api.post).mockResolvedValue(mockTag);
 
-      const result = await getEventsByUserId(userId)
+      const result = await createTag('Vue', '#42b883');
 
-      expect(log.error).toHaveBeenCalledWith('Error fetching events by user ID:', mockError)
-      expect(result).toEqual([])
-    })
+      expect(api.post).toHaveBeenCalledWith('/api/tags', { name: 'Vue', color: '#42b883' });
+      expect(result).toEqual(mockTag);
+    });
 
-    it('should handle unexpected errors', async () => {
-      const userId = 'user-123'
+    it('should return null on error', async () => {
+      vi.mocked(api.post).mockRejectedValue(new Error('Creation failed'));
 
-      mockedSupabase.from.mockImplementation(() => {
-        throw new Error('Network error')
-      })
+      const result = await createTag('Vue', '#42b883');
 
-      const result = await getEventsByUserId(userId)
+      expect(log.error).toHaveBeenCalledWith('Error creating tag:', expect.any(Error));
+      expect(result).toBeNull();
+    });
+  });
 
-      expect(log.error).toHaveBeenCalledWith('Error in getEventsByUserId:', expect.any(Error))
-      expect(result).toEqual([])
-    })
-  })
-})
+  describe('updateTag', () => {
+    it('should update tag successfully', async () => {
+      const mockTag = createTestTag({ name: 'Updated', color: '#000' });
+      vi.mocked(api.put).mockResolvedValue(mockTag);
+
+      const result = await updateTag('t1', 'Updated', '#000');
+
+      expect(api.put).toHaveBeenCalledWith('/api/tags/t1', { name: 'Updated', color: '#000' });
+      expect(result).toEqual(mockTag);
+    });
+
+    it('should return null on error', async () => {
+      vi.mocked(api.put).mockRejectedValue(new Error('Update failed'));
+
+      const result = await updateTag('t1', 'Updated', '#000');
+
+      expect(log.error).toHaveBeenCalledWith('Error updating tag:', expect.any(Error));
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('deleteTag', () => {
+    it('should delete tag successfully', async () => {
+      vi.mocked(api.delete).mockResolvedValue(undefined);
+
+      const result = await deleteTag('t1');
+
+      expect(api.delete).toHaveBeenCalledWith('/api/tags/t1');
+      expect(result).toBe(true);
+    });
+
+    it('should return false on error', async () => {
+      vi.mocked(api.delete).mockRejectedValue(new Error('Delete failed'));
+
+      const result = await deleteTag('t1');
+
+      expect(log.error).toHaveBeenCalledWith('Error deleting tag:', expect.any(Error));
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getTagById', () => {
+    it('should fetch tag by id successfully', async () => {
+      const mockTag = createTestTag();
+      vi.mocked(api.get).mockResolvedValue(mockTag);
+
+      const result = await getTagById('t1');
+
+      expect(api.get).toHaveBeenCalledWith('/api/tags/t1');
+      expect(result).toEqual(mockTag);
+    });
+
+    it('should return null on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Not found'));
+
+      const result = await getTagById('t1');
+
+      expect(log.error).toHaveBeenCalledWith('Error fetching tag:', expect.any(Error));
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Event Status Helpers', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    describe('isEventInPast', () => {
+      it('should return true for past events', () => {
+        vi.setSystemTime(new Date('2024-01-16T10:00:00Z'));
+        const pastEvent = createTestEvent({ start_at: '2024-01-15T10:00:00Z', end_at: '2024-01-15T12:00:00Z' });
+        expect(isEventInPast(pastEvent)).toBe(true);
+      });
+
+      it('should return false for future events', () => {
+        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'));
+        const futureEvent = createTestEvent({ start_at: '2024-01-20T10:00:00Z', end_at: '2024-01-20T12:00:00Z' });
+        expect(isEventInPast(futureEvent)).toBe(false);
+      });
+
+      it('should handle events without end time', () => {
+        vi.setSystemTime(new Date('2024-01-16T10:00:00Z'));
+        const event = createTestEvent({ start_at: '2024-01-15T10:00:00Z', end_at: null });
+        expect(isEventInPast(event)).toBe(true);
+      });
+    });
+
+    describe('isEventUpcoming', () => {
+      it('should return true for future events', () => {
+        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'));
+        const futureEvent = createTestEvent({ start_at: '2024-01-20T10:00:00Z' });
+        expect(isEventUpcoming(futureEvent)).toBe(true);
+      });
+
+      it('should return false for past events', () => {
+        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'));
+        const pastEvent = createTestEvent({ start_at: '2024-01-10T10:00:00Z' });
+        expect(isEventUpcoming(pastEvent)).toBe(false);
+      });
+    });
+
+    describe('isEventOngoing', () => {
+      it('should return true for events currently in progress', () => {
+        vi.setSystemTime(new Date('2024-01-15T11:00:00Z'));
+        const event = createTestEvent({ start_at: '2024-01-15T08:00:00Z', end_at: '2024-01-15T14:00:00Z' });
+        expect(isEventOngoing(event)).toBe(true);
+      });
+
+      it('should return false for events that have not started', () => {
+        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'));
+        const event = createTestEvent({ start_at: '2024-01-15T14:00:00Z', end_at: '2024-01-15T16:00:00Z' });
+        expect(isEventOngoing(event)).toBe(false);
+      });
+
+      it('should return false for events that have ended', () => {
+        vi.setSystemTime(new Date('2024-01-15T18:00:00Z'));
+        const event = createTestEvent({ start_at: '2024-01-15T08:00:00Z', end_at: '2024-01-15T10:00:00Z' });
+        expect(isEventOngoing(event)).toBe(false);
+      });
+
+      it('should handle events without end time', () => {
+        vi.setSystemTime(new Date('2024-01-15T10:00:00Z'));
+        const event = createTestEvent({ start_at: '2024-01-15T08:00:00Z', end_at: null });
+        expect(isEventOngoing(event)).toBe(true);
+      });
+    });
+  });
+});

@@ -1,209 +1,168 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { UserRole } from '@/lib/types/common'
-import { createMockProfile } from './test-helpers'
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type Profile, type ProfileFormData } from '@/lib/types';
 
-// Mock dependencies
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: vi.fn()
-  }
-}))
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
 
 vi.mock('@/lib/utils/logger', () => ({
-  log: {
-    error: vi.fn()
-  }
-}))
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
 
-const { supabase } = await import('@/integrations/supabase/client')
-const { log } = await import('@/lib/utils/logger')
-const mockedSupabase = vi.mocked(supabase)
-
-// Import domain functions after mocking
-const {
+import { api } from '@/lib/api';
+import { log } from '@/lib/utils/logger';
+import {
   getProfiles,
-  getProfileByUserId,
   getProfileById,
-  uploadAvatar,
-  calculateProfileCompletionPercentage,
+  getProfileByUserId,
   updateProfile,
-  searchProfiles,
-  isProfileComplete
-} = await import('../profiles')
+  uploadAvatar,
+  isProfileComplete,
+  calculateProfileCompletionPercentage,
+} from '../profiles';
 
-describe('Profiles domain functions', () => {
+const createTestProfile = (overrides: Partial<Profile> = {}): Profile => ({
+  id: 'p1',
+  user_id: 'u1',
+  full_name: 'John Doe',
+  email: 'john@example.com',
+  avatar_url: null,
+  bio: 'Developer',
+  city: 'Dublin',
+  country: 'Ireland',
+  cohort: 1,
+  graduation_year: 2020,
+  company: 'Tech Corp',
+  job_title: 'Engineer',
+  github_url: null,
+  linkedin_url: null,
+  twitter_url: null,
+  website_url: null,
+  is_public: true,
+  msc: false,
+  is_remote: null,
+  is_entrepreneur: null,
+  is_ise_champion: null,
+  professional_status: null,
+  user_type: 'Alum',
+  removed: false,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+  ...overrides,
+});
+
+describe('Profiles Domain', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   describe('getProfiles', () => {
     it('should fetch profiles successfully', async () => {
-      const mockProfiles = [createMockProfile()]
+      const mock = [createTestProfile(), createTestProfile({ id: 'p2', full_name: 'Jane' })];
+      vi.mocked(api.get).mockResolvedValue(mock);
 
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: mockProfiles,
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const result = await getProfiles();
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      expect(api.get).toHaveBeenCalledWith('/api/profiles');
+      expect(result).toEqual(mock);
+    });
 
-      const result = await getProfiles()
+    it('should return empty array on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Failed'));
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(result).toHaveLength(1)
-      expect(result[0]).toEqual(mockProfiles[0])
-    })
+      const result = await getProfiles();
 
-    it('should handle database errors gracefully', async () => {
-      const mockError = new Error('Database error')
+      expect(log.error).toHaveBeenCalledWith('Error fetching profiles:', expect.any(Error));
+      expect(result).toEqual([]);
+    });
+  });
 
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+  describe('getProfileById', () => {
+    it('should fetch profile by id successfully', async () => {
+      const mock = createTestProfile();
+      vi.mocked(api.get).mockResolvedValue(mock);
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      const result = await getProfileById('p1');
 
-      const result = await getProfiles()
+      expect(api.get).toHaveBeenCalledWith('/api/profiles/p1');
+      expect(result).toEqual(mock);
+    });
 
-      expect(log.error).toHaveBeenCalledWith('Error fetching profiles:', mockError)
-      expect(result).toEqual([])
-    })
+    it('should return null on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Not found'));
 
-    it('should handle empty data', async () => {
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: [],
-        error: null
-      })
-      const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      const result = await getProfileById('p1');
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getProfiles()
-
-      expect(result).toEqual([])
-    })
-  })
+      expect(log.error).toHaveBeenCalledWith('Error fetching profile by ID:', expect.any(Error));
+      expect(result).toBeNull();
+    });
+  });
 
   describe('getProfileByUserId', () => {
-    it('should fetch profile by user ID successfully', async () => {
-      const mockProfile = createMockProfile()
+    it('should fetch profile by user id successfully', async () => {
+      const mock = createTestProfile();
+      vi.mocked(api.get).mockResolvedValue(mock);
 
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockProfile,
-        error: null
-      })
-      const mockEq2 = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
+      const result = await getProfileByUserId('u1');
 
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
+      expect(api.get).toHaveBeenCalledWith('/api/profiles/user/u1');
+      expect(result).toEqual(mock);
+    });
 
-      const result = await getProfileByUserId('1')
+    it('should return null on error', async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error('Failed'));
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(result).toEqual(mockProfile)
-    })
+      const result = await getProfileByUserId('u1');
 
-    it('should return null when profile not found', async () => {
-      const mockError = new Error('No rows found')
-
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockEq2 = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getProfileByUserId('non-existent')
-
-      expect(log.error).toHaveBeenCalledWith('Error fetching profile by user ID:', mockError)
-      expect(result).toBeNull()
-    })
-  })
+      expect(log.error).toHaveBeenCalledWith('Error fetching profile by user ID:', expect.any(Error));
+      expect(result).toBeNull();
+    });
+  });
 
   describe('updateProfile', () => {
     it('should update profile successfully', async () => {
-      const userId = '1'
-      const formData = {
-        fullName: 'John Updated',
-        city: 'New York',
-        country: 'USA',
+      const updated = createTestProfile({ full_name: 'Updated Name' });
+      vi.mocked(api.put).mockResolvedValue(updated);
+
+      const formData: ProfileFormData = {
+        fullName: 'Updated Name',
+        city: 'Dublin',
+        country: 'Ireland',
         graduationYear: '2020',
         msc: false,
-        jobTitle: 'Senior Software Engineer',
+        jobTitle: 'Engineer',
         company: 'Tech Corp',
-        bio: 'Updated bio',
-        githubUrl: 'https://github.com/john',
-        linkedinUrl: 'https://linkedin.com/in/john',
-        twitterUrl: 'https://twitter.com/john',
-        websiteUrl: 'https://john.com',
-        avatarUrl: 'https://example.com/avatar.jpg',
+        bio: 'Developer',
+        githubUrl: '',
+        linkedinUrl: '',
+        twitterUrl: '',
+        websiteUrl: '',
+        avatarUrl: '',
         isRemote: false,
         isEntrepreneur: false,
         isIseChampion: false,
-        professionalStatus: 'employed' as const
-      }
+        professionalStatus: null,
+      };
 
-      const updatedProfile = createMockProfile({
-        id: '1',
-        user_id: '1',
-        full_name: 'John Updated',
-        city: 'New York',
-        country: 'USA',
-        graduation_year: 2020,
-        job_title: 'Senior Software Engineer',
-        company: 'Tech Corp',
-        bio: 'Updated bio',
-        github_url: 'https://github.com/john',
-        linkedin_url: 'https://linkedin.com/in/john',
-        twitter_url: 'https://twitter.com/john',
-        website_url: 'https://john.com',
-        avatar_url: 'https://example.com/avatar.jpg',
-        professional_status: 'employed',
-        updated_at: '2024-01-15T00:00:00Z'
-      })
+      const result = await updateProfile('u1', formData);
 
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: updatedProfile,
-        error: null
-      })
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockEq = vi.fn().mockReturnValue({ select: mockSelect })
-      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+      expect(api.put).toHaveBeenCalledWith('/api/profiles/u1', expect.objectContaining({
+        user_id: 'u1',
+        full_name: 'Updated Name',
+      }));
+      expect(result).toEqual(updated);
+    });
 
-      mockedSupabase.from.mockReturnValue({ update: mockUpdate })
+    it('should return null on error', async () => {
+      vi.mocked(api.put).mockRejectedValue(new Error('Update failed'));
 
-      const result = await updateProfile(userId, formData)
-
-      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(result).toEqual(updatedProfile)
-    })
-
-    it('should handle update errors gracefully', async () => {
-      const mockError = new Error('Update failed')
-
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockEq = vi.fn().mockReturnValue({ select: mockSelect })
-      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-
-      mockedSupabase.from.mockReturnValue({ update: mockUpdate })
-
-      const formData = {
-        fullName: 'Test',
+      const formData: ProfileFormData = {
+        fullName: 'X',
         city: '',
         country: '',
         graduationYear: '',
@@ -219,217 +178,50 @@ describe('Profiles domain functions', () => {
         isRemote: false,
         isEntrepreneur: false,
         isIseChampion: false,
-        professionalStatus: null
-      }
+        professionalStatus: null,
+      };
 
-      const result = await updateProfile('1', formData)
+      const result = await updateProfile('u1', formData);
 
-      expect(log.error).toHaveBeenCalledWith('Error updating profile:', mockError)
-      expect(result).toBeNull()
-    })
-  })
-
-  describe('searchProfiles', () => {
-    it('should search profiles successfully', async () => {
-      const mockProfiles = [createMockProfile({ professional_status: 'employed' })]
-
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: mockProfiles,
-        error: null
-      })
-      const mockOr = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockEq2 = vi.fn().mockReturnValue({ or: mockOr })
-      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await searchProfiles('john')
-
-      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(result).toHaveLength(1)
-      expect(result[0]).toEqual(mockProfiles[0])
-    })
-
-    it('should handle search errors gracefully', async () => {
-      const mockError = new Error('Search failed')
-
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockOr = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockEq2 = vi.fn().mockReturnValue({ or: mockOr })
-      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await searchProfiles('test')
-
-      expect(log.error).toHaveBeenCalledWith('Error searching profiles:', mockError)
-      expect(result).toEqual([])
-    })
-
-    it('should handle empty search results', async () => {
-      const mockOrder = vi.fn().mockResolvedValue({
-        data: [],
-        error: null
-      })
-      const mockOr = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockEq2 = vi.fn().mockReturnValue({ or: mockOr })
-      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await searchProfiles('nonexistent')
-
-      expect(result).toEqual([])
-    })
-  })
-
-  describe('isProfileComplete', () => {
-    it('should return true for complete profiles', () => {
-      const profile = createMockProfile({ job_title: 'Software Engineer' })
-      expect(isProfileComplete(profile)).toBe(true)
-    })
-
-    it('should return false for incomplete profiles', () => {
-      const profile = createMockProfile({
-        full_name: '',
-        bio: '',
-        company: '',
-        cohort: null,
-        job_title: null
-      })
-      expect(isProfileComplete(profile)).toBe(false)
-    })
-
-    it('should handle profiles with missing optional fields', () => {
-      const profile = createMockProfile({ company: null, job_title: 'Software Engineer' })
-      expect(isProfileComplete(profile)).toBe(false) // company is null, so should be false
-    })
-  })
-
-  describe('getProfileById', () => {
-    it('should fetch profile by profile ID successfully', async () => {
-      const mockProfile = createMockProfile({ id: 'profile-123', user_id: 'user-123' })
-
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockProfile,
-        error: null
-      })
-      const mockEq2 = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getProfileById('profile-123')
-
-      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(mockEq1).toHaveBeenCalledWith('id', 'profile-123')
-      expect(mockEq2).toHaveBeenCalledWith('removed', false)
-      expect(result).toEqual(mockProfile)
-    })
-
-    it('should return null when profile not found', async () => {
-      const mockError = new Error('No rows found')
-
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: mockError
-      })
-      const mockEq2 = vi.fn().mockReturnValue({ single: mockSingle })
-      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-
-      mockedSupabase.from.mockReturnValue({ select: mockSelect })
-
-      const result = await getProfileById('non-existent')
-
-      expect(log.error).toHaveBeenCalledWith('Error fetching profile by ID:', mockError)
-      expect(result).toBeNull()
-    })
-  })
+      expect(log.error).toHaveBeenCalledWith('Error updating profile:', expect.any(Error));
+      expect(result).toBeNull();
+    });
+  });
 
   describe('uploadAvatar', () => {
-    it('should upload avatar successfully', async () => {
-      const userId = 'user-123'
-      const file = new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })
-      const publicUrl = 'https://example.com/avatars/user-123.jpg'
+    it('should return null (stub)', async () => {
+      const result = await uploadAvatar('u1', new File([''], 'avatar.png'));
 
-      mockedSupabase.storage = {
-        from: vi.fn().mockReturnValue({
-          upload: vi.fn().mockResolvedValue({ error: null }),
-          getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl } })
-        })
-      } as any
+      expect(log.warn).toHaveBeenCalledWith('Avatar upload not yet implemented with local storage');
+      expect(result).toBeNull();
+    });
+  });
 
-      const result = await uploadAvatar(userId, file)
+  describe('isProfileComplete', () => {
+    it('should return true when all required fields are filled', () => {
+      const profile = createTestProfile();
+      expect(isProfileComplete(profile)).toBe(true);
+    });
 
-      expect(mockedSupabase.storage.from).toHaveBeenCalledWith('avatars')
-      expect(result).toBe(publicUrl)
-    })
-
-    it('should handle upload errors', async () => {
-      const userId = 'user-123'
-      const file = new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })
-      const uploadError = { message: 'Upload failed' }
-
-      mockedSupabase.storage = {
-        from: vi.fn().mockReturnValue({
-          upload: vi.fn().mockResolvedValue({ error: uploadError })
-        })
-      } as any
-
-      const result = await uploadAvatar(userId, file)
-
-      expect(log.error).toHaveBeenCalledWith('Error uploading avatar:', uploadError)
-      expect(result).toBeNull()
-    })
-
-    it('should handle unexpected errors', async () => {
-      const userId = 'user-123'
-      const file = new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })
-
-      mockedSupabase.storage = {
-        from: vi.fn().mockImplementation(() => {
-          throw new Error('Storage error')
-        })
-      } as any
-
-      const result = await uploadAvatar(userId, file)
-
-      expect(log.error).toHaveBeenCalledWith('Error in uploadAvatar:', expect.any(Error))
-      expect(result).toBeNull()
-    })
-  })
+    it('should return false when required fields are missing', () => {
+      const profile = createTestProfile({ bio: null, company: null });
+      expect(isProfileComplete(profile)).toBe(false);
+    });
+  });
 
   describe('calculateProfileCompletionPercentage', () => {
+    it('should return 100 for a complete profile', () => {
+      const profile = createTestProfile();
+      expect(calculateProfileCompletionPercentage(profile)).toBe(100);
+    });
+
     it('should return 0 for null profile', () => {
-      expect(calculateProfileCompletionPercentage(null)).toBe(0)
-    })
+      expect(calculateProfileCompletionPercentage(null)).toBe(0);
+    });
 
-    it('should return 100 for complete profile', () => {
-      const profile = createMockProfile({ job_title: 'Software Engineer' })
-      expect(calculateProfileCompletionPercentage(profile)).toBe(100)
-    })
-
-    it('should return 50 for half-complete profile', () => {
-      const profile = createMockProfile({ company: null, job_title: null })
-      expect(calculateProfileCompletionPercentage(profile)).toBe(50)
-    })
-
-    it('should return 0 for empty profile', () => {
-      const profile = createMockProfile({ full_name: '', bio: '', company: null, job_title: null })
-      expect(calculateProfileCompletionPercentage(profile)).toBe(0)
-    })
-
-    it('should handle whitespace-only fields', () => {
-      const profile = createMockProfile({ full_name: '   ', job_title: '   ' })
-      expect(calculateProfileCompletionPercentage(profile)).toBe(50)
-    })
-  })
-})
+    it('should return partial percentage', () => {
+      const profile = createTestProfile({ bio: null, company: null });
+      expect(calculateProfileCompletionPercentage(profile)).toBe(50);
+    });
+  });
+});

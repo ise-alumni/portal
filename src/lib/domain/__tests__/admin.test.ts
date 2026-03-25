@@ -1,219 +1,194 @@
- 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockProfileData, createMockProfileQueryChain, createMockProfileUpdateChain, mockSetTimeoutImmediate } from './admin-test-helpers'
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock dependencies
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      signUp: vi.fn()
-    },
-    from: vi.fn()
-  }
-}))
+vi.mock('@/lib/api', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
 
 vi.mock('@/lib/utils/logger', () => ({
-  log: {
-    error: vi.fn()
-  }
-}))
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
+
+vi.mock('@/lib/auth-client', () => ({
+  signUp: {
+    email: vi.fn(),
+  },
+}));
 
 vi.mock('../profiles', () => ({
   getProfiles: vi.fn(),
-  getUserActivity: vi.fn()
-}))
+  getUserActivity: vi.fn(),
+}));
 
-const { supabase } = await import('@/integrations/supabase/client')
-const { log } = await import('@/lib/utils/logger')
-const { getProfiles, getUserActivity } = await import('../profiles')
-const mockedSupabase = vi.mocked(supabase)
-
-// Import domain functions after mocking
-const {
+import { api } from '@/lib/api';
+import { log } from '@/lib/utils/logger';
+import { signUp } from '@/lib/auth-client';
+import { getProfiles, getUserActivity } from '../profiles';
+import {
   createUserWithProfile,
   removeUser,
-  refreshUserData
-} = await import('../admin')
+  refreshUserData,
+} from '../admin';
 
 describe('Admin domain functions', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    // Mock window.location
-    Object.defineProperty(window, 'location', {
-      value: {
-        origin: 'http://localhost:8080'
-      },
-      writable: true
-    })
-  })
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
 
   describe('createUserWithProfile', () => {
-    it('should create user and profile successfully', async () => {
-      const profileData = createMockProfileData({ graduationYear: '2020' })
-      const mockProfileId = { id: 'profile-123' }
+    it('should create user and update profile successfully', async () => {
+      vi.mocked(signUp.email).mockResolvedValue({ error: null } as any);
 
-      // Mock auth signup
-      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({ error: null })
+      const mockProfile = { id: 'p1', user_id: 'u1', email: 'test@example.com' };
+      vi.mocked(getProfiles).mockResolvedValue([mockProfile] as any);
+      vi.mocked(api.put).mockResolvedValue(undefined);
 
-      // Mock profile fetch
-      createMockProfileQueryChain(mockedSupabase, { data: mockProfileId, error: null })
+      const promise = createUserWithProfile({
+        email: 'test@example.com',
+        fullName: 'Test User',
+        graduationYear: '2020',
+        userType: 'Alum',
+        msc: false,
+      });
 
-      // Mock profile update
-      const { mockUpdate } = createMockProfileUpdateChain(mockedSupabase, { error: null })
-      mockedSupabase.from.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: mockProfileId, error: null }) }) }) }).mockReturnValueOnce({ update: mockUpdate })
+      await vi.advanceTimersByTimeAsync(2000);
+      const result = await promise;
 
-      const restoreSetTimeout = mockSetTimeoutImmediate()
-      const result = await createUserWithProfile(profileData)
-      restoreSetTimeout()
-
-      expect(mockedSupabase.auth.signUp).toHaveBeenCalledWith({
-        email: profileData.email,
-        options: {
-          emailRedirectTo: 'http://localhost:8080/',
-          data: {
-            full_name: profileData.fullName
-          }
-        }
-      })
-      expect(result.success).toBe(true)
-      expect(result.error).toBeUndefined()
-    })
+      expect(signUp.email).toHaveBeenCalledWith(expect.objectContaining({
+        email: 'test@example.com',
+        name: 'Test User',
+      }));
+      expect(api.put).toHaveBeenCalledWith(`/api/profiles/u1`, expect.objectContaining({
+        user_type: 'Alum',
+        graduation_year: 2020,
+        msc: false,
+      }));
+      expect(result.success).toBe(true);
+    });
 
     it('should handle signup errors', async () => {
-      const profileData = createMockProfileData()
+      vi.mocked(signUp.email).mockResolvedValue({
+        error: { message: 'Email already exists' },
+      } as any);
 
-      const signUpError = { message: 'Email already exists' }
-      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({
-        error: signUpError
-      })
+      const result = await createUserWithProfile({
+        email: 'test@example.com',
+        fullName: 'Test User',
+        userType: 'Alum',
+        msc: false,
+      });
 
-      const result = await createUserWithProfile(profileData)
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Email already exists');
+      expect(log.error).toHaveBeenCalledWith('Error creating auth user:', expect.anything());
+    });
 
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Email already exists')
-      expect(log.error).toHaveBeenCalledWith('Error creating auth user:', signUpError)
-    })
+    it('should handle profile not found after signup', async () => {
+      vi.mocked(signUp.email).mockResolvedValue({ error: null } as any);
+      vi.mocked(getProfiles).mockResolvedValue([]);
 
-    it('should handle profile fetch errors', async () => {
-      const profileData = createMockProfileData()
+      const promise = createUserWithProfile({
+        email: 'test@example.com',
+        fullName: 'Test User',
+        userType: 'Alum',
+        msc: false,
+      });
 
-      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({ error: null })
+      await vi.advanceTimersByTimeAsync(2000);
+      const result = await promise;
 
-      const fetchError = { message: 'Profile not found' }
-      createMockProfileQueryChain(mockedSupabase, { data: null, error: fetchError })
-
-      const restoreSetTimeout = mockSetTimeoutImmediate()
-      const result = await createUserWithProfile(profileData)
-      restoreSetTimeout()
-
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('profile not found')
-    })
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('profile not found');
+    });
 
     it('should handle profile update errors', async () => {
-      const profileData = createMockProfileData()
+      vi.mocked(signUp.email).mockResolvedValue({ error: null } as any);
 
-      mockedSupabase.auth.signUp = vi.fn().mockResolvedValue({ error: null })
+      const mockProfile = { id: 'p1', user_id: 'u1', email: 'test@example.com' };
+      vi.mocked(getProfiles).mockResolvedValue([mockProfile] as any);
+      vi.mocked(api.put).mockRejectedValue(new Error('Update failed'));
 
-      const mockProfileId = { id: 'profile-123' }
-      const { mockSelect } = createMockProfileQueryChain(mockedSupabase, { data: mockProfileId, error: null })
+      const promise = createUserWithProfile({
+        email: 'test@example.com',
+        fullName: 'Test User',
+        userType: 'Alum',
+        msc: false,
+      });
 
-      const updateError = { message: 'Update failed' }
-      const { mockUpdate } = createMockProfileUpdateChain(mockedSupabase, { error: updateError })
+      await vi.advanceTimersByTimeAsync(2000);
+      const result = await promise;
 
-      mockedSupabase.from
-        .mockReturnValueOnce({ select: mockSelect })
-        .mockReturnValueOnce({ update: mockUpdate })
-
-      const restoreSetTimeout = mockSetTimeoutImmediate()
-      const result = await createUserWithProfile(profileData)
-      restoreSetTimeout()
-
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('Profile update failed')
-    })
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Profile update failed');
+    });
 
     it('should handle unexpected errors', async () => {
-      const profileData = createMockProfileData()
+      vi.mocked(signUp.email).mockRejectedValue(new Error('Network error'));
 
-      mockedSupabase.auth.signUp = vi.fn().mockRejectedValue(new Error('Network error'))
+      const result = await createUserWithProfile({
+        email: 'test@example.com',
+        fullName: 'Test User',
+        userType: 'Alum',
+        msc: false,
+      });
 
-      const result = await createUserWithProfile(profileData)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Network error')
-    })
-  })
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Network error');
+    });
+  });
 
   describe('removeUser', () => {
     it('should remove user successfully', async () => {
-      const profileId = 'profile-123'
+      vi.mocked(api.put).mockResolvedValue(undefined);
 
-      const mockEq = vi.fn().mockResolvedValue({ error: null })
-      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-      mockedSupabase.from.mockReturnValue({ update: mockUpdate })
+      const result = await removeUser('p1');
 
-      const result = await removeUser(profileId)
+      expect(api.put).toHaveBeenCalledWith('/api/profiles/remove/p1', {});
+      expect(result).toBe(true);
+    });
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles')
-      expect(mockUpdate).toHaveBeenCalled()
-      expect(mockEq).toHaveBeenCalledWith('id', profileId)
-      expect(result).toBe(true)
-    })
+    it('should return false on error', async () => {
+      vi.mocked(api.put).mockRejectedValue(new Error('Remove failed'));
 
-    it('should handle removal errors', async () => {
-      const profileId = 'profile-123'
-      const error = { message: 'Update failed' }
+      const result = await removeUser('p1');
 
-      const mockEq = vi.fn().mockResolvedValue({ error })
-      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-      mockedSupabase.from.mockReturnValue({ update: mockUpdate })
-
-      const result = await removeUser(profileId)
-
-      expect(log.error).toHaveBeenCalledWith('Error removing user:', error)
-      expect(result).toBe(false)
-    })
-
-    it('should handle unexpected errors', async () => {
-      const profileId = 'profile-123'
-
-      mockedSupabase.from.mockImplementation(() => {
-        throw new Error('Network error')
-      })
-
-      const result = await removeUser(profileId)
-
-      expect(log.error).toHaveBeenCalledWith('Error in removeUser:', expect.any(Error))
-      expect(result).toBe(false)
-    })
-  })
+      expect(log.error).toHaveBeenCalledWith('Error removing user:', expect.any(Error));
+      expect(result).toBe(false);
+    });
+  });
 
   describe('refreshUserData', () => {
     it('should refresh user data successfully', async () => {
-      const mockProfiles = [{ id: '1', full_name: 'Test User' }]
-      const mockActivity = [{ id: '1', userId: '1', email: 'test@example.com' }]
+      const mockProfiles = [{ id: '1', full_name: 'Test User' }];
+      const mockActivity = [{ id: '1', userId: '1', email: 'test@example.com' }];
 
-      vi.mocked(getProfiles).mockResolvedValue(mockProfiles as any)
-      vi.mocked(getUserActivity).mockResolvedValue(mockActivity as any)
+      vi.mocked(getProfiles).mockResolvedValue(mockProfiles as any);
+      vi.mocked(getUserActivity).mockResolvedValue(mockActivity as any);
 
-      const result = await refreshUserData()
+      const result = await refreshUserData();
 
-      expect(result.profiles).toEqual(mockProfiles)
-      expect(result.userActivity).toEqual(mockActivity)
-    })
+      expect(result.profiles).toEqual(mockProfiles);
+      expect(result.userActivity).toEqual(mockActivity);
+    });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(getProfiles).mockRejectedValue(new Error('Fetch failed'))
-      vi.mocked(getUserActivity).mockRejectedValue(new Error('Fetch failed'))
+      vi.mocked(getProfiles).mockRejectedValue(new Error('Fetch failed'));
 
-      const result = await refreshUserData()
+      const result = await refreshUserData();
 
-      expect(log.error).toHaveBeenCalledWith('Error refreshing user data:', expect.any(Error))
-      expect(result.profiles).toEqual([])
-      expect(result.userActivity).toEqual([])
-    })
-  })
-})
-
+      expect(log.error).toHaveBeenCalledWith('Error refreshing user data:', expect.any(Error));
+      expect(result.profiles).toEqual([]);
+      expect(result.userActivity).toEqual([]);
+    });
+  });
+});
