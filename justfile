@@ -90,7 +90,7 @@ test-coverage:
     pnpm test:coverage
 
 # ==============================================================================
-# Build
+# Build and Deploy
 # ==============================================================================
 
 # Build the frontend for production
@@ -100,3 +100,18 @@ build:
 # Preview the production build locally
 preview:
     pnpm preview
+
+# Build the Docker image
+docker-build tag="ise-alumni:latest":
+    docker build -t {{tag}} .
+
+# Run the Docker image locally (uses .env for config)
+docker-run tag="ise-alumni:latest":
+    docker run --rm -p 3000:3000 --env-file .env -e NODE_ENV=production {{tag}}
+
+# Full production build: lint, test, build frontend, build Docker image
+deploy-build tag="ise-alumni:latest":
+    just lint
+    just test-run
+    just build
+    just docker-build {{tag}}
