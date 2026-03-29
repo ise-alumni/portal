@@ -1,6 +1,6 @@
 # Deploying to Proxmox
 
-This guide covers running the ISE Alumni Portal on a Proxmox host, either as a Docker container inside an LXC or as a bare Node.js process managed by systemd. Both approaches serve the API and the static frontend from a single process.
+This guide covers running the ISE Alumni Portal on a Proxmox host using Docker Compose with automatic updates via Watchtower, or as a bare Node.js process managed by systemd.
 
 ## Architecture
 
@@ -16,12 +16,12 @@ Hono server (port 3000)
     └── /*            built SPA from dist/
     │
     ▼
-SQLite file (local) or Turso (cloud)
+SQLite file (persisted via Docker volume)
 ```
 
-A single Hono process handles everything. Caddy sits in front for HTTPS.
+A single Hono process handles everything. Caddy sits in front for HTTPS. Watchtower automatically pulls new images from GHCR when you merge to `main`.
 
-## Option A: Docker in an LXC Container
+## Option A: Docker Compose (Recommended)
 
 ### 1. Create an LXC container
 
@@ -34,58 +34,45 @@ apt update && apt install -y docker.io docker-compose-plugin
 systemctl enable --now docker
 ```
 
-### 3. Build and transfer the image
+### 3. Authenticate with GHCR
 
-On your dev machine:
-
-```bash
-just docker-build ise-alumni:latest
-docker save ise-alumni:latest | gzip > ise-alumni.tar.gz
-scp ise-alumni.tar.gz root@proxmox-lxc:/tmp/
-```
-
-On the LXC:
+Generate a [GitHub personal access token](https://github.com/settings/tokens) with `read:packages` scope. Log in once:
 
 ```bash
-docker load < /tmp/ise-alumni.tar.gz
+echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 ```
+
+Watchtower uses the saved credentials in `~/.docker/config.json` to poll for new images.
 
 ### 4. Create an env file
 
 ```bash
-cat > /opt/ise-alumni/.env <<'EOF'
-NODE_ENV=production
-DATABASE_URL=file:/data/ise-alumni.db
-TURSO_AUTH_TOKEN=
+mkdir -p /opt/ise-alumni && cd /opt/ise-alumni
+
+cat > .env <<'EOF'
 BETTER_AUTH_SECRET=generate-a-real-secret-here
 BETTER_AUTH_URL=https://alumni.yourdomain.com
 PORT=3000
 CORS_ORIGIN=https://alumni.yourdomain.com
-VITE_API_URL=https://alumni.yourdomain.com
-VITE_MAPBOX_TOKEN=your_token
-VITE_LOG_LEVEL=warn
 EOF
 ```
 
-### 5. Run the container
+The `DATABASE_URL` defaults to `file:/app/data/data.db` inside the container and does not need to be set unless you want to use Turso.
+
+### 5. Copy docker-compose.yml and start
+
+Copy the `docker-compose.yml` from the repository root to `/opt/ise-alumni/`, then:
 
 ```bash
-docker run -d \
-  --name ise-alumni \
-  --restart unless-stopped \
-  -p 3000:3000 \
-  --env-file /opt/ise-alumni/.env \
-  -v /opt/ise-alumni/data:/data \
-  ise-alumni:latest
+docker compose up -d
 ```
 
-The `-v` flag mounts a host directory so the SQLite database persists across container restarts.
+This starts two services:
 
-Run migrations once:
+- **app** — the portal, with a named volume `app-data` persisting the SQLite database at `/app/data/`.
+- **watchtower** — polls `ghcr.io/ise-alumni/portal:latest` every 30 seconds. When a new image appears, it pulls it, stops the old container, and starts a fresh one. The `--cleanup` flag removes old images.
 
-```bash
-docker exec ise-alumni node --import tsx server/migrate.ts
-```
+Migrations run automatically on every container start. The schema uses `CREATE TABLE IF NOT EXISTS`, so they are idempotent.
 
 ### 6. Install Caddy
 
@@ -124,7 +111,7 @@ corepack prepare pnpm@latest --activate
 
 ```bash
 mkdir -p /opt/ise-alumni && cd /opt/ise-alumni
-git clone https://github.com/bxrne/ise-alumni.git .
+git clone https://github.com/ISE-Alumni/portal.git .
 pnpm install --frozen-lockfile
 pnpm build
 ```
@@ -196,22 +183,18 @@ No other changes are needed. The Drizzle client handles both protocols transpare
 
 ## Updating
 
-### Docker
+### Docker Compose (automatic)
+
+No action needed. Watchtower detects new images on GHCR and restarts the app container automatically. Migrations run on startup.
+
+To check the current state:
 
 ```bash
-# On dev machine
-just deploy-build ise-alumni:latest
-docker save ise-alumni:latest | gzip > ise-alumni.tar.gz
-scp ise-alumni.tar.gz root@proxmox-lxc:/tmp/
-
-# On the LXC
-docker load < /tmp/ise-alumni.tar.gz
-docker stop ise-alumni && docker rm ise-alumni
-# Re-run the docker run command from step 5
-docker exec ise-alumni node --import tsx server/migrate.ts
+docker compose ps
+docker compose logs -f app
 ```
 
-### Bare Node.js
+### Bare Node.js (manual)
 
 ```bash
 cd /opt/ise-alumni
@@ -227,7 +210,8 @@ systemctl restart ise-alumni
 If using local SQLite, back up the database file regularly:
 
 ```bash
-cp /opt/ise-alumni/data/ise-alumni.db /backups/ise-alumni-$(date +%F).db
+# Docker: copy from the named volume
+docker compose cp app:/app/data/data.db /backups/ise-alumni-$(date +%F).db
 ```
 
 If using Turso, backups are handled by the Turso platform.
