@@ -30,9 +30,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/src/lib/db ./src/lib/db
 COPY package.json docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
-
-RUN mkdir -p /app/data && chown -R app:app /app
+RUN chmod +x docker-entrypoint.sh && mkdir -p /app/data && chown -R app:app /app
 USER app
 
 ENV NODE_ENV=production

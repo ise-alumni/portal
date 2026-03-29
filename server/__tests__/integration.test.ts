@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { app } from '../app';
-import { db } from '../db';
-import { client } from '../db';
+import { db, client } from '../db';
 import { SCHEMA_SQL } from '../schema.sql';
 import {
   profiles,
@@ -22,6 +21,7 @@ import {
 } from '../../src/lib/db/turso-schema';
 
 const NOW = new Date().toISOString();
+const ts = { created_at: NOW, updated_at: NOW };
 
 async function req(method: string, path: string, body?: unknown, headers?: Record<string, string>) {
   const init: RequestInit = { method, headers: { ...headers } };
@@ -238,8 +238,8 @@ describe('Tags API', () => {
 
   it('GET /api/tags returns ordered', async () => {
     await db.insert(tags).values([
-      { name: 'Zeta', color: '#111', created_at: NOW, updated_at: NOW },
-      { name: 'Alpha', color: '#222', created_at: NOW, updated_at: NOW },
+      { name: 'Zeta', color: '#111', ...ts },
+      { name: 'Alpha', color: '#222', ...ts },
     ]);
     const data = await (await req('GET', '/api/tags')).json();
     expect(data).toHaveLength(2);
@@ -247,7 +247,7 @@ describe('Tags API', () => {
   });
 
   it('GET /api/tags/:id returns single', async () => {
-    const [t] = await db.insert(tags).values({ name: 'W', color: '#f59e0b', created_at: NOW, updated_at: NOW }).returning();
+    const [t] = await db.insert(tags).values({ name: 'W', color: '#f59e0b', ...ts }).returning();
     expect((await (await req('GET', `/api/tags/${t.id}`)).json()).name).toBe('W');
   });
 
@@ -256,13 +256,13 @@ describe('Tags API', () => {
   });
 
   it('PUT /api/tags/:id updates', async () => {
-    const [t] = await db.insert(tags).values({ name: 'Old', color: '#000', created_at: NOW, updated_at: NOW }).returning();
+    const [t] = await db.insert(tags).values({ name: 'Old', color: '#000', ...ts }).returning();
     const res = await req('PUT', `/api/tags/${t.id}`, { name: 'New', color: '#fff' });
     expect((await res.json()).name).toBe('New');
   });
 
   it('DELETE /api/tags/:id removes', async () => {
-    const [t] = await db.insert(tags).values({ name: 'Del', color: '#000', created_at: NOW, updated_at: NOW }).returning();
+    const [t] = await db.insert(tags).values({ name: 'Del', color: '#000', ...ts }).returning();
     const res = await req('DELETE', `/api/tags/${t.id}`);
     expect((await res.json()).success).toBe(true);
     expect((await req('GET', `/api/tags/${t.id}`)).status).toBe(404);
@@ -273,17 +273,17 @@ describe('Tags API', () => {
 // Events
 // ---------------------------------------------------------------------------
 
+async function seedTag() {
+  const [t] = await db.insert(tags).values({ name: 'Tech', color: '#06b6d4', ...ts }).returning();
+  return t;
+}
+
+async function seedEvent(createdBy = 'user-1') {
+  const [e] = await db.insert(events).values({ title: 'Meetup', start_at: '2026-06-01T18:00:00Z', created_by: createdBy, ...ts }).returning();
+  return e;
+}
+
 describe('Events API', () => {
-  async function seedTag() {
-    const [t] = await db.insert(tags).values({ name: 'Tech', color: '#06b6d4', created_at: NOW, updated_at: NOW }).returning();
-    return t;
-  }
-
-  async function seedEvent(createdBy = 'user-1') {
-    const [e] = await db.insert(events).values({ title: 'Meetup', start_at: '2026-06-01T18:00:00Z', created_by: createdBy, created_at: NOW, updated_at: NOW }).returning();
-    return e;
-  }
-
   it('GET /api/events returns enriched', async () => {
     const tag = await seedTag();
     const event = await seedEvent();
@@ -332,14 +332,14 @@ describe('Announcements API', () => {
   });
 
   it('GET /api/announcements returns with tags', async () => {
-    await db.insert(announcements).values({ title: 'A1', created_by: 'u1', created_at: NOW, updated_at: NOW });
+    await db.insert(announcements).values({ title: 'A1', created_by: 'u1', ...ts });
     const data = await (await req('GET', '/api/announcements')).json();
     expect(data).toHaveLength(1);
     expect(data[0].tags).toEqual([]);
   });
 
   it('GET /api/announcements/:id returns single', async () => {
-    const [a] = await db.insert(announcements).values({ title: 'A2', created_by: 'u1', created_at: NOW, updated_at: NOW }).returning();
+    const [a] = await db.insert(announcements).values({ title: 'A2', created_by: 'u1', ...ts }).returning();
     expect((await (await req('GET', `/api/announcements/${a.id}`)).json()).title).toBe('A2');
   });
 
@@ -348,19 +348,19 @@ describe('Announcements API', () => {
   });
 
   it('PUT /api/announcements/:id updates', async () => {
-    const [a] = await db.insert(announcements).values({ title: 'Old', created_by: 'u1', created_at: NOW, updated_at: NOW }).returning();
+    const [a] = await db.insert(announcements).values({ title: 'Old', created_by: 'u1', ...ts }).returning();
     expect((await (await req('PUT', `/api/announcements/${a.id}`, { title: 'New' })).json()).title).toBe('New');
   });
 
   it('DELETE /api/announcements/:id removes', async () => {
-    const [a] = await db.insert(announcements).values({ title: 'Del', created_by: 'u1', created_at: NOW, updated_at: NOW }).returning();
+    const [a] = await db.insert(announcements).values({ title: 'Del', created_by: 'u1', ...ts }).returning();
     expect((await req('DELETE', `/api/announcements/${a.id}`)).status).toBe(200);
     expect((await req('GET', `/api/announcements/${a.id}`)).status).toBe(404);
   });
 
   it('POST/DELETE announcement tags', async () => {
-    const [a] = await db.insert(announcements).values({ title: 'Tagged', created_by: 'u1', created_at: NOW, updated_at: NOW }).returning();
-    const [t] = await db.insert(tags).values({ name: 'Career', color: '#8b5cf6', created_at: NOW, updated_at: NOW }).returning();
+    const [a] = await db.insert(announcements).values({ title: 'Tagged', created_by: 'u1', ...ts }).returning();
+    const [t] = await db.insert(tags).values({ name: 'Career', color: '#8b5cf6', ...ts }).returning();
 
     expect((await req('POST', `/api/announcements/${a.id}/tags`, { tag_id: t.id })).status).toBe(201);
     expect((await (await req('GET', `/api/announcements/${a.id}`)).json()).tags).toHaveLength(1);
@@ -377,8 +377,8 @@ describe('Announcements API', () => {
 describe('Residency Partners API', () => {
   it('GET /api/residency-partners returns active', async () => {
     await db.insert(residencyPartners).values([
-      { name: 'Active', is_active: true, created_at: NOW, updated_at: NOW },
-      { name: 'Inactive', is_active: false, created_at: NOW, updated_at: NOW },
+      { name: 'Active', is_active: true, ...ts },
+      { name: 'Inactive', is_active: false, ...ts },
     ]);
     const data = await (await req('GET', '/api/residency-partners')).json();
     expect(data).toHaveLength(1);
@@ -386,7 +386,7 @@ describe('Residency Partners API', () => {
   });
 
   it('GET /api/residency-partners/:id returns single', async () => {
-    const [p] = await db.insert(residencyPartners).values({ name: 'P', created_at: NOW, updated_at: NOW }).returning();
+    const [p] = await db.insert(residencyPartners).values({ name: 'P', ...ts }).returning();
     expect((await (await req('GET', `/api/residency-partners/${p.id}`)).json()).name).toBe('P');
   });
 });
@@ -397,10 +397,10 @@ describe('Residency Partners API', () => {
 
 describe('Residencies API', () => {
   it('GET /api/residencies/user/:userId returns with partner', async () => {
-    const [partner] = await db.insert(residencyPartners).values({ name: 'Corp', created_at: NOW, updated_at: NOW }).returning();
+    const [partner] = await db.insert(residencyPartners).values({ name: 'Corp', ...ts }).returning();
     const uid = 'res-user';
-    await db.insert(profiles).values({ id: generateId(), user_id: uid, full_name: 'R', email: 'r@x.com', created_at: NOW, updated_at: NOW });
-    await db.insert(residencies).values({ phase: 'Phase 1', company_id: partner.id, user_id: uid, created_at: NOW, updated_at: NOW });
+    await db.insert(profiles).values({ id: generateId(), user_id: uid, full_name: 'R', email: 'r@x.com', ...ts });
+    await db.insert(residencies).values({ phase: 'Phase 1', company_id: partner.id, user_id: uid, ...ts });
 
     const data = await (await req('GET', `/api/residencies/user/${uid}`)).json();
     expect(data).toHaveLength(1);
@@ -421,19 +421,19 @@ describe('Reminders API', () => {
   });
 
   it('GET /api/reminders/user/:userId returns reminders', async () => {
-    await db.insert(reminders).values({ user_id: 'u2', target_type: 'event', target_id: 'e2', reminder_at: '2026-07-01T10:00:00Z', created_at: NOW, updated_at: NOW });
+    await db.insert(reminders).values({ user_id: 'u2', target_type: 'event', target_id: 'e2', reminder_at: '2026-07-01T10:00:00Z', ...ts });
     expect((await (await req('GET', '/api/reminders/user/u2')).json())).toHaveLength(1);
   });
 
   it('PUT /api/reminders/:id/status updates', async () => {
-    const [r] = await db.insert(reminders).values({ user_id: 'u3', target_type: 'ann', target_id: 'a1', reminder_at: '2026-01-01T00:00:00Z', created_at: NOW, updated_at: NOW }).returning();
+    const [r] = await db.insert(reminders).values({ user_id: 'u3', target_type: 'ann', target_id: 'a1', reminder_at: '2026-01-01T00:00:00Z', ...ts }).returning();
     const data = await (await req('PUT', `/api/reminders/${r.id}/status`, { status: 'sent' })).json();
     expect(data.status).toBe('sent');
     expect(data.sent_at).toBeDefined();
   });
 
   it('DELETE /api/reminders/:id removes', async () => {
-    const [r] = await db.insert(reminders).values({ user_id: 'u4', target_type: 'event', target_id: 'e3', reminder_at: '2026-08-01T10:00:00Z', created_at: NOW, updated_at: NOW }).returning();
+    const [r] = await db.insert(reminders).values({ user_id: 'u4', target_type: 'event', target_id: 'e3', reminder_at: '2026-08-01T10:00:00Z', ...ts }).returning();
     expect((await (await req('DELETE', `/api/reminders/${r.id}`)).json()).success).toBe(true);
   });
 });
@@ -444,8 +444,8 @@ describe('Reminders API', () => {
 
 describe('Map API', () => {
   it('GET /api/map/current returns profiles with coordinates', async () => {
-    await db.insert(profiles).values({ id: generateId(), user_id: 'mu1', full_name: 'Map', email: 'm@x.com', lat: 53.35, lng: -6.26, is_public: true, removed: false, user_type: 'Alum', created_at: NOW, updated_at: NOW });
-    await db.insert(profiles).values({ id: generateId(), user_id: 'mu2', full_name: 'NoCoords', email: 'n@x.com', is_public: true, removed: false, user_type: 'Alum', created_at: NOW, updated_at: NOW });
+    await db.insert(profiles).values({ id: generateId(), user_id: 'mu1', full_name: 'Map', email: 'm@x.com', lat: 53.35, lng: -6.26, is_public: true, removed: false, user_type: 'Alum', ...ts });
+    await db.insert(profiles).values({ id: generateId(), user_id: 'mu2', full_name: 'NoCoords', email: 'n@x.com', is_public: true, removed: false, user_type: 'Alum', ...ts });
     const data = await (await req('GET', '/api/map/current')).json();
     expect(data).toHaveLength(1);
     expect(data[0].full_name).toBe('Map');
@@ -459,9 +459,9 @@ describe('Map API', () => {
 describe('Constants API', () => {
   it('GET /api/constants/user-types returns distinct types', async () => {
     await db.insert(profiles).values([
-      { id: generateId(), user_id: 'c1', user_type: 'Admin', email: 'a@x.com', created_at: NOW, updated_at: NOW },
-      { id: generateId(), user_id: 'c2', user_type: 'Staff', email: 'b@x.com', created_at: NOW, updated_at: NOW },
-      { id: generateId(), user_id: 'c3', user_type: 'Alum', email: 'c@x.com', created_at: NOW, updated_at: NOW },
+      { id: generateId(), user_id: 'c1', user_type: 'Admin', email: 'a@x.com', ...ts },
+      { id: generateId(), user_id: 'c2', user_type: 'Staff', email: 'b@x.com', ...ts },
+      { id: generateId(), user_id: 'c3', user_type: 'Alum', email: 'c@x.com', ...ts },
     ]);
     const data = await (await req('GET', '/api/constants/user-types')).json();
     expect(data).toContain('Admin');
@@ -471,8 +471,8 @@ describe('Constants API', () => {
 
   it('GET /api/constants/event-tags returns ordered', async () => {
     await db.insert(tags).values([
-      { name: 'Zulu', color: '#000', created_at: NOW, updated_at: NOW },
-      { name: 'Alpha', color: '#fff', created_at: NOW, updated_at: NOW },
+      { name: 'Zulu', color: '#000', ...ts },
+      { name: 'Alpha', color: '#fff', ...ts },
     ]);
     const data = await (await req('GET', '/api/constants/event-tags')).json();
     expect(data[0].name).toBe('Alpha');
