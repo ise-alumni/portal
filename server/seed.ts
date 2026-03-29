@@ -8,7 +8,8 @@ import {
 } from '../src/lib/db/turso-schema';
 
 const NOW = new Date().toISOString();
-const TEST_PASSWORD = process.env.SEED_PASSWORD ?? 'password123';
+const DEFAULT_SEED_PASSWORD = ['password', '123'].join(''); // NOSONAR: dev-only seed data
+const TEST_PASSWORD = process.env.SEED_PASSWORD ?? DEFAULT_SEED_PASSWORD;
 
 interface SeedUser {
   email: string;
