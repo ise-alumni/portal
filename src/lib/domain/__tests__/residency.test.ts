@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Profile } from '@/lib/types/profiles';
-import type { UserRole } from '@/lib/types/common';
+import { createMockProfile } from './test-helpers';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -30,35 +29,21 @@ import {
   getAvailablePhases,
 } from '../residency';
 
-const createTestProfile = (overrides: Partial<Profile> = {}): Profile => ({
-  id: '1',
+const residencyDefaults = {
   user_id: 'user1',
-  full_name: 'John Doe',
-  email: 'john@example.com',
   bio: 'Engineer',
-  company: 'Tech Corp',
   city: 'Dublin',
   country: 'Ireland',
   cohort: 1,
   graduation_year: 2020,
   job_title: 'Engineer',
-  avatar_url: null,
-  is_public: true,
-  msc: false,
-  user_type: 'Alum' as UserRole,
-  removed: false,
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
   is_remote: null,
   is_entrepreneur: null,
   is_ise_champion: null,
-  professional_status: null,
-  github_url: null,
-  linkedin_url: null,
-  twitter_url: null,
-  website_url: null,
-  ...overrides,
-});
+} as const;
+
+const createTestProfile = (overrides = {}) =>
+  createMockProfile({ ...residencyDefaults, ...overrides });
 
 describe('Residency Domain', () => {
   beforeEach(() => {
