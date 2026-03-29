@@ -67,11 +67,13 @@ All variables are documented in `.env.example`. The important ones:
 
 | Variable              | Purpose                            |
 |-----------------------|------------------------------------|
-| `DATABASE_URL`        | `file:data.db` for local, Turso URL for prod |
-| `TURSO_AUTH_TOKEN`    | Turso auth token (blank for local) |
 | `BETTER_AUTH_SECRET`  | Signs session tokens               |
+| `BETTER_AUTH_URL`     | Base URL for auth callbacks        |
+| `CORS_ORIGIN`         | Allowed origin for API requests    |
 | `VITE_API_URL`        | Frontend's API base URL            |
 | `VITE_MAPBOX_TOKEN`   | Mapbox GL access token             |
+
+`DATABASE_URL` and `TURSO_AUTH_TOKEN` are only needed if you want to connect to a Turso cloud database; the default `file:data.db` works for local development.
 
 Variables prefixed with `VITE_` are exposed to the browser. Do not put secrets there.
 

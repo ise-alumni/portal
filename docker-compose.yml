@@ -1,0 +1,21 @@
+services:
+  app:
+    image: ghcr.io/ise-alumni/portal:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - app-data:/app/data
+    env_file:
+      - .env
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.docker/config.json:/config.json:ro
+    command: --interval 30 --cleanup
+
+volumes:
+  app-data:

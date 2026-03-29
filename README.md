@@ -7,7 +7,7 @@ A platform for Immersive Software Engineering alumni to stay connected with the 
 You need [Node.js](https://nodejs.org/) (v20+), [pnpm](https://pnpm.io/), and [just](https://github.com/casey/just).
 
 ```bash
-git clone https://github.com/bxrne/ise-alumni.git
+git clone https://github.com/ISE-Alumni/portal.git
 cd ise-alumni
 just setup
 just dev
@@ -33,7 +33,7 @@ Five test accounts are seeded automatically. All share the password `password123
 | API      | Hono (Node.js)                            |
 | Auth     | Better Auth (email/password)              |
 | ORM      | Drizzle                                   |
-| Database | SQLite (local), Turso (production)        |
+| Database | SQLite (local + Docker), Turso (optional) |
 | Testing  | Vitest, Testing Library                   |
 
 ## Common Commands

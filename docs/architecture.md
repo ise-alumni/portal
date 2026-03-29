@@ -45,7 +45,7 @@ The server has three responsibilities:
 
 ## Database
 
-The application uses a single SQLite database in development (`data.db`, git-ignored) and a Turso cloud database in production. Both speak the libSQL wire protocol, so the same Drizzle client works in either environment. The only difference is the `DATABASE_URL` and, for Turso, an auth token.
+The application uses a single SQLite database in development (`data.db`, git-ignored) and either a local SQLite file (persisted via a Docker volume) or a Turso cloud database in production. Both speak the libSQL wire protocol, so the same Drizzle client works in either environment. The only difference is the `DATABASE_URL` and, for Turso, an auth token.
 
 The schema is defined in two places that must stay in sync:
 

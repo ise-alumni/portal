@@ -29,13 +29,15 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/src/lib/db ./src/lib/db
-COPY package.json ./
+COPY package.json docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
-RUN chown -R app:app /app
+RUN mkdir -p /app/data && chown -R app:app /app
 USER app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV DATABASE_URL=file:/app/data/data.db
 EXPOSE 3000
 
-CMD ["node", "--import", "tsx", "server/index.ts"]
+CMD ["./docker-entrypoint.sh"]
