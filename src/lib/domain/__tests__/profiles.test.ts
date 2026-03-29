@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { type Profile, type ProfileFormData } from '@/lib/types';
+import { type ProfileFormData } from '@/lib/types';
+import { createMockProfile } from './test-helpers';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -26,35 +27,22 @@ import {
   calculateProfileCompletionPercentage,
 } from '../profiles';
 
-const createTestProfile = (overrides: Partial<Profile> = {}): Profile => ({
+const profileDefaults = {
   id: 'p1',
   user_id: 'u1',
-  full_name: 'John Doe',
-  email: 'john@example.com',
-  avatar_url: null,
   bio: 'Developer',
   city: 'Dublin',
   country: 'Ireland',
   cohort: 1,
   graduation_year: 2020,
-  company: 'Tech Corp',
   job_title: 'Engineer',
-  github_url: null,
-  linkedin_url: null,
-  twitter_url: null,
-  website_url: null,
-  is_public: true,
-  msc: false,
   is_remote: null,
   is_entrepreneur: null,
   is_ise_champion: null,
-  professional_status: null,
-  user_type: 'Alum',
-  removed: false,
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-  ...overrides,
-});
+} as const;
+
+const createTestProfile = (overrides = {}) =>
+  createMockProfile({ ...profileDefaults, ...overrides });
 
 describe('Profiles Domain', () => {
   beforeEach(() => {

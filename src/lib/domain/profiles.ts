@@ -204,8 +204,7 @@ export async function getProfileHistoryStats(): Promise<{
   topChangedFields: { field: string; count: number }[];
 }> {
   try {
-    const history = await getProfileHistory();
-    const profilesList = await getProfiles();
+    const [history, profilesList] = await Promise.all([getProfileHistory(), getProfiles()]);
 
     const eligibleProfileIds = new Set(profilesList.map(p => p.id));
     const filteredHistory = history.filter(change => eligibleProfileIds.has(change.profile_id));
@@ -314,47 +313,48 @@ export interface FieldChange {
   changeType: 'INSERT' | 'UPDATE';
 }
 
-export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]> {
-  try {
-    const history = await getProfileHistory();
-    const allProfiles = await getProfiles();
+function toFieldChanges(history: ProfileHistory[], profilesList: Profile[]): FieldChange[] {
+  const profileMap = new Map(profilesList.map(p => [p.id, p]));
+  const changes: FieldChange[] = [];
 
-    const eligibleProfiles = allProfiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
-    const fieldChanges: FieldChange[] = [];
+  for (const change of history) {
+    const profile = profileMap.get(change.profile_id);
+    if (!profile) continue;
 
-    for (const change of history) {
-      const profile = eligibleProfiles.find(p => p.id === change.profile_id);
-      if (!profile) continue;
+    const fields: Array<[string, string | null]> = [
+      ['Job Title', change.job_title],
+      ['Company', change.company],
+      ['City', change.city],
+      ['Country', change.country],
+      ['Professional Status', change.professional_status],
+      ['Remote Work', boolToYesNo(change.is_remote)],
+      ['ISE Champion', boolToYesNo(change.is_ise_champion)],
+    ];
 
-      const fields: Array<[string, string | null]> = [
-        ['Job Title', change.job_title],
-        ['Company', change.company],
-        ['City', change.city],
-        ['Country', change.country],
-        ['Professional Status', change.professional_status],
-        ['Remote Work', boolToYesNo(change.is_remote)],
-        ['ISE Champion', boolToYesNo(change.is_ise_champion)],
-      ];
-
-      for (const [fieldName, value] of fields) {
-        if (value) {
-          fieldChanges.push({
-            id: `${change.id}_${fieldName.toLowerCase().replace(' ', '_')}`,
-            userName: profile.full_name || 'Unknown',
-            userEmail: profile.email || 'Unknown',
-            fieldName,
-            oldValue: null,
-            newValue: value,
-            changedAt: change.changed_at,
-            changeType: change.change_type
-          });
-        }
+    for (const [fieldName, value] of fields) {
+      if (value) {
+        changes.push({
+          id: `${change.id}_${fieldName.toLowerCase().replace(' ', '_')}`,
+          userName: profile.full_name || 'Unknown',
+          userEmail: profile.email || 'Unknown',
+          fieldName,
+          oldValue: null,
+          newValue: value,
+          changedAt: change.changed_at,
+          changeType: change.change_type
+        });
       }
     }
+  }
 
-    return fieldChanges
-      .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime())
-      .slice(0, limit);
+  return changes.sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
+}
+
+export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]> {
+  try {
+    const [history, allProfiles] = await Promise.all([getProfileHistory(), getProfiles()]);
+    const eligibleProfiles = allProfiles.filter(profile => ['Alum', 'Admin'].includes(profile.user_type));
+    return toFieldChanges(history, eligibleProfiles).slice(0, limit);
   } catch (error) {
     log.error('Error in getFieldChanges:', error);
     return [];
@@ -363,42 +363,8 @@ export async function getFieldChanges(limit: number = 50): Promise<FieldChange[]
 
 export async function getAllFieldChanges(): Promise<FieldChange[]> {
   try {
-    const history = await getProfileHistory();
-    const allProfiles = await getProfiles();
-
-    const fieldChanges: FieldChange[] = [];
-
-    for (const change of history) {
-      const profile = allProfiles.find(p => p.id === change.profile_id);
-      if (!profile) continue;
-
-      const fields: Array<[string, string | null]> = [
-        ['Job Title', change.job_title],
-        ['Company', change.company],
-        ['City', change.city],
-        ['Country', change.country],
-        ['Professional Status', change.professional_status],
-        ['Remote Work', boolToYesNo(change.is_remote)],
-        ['ISE Champion', boolToYesNo(change.is_ise_champion)],
-      ];
-
-      for (const [fieldName, value] of fields) {
-        if (value) {
-          fieldChanges.push({
-            id: `${change.id}_${fieldName.toLowerCase().replace(' ', '_')}`,
-            userName: profile.full_name || 'Unknown',
-            userEmail: profile.email || 'Unknown',
-            fieldName,
-            oldValue: null,
-            newValue: value,
-            changedAt: change.changed_at,
-            changeType: change.change_type
-          });
-        }
-      }
-    }
-
-    return fieldChanges.sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
+    const [history, allProfiles] = await Promise.all([getProfileHistory(), getProfiles()]);
+    return toFieldChanges(history, allProfiles);
   } catch (error) {
     log.error('Error in getAllFieldChanges:', error);
     return [];
