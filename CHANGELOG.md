@@ -1,3 +1,31 @@
+## [1.11.0](https://github.com/ise-alumni/portal/compare/v1.10.3...v1.11.0) (2026-03-29)
+
+### Features
+
+* libsql migration plus hono api server for better auth ([2e34498](https://github.com/ise-alumni/portal/commit/2e344986782414c46941fe8ea6c55e6d0d76bc19))
+
+### Code Refactoring
+
+* sonarqube fixes ([0e494e7](https://github.com/ise-alumni/portal/commit/0e494e75312f574d95321ce65e3375d46ba41a1f))
+
+### Documentation
+
+* update with new structure and underlying tools ([54b6a50](https://github.com/ise-alumni/portal/commit/54b6a509ae0ad7d65fc1808a1721ec2f582129f3))
+
+### Miscellaneous Chores
+
+* explicit hashes for sq ([22a6bc5](https://github.com/ise-alumni/portal/commit/22a6bc572ee0acd7e7eb6929cb1ae0d70b9705c6))
+* remove duplicate and dead code ([f3652f4](https://github.com/ise-alumni/portal/commit/f3652f481d564e4dad946cca70efc96246c9e32e))
+* sonar complaints addressed ([8bf76eb](https://github.com/ise-alumni/portal/commit/8bf76eb5271075bcd15603385174dce4cdc00036))
+
+### Tests
+
+* rewrite test suite for API layer and add server integration tests ([439abeb](https://github.com/ise-alumni/portal/commit/439abeb8965fec9a46725cff91f64b9fa7b78eff))
+
+### Build System
+
+* rethinking proxmox deployment structure ([4d8dd2a](https://github.com/ise-alumni/portal/commit/4d8dd2af032b2d22eb41a471669d0ec099cd8d0b))
+
 ## [1.10.3](https://github.com/ise-alumni/portal/compare/v1.10.2...v1.10.3) (2026-02-23)
 
 ### Miscellaneous Chores
