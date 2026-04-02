@@ -1,3 +1,13 @@
+## [1.11.2](https://github.com/ise-alumni/portal/compare/v1.11.1...v1.11.2) (2026-04-02)
+
+### Miscellaneous Chores
+
+* **deps-dev:** bump autoprefixer from 10.4.23 to 10.4.27 ([3ce0861](https://github.com/ise-alumni/portal/commit/3ce08616de48eadd0840ccd5a1a3d8e2ee701306))
+* **deps:** bump @radix-ui/react-progress from 1.1.7 to 1.1.8 ([d98d120](https://github.com/ise-alumni/portal/commit/d98d1203d7b0a5554c5ae5f2cbe22ed786a9238b))
+* **deps:** bump @radix-ui/react-separator from 1.1.7 to 1.1.8 ([9d2ad5c](https://github.com/ise-alumni/portal/commit/9d2ad5ccd80f23c930d763ee1bc0f66ea1becf38))
+* **deps:** bump @vercel/analytics from 1.6.1 to 2.0.1 ([baf8d0d](https://github.com/ise-alumni/portal/commit/baf8d0dd301c95b479953149e0742001999a71b7))
+* **deps:** bump lodash in the npm_and_yarn group across 1 directory ([211143b](https://github.com/ise-alumni/portal/commit/211143ba1848eead75695bd55f5a15c17dff6737))
+
 ## [1.11.1](https://github.com/ise-alumni/portal/compare/v1.11.0...v1.11.1) (2026-04-02)
 
 ### Miscellaneous Chores
