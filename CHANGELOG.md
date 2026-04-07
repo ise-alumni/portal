@@ -1,3 +1,9 @@
+## [1.11.3](https://github.com/ise-alumni/portal/compare/v1.11.2...v1.11.3) (2026-04-07)
+
+### Miscellaneous Chores
+
+* **deps:** bump defu in the npm_and_yarn group across 1 directory ([b438e05](https://github.com/ise-alumni/portal/commit/b438e057fb62d52c22eb3529a58c20bfaa5479dd))
+
 ## [1.11.2](https://github.com/ise-alumni/portal/compare/v1.11.1...v1.11.2) (2026-04-02)
 
 ### Miscellaneous Chores
