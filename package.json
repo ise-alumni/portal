@@ -20,7 +20,7 @@
     "db:reset": "rm -f data.db && pnpm db:migrate && pnpm db:seed"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.11",
+    "@hono/node-server": "^1.19.13",
     "@hookform/resolvers": "^3.10.0",
     "@libsql/client": "^0.17.2",
     "@radix-ui/react-accordion": "^1.2.11",
