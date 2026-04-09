@@ -181,7 +181,7 @@ importers:
         version: 3.4.0
       tailwindcss-animate:
         specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@3.4.18(tsx@4.21.0))
+        version: 1.0.7(tailwindcss@4.2.2)
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
@@ -215,7 +215,7 @@ importers:
         version: 14.1.0(semantic-release@25.0.2(typescript@5.9.3))
       '@tailwindcss/typography':
         specifier: ^0.5.19
-        version: 0.5.19(tailwindcss@3.4.18(tsx@4.21.0))
+        version: 0.5.19(tailwindcss@4.2.2)
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -289,8 +289,8 @@ importers:
         specifier: ^25.0.2
         version: 25.0.2(typescript@5.9.3)
       tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.18(tsx@4.21.0)
+        specifier: ^4.2.2
+        version: 4.2.2
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -5244,10 +5244,13 @@ packages:
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders'
 
-  tailwindcss@3.4.18:
-    resolution: {integrity: sha512-6A2rnmW5xZMdw11LYjhcI5846rt9pbLSabY5XPxo+XWdxwZaFEn47Go4NzFiHu9sNNmr/kXivP1vStfvMaK1GQ==}
+  tailwindcss@3.4.19:
+    resolution: {integrity: sha512-3ofp+LL8E+pK/JuPLPggVAIaEuhvIz4qNcf3nA1Xn2o/7fb7s/TYpHhwGDv1ZU3PkBluUVaF8PyCHcm48cKLWQ==}
     engines: {node: '>=14.0.0'}
     hasBin: true
+
+  tailwindcss@4.2.2:
+    resolution: {integrity: sha512-KWBIxs1Xb6NoLdMVqhbhgwZf2PGBpPEiwOqgI4pFIYbNTfBXiKYyWoTsXgBQ9WFg/OlhnvHaY+AEpW7wSmFo2Q==}
 
   temp-dir@3.0.0:
     resolution: {integrity: sha512-nHc6S/bwIilKHNRgK/3jlhDoIHcp45YgyiwcAk46Tr0LfEqGBVpmiAyuiuxeVE44m3mXnEeVhaipLOEWmH+Njw==}
@@ -7557,10 +7560,10 @@ snapshots:
     dependencies:
       '@swc/counter': 0.1.3
 
-  '@tailwindcss/typography@0.5.19(tailwindcss@3.4.18(tsx@4.21.0))':
+  '@tailwindcss/typography@0.5.19(tailwindcss@4.2.2)':
     dependencies:
       postcss-selector-parser: 6.0.10
-      tailwindcss: 3.4.18(tsx@4.21.0)
+      tailwindcss: 4.2.2
 
   '@tanstack/query-core@5.90.20': {}
 
@@ -9244,7 +9247,7 @@ snapshots:
       esbuild: 0.25.10
       estree-walker: 3.0.3
       magic-string: 0.30.21
-      tailwindcss: 3.4.18(tsx@4.21.0)
+      tailwindcss: 3.4.19(tsx@4.21.0)
       vite: 7.3.1(@types/node@25.0.3)(jiti@1.21.7)(tsx@4.21.0)
     transitivePeerDependencies:
       - tsx
@@ -10553,11 +10556,11 @@ snapshots:
 
   tailwind-merge@3.4.0: {}
 
-  tailwindcss-animate@1.0.7(tailwindcss@3.4.18(tsx@4.21.0)):
+  tailwindcss-animate@1.0.7(tailwindcss@4.2.2):
     dependencies:
-      tailwindcss: 3.4.18(tsx@4.21.0)
+      tailwindcss: 4.2.2
 
-  tailwindcss@3.4.18(tsx@4.21.0):
+  tailwindcss@3.4.19(tsx@4.21.0):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -10584,6 +10587,8 @@ snapshots:
     transitivePeerDependencies:
       - tsx
       - yaml
+
+  tailwindcss@4.2.2: {}
 
   temp-dir@3.0.0: {}
 
