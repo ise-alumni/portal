@@ -1,3 +1,9 @@
+## [1.11.4](https://github.com/ise-alumni/portal/compare/v1.11.3...v1.11.4) (2026-04-14)
+
+### Miscellaneous Chores
+
+* **deps:** bump react-hook-form from 7.71.1 to 7.72.1 ([32689b0](https://github.com/ise-alumni/portal/commit/32689b07e2575797acd645dfc6b09106677dd32d))
+
 ## [1.11.3](https://github.com/ise-alumni/portal/compare/v1.11.2...v1.11.3) (2026-04-07)
 
 ### Miscellaneous Chores
